@@ -82,7 +82,7 @@ void Game::Draw()
 	{
 		o->Draw(&m_Instance->m_Camera);
 	}
-
+	//new
 	// •`‰æŒãˆ—
 	Renderer::DrawEnd();
 }

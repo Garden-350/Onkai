@@ -99,6 +99,10 @@
     <ClCompile Include="Note.cpp">
       <Filter>ソースファイル</Filter>
     </ClCompile>
+    <ClCompile Include="ChartObject.cpp" />
+    <ClCompile Include="RingQuad.cpp">
+      <Filter>ソースファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -195,6 +199,11 @@
       <Filter>ヘッダーファイル</Filter>
     </ClInclude>
     <ClInclude Include="Note.h">
+      <Filter>ヘッダーファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleJson.h" />
+    <ClInclude Include="ChartObject.h" />
+    <ClInclude Include="RingQuad.h">
       <Filter>ヘッダーファイル</Filter>
     </ClInclude>
   </ItemGroup>

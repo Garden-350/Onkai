@@ -16,14 +16,18 @@ private:
 
 	float m_CameraDirection = 0;	//ƒJƒƒ‰‚Ì•ûŒü
 
+	bool m_Fixed = false;
 
 public:
 	void Init();
 	void Update();
 	void SetCamera(int mode = 0);
 	void Uninit();
+	void SetFixedPose(DirectX::SimpleMath::Vector3 pos, DirectX::SimpleMath::Vector3 target);
 
 	void SetTarget(DirectX::SimpleMath::Vector3 target);
 
 	float GetDirection() const { return m_CameraDirection; }
+
+	const DirectX::SimpleMath::Matrix& GetViewMatrix();
 };

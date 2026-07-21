@@ -88,7 +88,7 @@ void Baton::Update()
 		m_Rotation.y = atan2(moveDir.x, moveDir.z);
 	}
 
-	if (Input::GetKeyTrigger(VK_O))
+	if (Input::GetKeyTrigger(VK_O) || Input::GetKeyTrigger(VK_Q))
 	{
 		Vector3 spawnPos = m_Position + moveDir * 1.0f;
 

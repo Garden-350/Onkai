@@ -22,6 +22,7 @@ void Camera::Init()
 //=======================================
 void Camera::Update()
 {
+	if (m_Fixed) return; // 固定モード中はオービット計算をスキップ
 	//左右キーでカメラ回転
 	if (Input::GetKeyPress(VK_L))
 	{
@@ -101,9 +102,21 @@ void Camera::Uninit()
 
 }
 
+void Camera::SetFixedPose(DirectX::SimpleMath::Vector3 pos, DirectX::SimpleMath::Vector3 target)
+{
+	m_Position = pos;
+	m_Target = target;
+	m_Fixed = true;
+}
+
 void Camera::SetTarget(DirectX::SimpleMath::Vector3 target)
 {
 	//カメラの注視点を更新
 	m_Target = target;
+}
+
+const DirectX::SimpleMath::Matrix& Camera::GetViewMatrix()
+{
+	return m_ViewMatrix;
 }
 

@@ -18,193 +18,205 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ChartObject.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="SkyBox.cpp">
+      <Filter>ソースファイル\Sky</Filter>
+    </ClCompile>
     <ClCompile Include="Application.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Appli</Filter>
     </ClCompile>
     <ClCompile Include="AssimpPerse.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Camera.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Collision.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Appli</Filter>
     </ClCompile>
     <ClCompile Include="Game.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Appli</Filter>
     </ClCompile>
     <ClCompile Include="input.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Appli</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Appli</Filter>
     </ClCompile>
     <ClCompile Include="Object.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Appli</Filter>
     </ClCompile>
     <ClCompile Include="Renderer.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Appli</Filter>
     </ClCompile>
     <ClCompile Include="ResultScene.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Scene.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Shader.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="sound.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Stage1Scene.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene.cpp">
+      <Filter>ソースファイル\Scene</Filter>
     </ClCompile>
     <ClCompile Include="StaticMesh.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="stb_image.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="TestCube.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="TestModel.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="TestPlane.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Texture.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Texture2D.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="TitleScene.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Appli</Filter>
     </ClCompile>
     <ClCompile Include="utility.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Appli</Filter>
     </ClCompile>
-    <ClCompile Include="DebugCollision.cpp">
-      <Filter>ソースファイル</Filter>
+    <ClCompile Include="stb_image.cpp">
+      <Filter>ソースファイル\Appli</Filter>
+    </ClCompile>
+    <ClCompile Include="TitleScene.cpp">
+      <Filter>ソースファイル\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Baton.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="Collision.cpp">
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugCollision.cpp">
+      <Filter>ソースファイル\Object</Filter>
     </ClCompile>
     <ClCompile Include="Ground.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Object</Filter>
     </ClCompile>
     <ClCompile Include="Note.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Object</Filter>
     </ClCompile>
-    <ClCompile Include="ChartObject.cpp" />
     <ClCompile Include="RingQuad.cpp">
-      <Filter>ソースファイル</Filter>
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="Shader.cpp">
+      <Filter>ソースファイル\Appli</Filter>
+    </ClCompile>
+    <ClCompile Include="TestCube.cpp">
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="TestModel.cpp">
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="TestPlane.cpp">
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="sound.cpp">
+      <Filter>ソースファイル\Appli</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>ソースファイル\Appli</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture2D.cpp">
+      <Filter>ソースファイル\Appli</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>ソースファイル\Object</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ChartObject.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleJson.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="SkyBox.h">
+      <Filter>ヘッダーファイル\Sky</Filter>
+    </ClInclude>
     <ClInclude Include="Application.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
     <ClInclude Include="AssimpPerse.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Camera.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Collision.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Game.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
     <ClInclude Include="IndexBuffer.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
-    <ClInclude Include="input.h">
-      <Filter>ヘッダーファイル</Filter>
+    <ClInclude Include="Game.h">
+      <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
     <ClInclude Include="main.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
     <ClInclude Include="Material.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
     <ClInclude Include="Mesh.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Appli</Filter>
+    </ClInclude>
+    <ClInclude Include="input.h">
+      <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
     <ClInclude Include="MeshRenderer.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Object.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
     <ClInclude Include="Renderer.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="ResultScene.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Scene.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Shader.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="sound.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Stage1Scene.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
     <ClInclude Include="StaticMesh.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="stb_image.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="TestCube.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="TestModel.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="TestPlane.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Texture.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Texture2D.h">
-      <Filter>ヘッダーファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="TitleScene.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
     <ClInclude Include="utility.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
     <ClInclude Include="VertexBuffer.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
-    <ClInclude Include="DebugCollision.h">
-      <Filter>ヘッダーファイル</Filter>
+    <ClInclude Include="ResultScene.h">
+      <Filter>ヘッダーファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Stage1Scene.h">
+      <Filter>ヘッダーファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_image.h">
+      <Filter>ヘッダーファイル\Appli</Filter>
+    </ClInclude>
+    <ClInclude Include="TitleScene.h">
+      <Filter>ヘッダーファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene.h">
+      <Filter>ヘッダーファイル\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Baton.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Collision.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugCollision.h">
+      <Filter>ヘッダーファイル\Object</Filter>
     </ClInclude>
     <ClInclude Include="Ground.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Object</Filter>
     </ClInclude>
     <ClInclude Include="Note.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Object</Filter>
     </ClInclude>
-    <ClInclude Include="SimpleJson.h" />
-    <ClInclude Include="ChartObject.h" />
+    <ClInclude Include="Object.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
     <ClInclude Include="RingQuad.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Shader.h">
+      <Filter>ヘッダーファイル\Appli</Filter>
+    </ClInclude>
+    <ClInclude Include="TestCube.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="TestModel.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="TestPlane.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>ヘッダーファイル\Appli</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture2D.h">
+      <Filter>ヘッダーファイル\Appli</Filter>
+    </ClInclude>
+    <ClInclude Include="sound.h">
+      <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -216,6 +228,36 @@
     </Filter>
     <Filter Include="リソースファイル">
       <UniqueIdentifier>{0a9b6c75-0976-43a1-9323-e8bbf861c104}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Chart">
+      <UniqueIdentifier>{15f808ce-a9bf-450d-9a28-8b300888c179}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Chart">
+      <UniqueIdentifier>{9337957c-4a35-42e6-8336-c442db7712b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Appli">
+      <UniqueIdentifier>{42f0165b-d10b-450b-9abc-67ff25fbbc75}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Appli">
+      <UniqueIdentifier>{d3ec1fd9-46ee-42b2-b766-90f2a1ef6b44}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Scene">
+      <UniqueIdentifier>{760fb835-d470-4d9b-a5db-006fe494d9f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Scene">
+      <UniqueIdentifier>{caf9a53a-0f47-44f2-b242-50ba5514b16a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Object">
+      <UniqueIdentifier>{7da96084-dee3-4951-9a53-830f0a3fb308}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Object">
+      <UniqueIdentifier>{23b8fb62-e635-422e-a504-65dee5bbdd86}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Sky">
+      <UniqueIdentifier>{e38313df-220e-46c7-9bac-cfec645d5fe5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Sky">
+      <UniqueIdentifier>{efb1d68d-be1d-495b-bf3d-b5ae0c6db24d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

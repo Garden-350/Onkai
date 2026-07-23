@@ -72,9 +72,11 @@ private:
 	MeshRenderer m_MeshRenderer;
 	RingQuad m_ApproachRing;	// 接近リング（3D空間）
 	Texture2D m_LaneIcons[6];	// S/D/F/J/K/Lの判定円アイコン（画面固定2D）
+	Texture2D m_ComboDigits[3];
 	std::vector<SUBSET> m_Subsets;
 	std::vector<std::unique_ptr<Material>> m_Materials;
 	std::vector<std::unique_ptr<Texture>> m_Textures;
+	std::chrono::steady_clock::time_point m_LastUpdateClock;
 	float m_NoteScale = 15.0f;	//モデルの大きさ
 
 	//譜面データ
@@ -86,11 +88,14 @@ private:
 	bool m_Started = false;
 	float m_MusicTime = 0.0f;
 
+	int m_Combo = 0;
 	//判定
 	int m_Perfect = 0;
 	int m_Great = 0;
 	int m_Good = 0;
 	int m_Miss = 0;
+
+	float m_ComboPopTimer = 0.0f;
 
 	//判定値
 	static constexpr float kPerfect = 0.02f;
@@ -101,7 +106,6 @@ private:
 	void JudgeLane(int key, int laneIndex);
 
 	// ── 判定エフェクトのフック（後で差し替え予定）──────────────
-	//   今は何もしない。VertexBuffer/IndexBufferのAPIが分かり次第、
 	//   ここに回転する四角バーストの描画を実装する。
 	void OnJudge(int laneIndex, int rank); // rank: 0=PERFECT 1=GREAT 2=GOOD
 };

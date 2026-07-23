@@ -30,4 +30,9 @@ public:
 	float GetDirection() const { return m_CameraDirection; }
 
 	const DirectX::SimpleMath::Matrix& GetViewMatrix();
+
+	DirectX::SimpleMath::Vector3 GetPosition() const
+	{
+		return m_Position;
+	}
 };

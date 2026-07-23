@@ -2,6 +2,7 @@
 #include "Game.h"
 #include "Input.h"
 #include "ChartObject.h"
+#include "SkyBox.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -25,11 +26,15 @@ Stage1Scene::~Stage1Scene()
 void Stage1Scene::Init()
 {
 	// オブジェクトを作成
+	//ここでカメラ固定してます。必要なら変数で動くようにしてあげてね
 	Game::GetInstance()->GetCamera()->SetFixedPose(
-		Vector3(0.0f, 0.0f, -600.0f),	//カメラポス
+		Vector3(0.0f, 50.0f, -600.0f),	//カメラポス
 		Vector3(0.0f, -55.0f, -200.0f)	//注視点
 	);
 	//譜面再生オブジェクトを生成してJSONをロード
+	// たぶんうまくいってる
+	auto* skybox = Game::GetInstance()->AddObject<SkyBox>();
+	m_MySceneObjects.emplace_back(skybox);
 	auto* player = Game::GetInstance()->AddObject<ChartObject>();
 	player->LoadChart("bezye2");	//charts/chartname.jsonを読み込み
 	m_MySceneObjects.emplace_back(player);

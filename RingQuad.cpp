@@ -4,16 +4,16 @@ using namespace DirectX::SimpleMath;
 
 void RingQuad::Init(const char* texturePath)
 {
-    // XZ平面に寝かせた正方形（半径0.5、Draw時のscaleで拡縮する）
+    // XY平面上の正方形（Texture2Dと同じ向き、Draw時のscaleで拡縮する）
     std::vector<VERTEX_3D> verts(4);
-    verts[0].position = Vector3(-0.5f, 0.0f, -0.5f);
-    verts[1].position = Vector3(0.5f, 0.0f, -0.5f);
-    verts[2].position = Vector3(-0.5f, 0.0f, 0.5f);
-    verts[3].position = Vector3(0.5f, 0.0f, 0.5f);
+    verts[0].position = Vector3(-0.5f,  0.5f, 0.0f);
+    verts[1].position = Vector3( 0.5f,  0.5f, 0.0f);
+    verts[2].position = Vector3(-0.5f, -0.5f, 0.0f);
+    verts[3].position = Vector3( 0.5f, -0.5f, 0.0f);
 
     for (int i = 0; i < 4; i++)
     {
-        verts[i].normal = Vector3(0.0f, 1.0f, 0.0f);
+        verts[i].normal = Vector3(0.0f, 0.0f, -1.0f);
         verts[i].color = Color(1.0f, 1.0f, 1.0f, 1.0f);
     }
     verts[0].uv = Vector2(0.0f, 0.0f);

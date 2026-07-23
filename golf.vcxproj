@@ -159,6 +159,7 @@
     <ClCompile Include="RingQuad.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="SkyBox.cpp" />
     <ClCompile Include="sound.cpp" />
     <ClCompile Include="Stage1Scene.cpp" />
     <ClCompile Include="StaticMesh.cpp" />
@@ -195,6 +196,7 @@
     <ClInclude Include="Scene.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="SimpleJson.h" />
+    <ClInclude Include="SkyBox.h" />
     <ClInclude Include="sound.h" />
     <ClInclude Include="Stage1Scene.h" />
     <ClInclude Include="StaticMesh.h" />

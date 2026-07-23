@@ -109,7 +109,7 @@ void ChartObject::Init()
 		float laneX = -310.0f + (660.0f / 6.0f) * i + (660.0f / 12.0f);
 		ChartCircleKeyframe key;
 		key.time = 0.0f;
-		key.x = laneX;
+		key.x = -laneX;
 		key.y = -55.0f;
 		key.z = -210.0f;
 		m_JudgeCircles[i].keyframe.push_back(key);
@@ -132,6 +132,15 @@ void ChartObject::Init()
 		m_LaneIcons[i].Init();
 		m_LaneIcons[i].SetTexture(iconPaths[i]);
 		m_LaneIcons[i].SetScale(70.0f, 70.0f, 1.0f);
+	}
+
+	//コンボ数表示
+	for (int i = 0; i < 3; i++)
+	{
+		m_ComboDigits[i].Init();
+		m_ComboDigits[i].SetTexture("assets/texture/number.png");
+		m_ComboDigits[i].SetUV(1.0f, 1.0f, 10.0f, 1.0f); // 初期表示は "0"
+		m_ComboDigits[i].SetScale(40.0f, 60.0f, 1.0f);
 	}
 }
 
@@ -163,23 +172,23 @@ bool ChartObject::LoadChart(const std::string& name)
 			if (n.Has("spawnPos"))
 			{
 				const auto& sp = n["spawnPos"];
-				note.spawnPos = Vector3(sp["x"].AsFloat(), sp["y"].AsFloat(), sp["z"].AsFloat());
+				note.spawnPos = Vector3(-sp["x"].AsFloat(), sp["y"].AsFloat(), sp["z"].AsFloat());
 			}
 			else
 			{
 				float laneX = -310.0f + (660.0f / 6.0f) * note.lane + (660.0f / 12.0f);
-				note.spawnPos = Vector3(laneX, -55.0f, 1000.0f);
+				note.spawnPos = Vector3(-laneX, -55.0f, 1000.0f);
 			}
 
 			if (n.Has("judgePos"))
 			{
 				const auto& jp = n["judgePos"];
-				note.judgePos = Vector3(jp["x"].AsFloat(), jp["y"].AsFloat(), jp["z"].AsFloat());
+				note.judgePos = Vector3(-jp["x"].AsFloat(), jp["y"].AsFloat(), jp["z"].AsFloat());
 			}
 			else
 			{
 				float laneX = -310.0f + (660.0f / 6.0f) * note.lane + (660.0f / 12.0f);
-				note.judgePos = Vector3(laneX, -55.0f, -210.0f);
+				note.judgePos = Vector3(-laneX, -55.0f, -210.0f);
 			}
 
 			if (n.Has("path") && n["path"].IsArray())
@@ -187,7 +196,7 @@ bool ChartObject::LoadChart(const std::string& name)
 				for (const auto& p : n["path"].arrayValue)
 				{
 					note.controlPoints.emplace_back(
-						p["x"].AsFloat(), p["y"].AsFloat(), p["z"].AsFloat()
+						-p["x"].AsFloat(), p["y"].AsFloat(), p["z"].AsFloat()
 					);
 				}
 			}
@@ -214,7 +223,7 @@ bool ChartObject::LoadChart(const std::string& name)
 				{
 					ChartCircleKeyframe key;
 					key.time = k["time"].AsFloat();
-					key.x = k["x"].AsFloat();
+					key.x = -k["x"].AsFloat();
 					key.y = k["y"].AsFloat();
 					key.z = k["z"].AsFloat();
 					circle.keyframe.push_back(key);
@@ -278,10 +287,20 @@ void ChartObject::Update()
 	if (!m_Started)
 	{
 		m_StartClock = std::chrono::steady_clock::now();
+		m_LastUpdateClock = m_StartClock;
 		m_Started = true;
 	}
 	auto nowClock = std::chrono::steady_clock::now();
 	m_MusicTime = std::chrono::duration<float>(nowClock - m_StartClock).count();
+
+	float deltaTime = std::chrono::duration<float>(nowClock - m_LastUpdateClock).count();
+	m_LastUpdateClock = nowClock;
+
+	if (m_ComboPopTimer > 0.0f)
+	{
+		m_ComboPopTimer -= deltaTime;
+		if (m_ComboPopTimer < 0.0f) m_ComboPopTimer = 0.0f;
+	}
 
 	// 判定円をキーフレームアニメーションに合わせて動かし、
 	// まだ判定されていないノーツの judgePos を追従させる
@@ -339,6 +358,8 @@ void ChartObject::JudgeLane(int key, int laneIndex)
 
 void ChartObject::OnJudge(int laneIndex, int rank)
 {
+	m_Combo++;
+	m_ComboPopTimer = 0.15f;
 	// TODO: 判定エフェクト（回転する四角バースト）をここに実装する。
 	// VertexBuffer/IndexBufferのAPIが分かり次第、動的頂点バッファで
 	// Texture2Dと同じ要領のクワッドを複数枚描画する形にする予定。
@@ -401,20 +422,47 @@ void ChartObject::Draw(Camera* cam)
 
 		Vector3 pos = EvaluateNotePosition(note, m_MusicTime);
 
-		float ringScale = 10.0f + t * 60.0f;
+		float ringScale = 100.0f + t * 60.0f;
 		float ringAlpha = 0.2f + t * 0.6f;
 		m_ApproachRing.Draw(pos, ringScale, ringAlpha);
 	}
 	Renderer::SetBlendState(BS_NONE);
 
 	//判定円アイコン：judgeCirclesの3D座標を画面に投影して表示
-	const Matrix& view = cam->GetViewMatrix();
+	const Matrix view = cam->GetViewMatrix();
 	for (int i = 0; i < 6; i++)
 	{
 		Vector3 circlePos3D = m_JudgeCircles[i].GetPosition(m_MusicTime);
 		Vector3 screenPos = WorldToTexture2DPos(circlePos3D, view);
+
+		//char buf[128];
+		//sprintf_s(buf, "[Icon%d] world=(%.1f,%.1f,%.1f) screen=(%.1f,%.1f)\n",
+		//	i, circlePos3D.x, circlePos3D.y, circlePos3D.z, screenPos.x, screenPos.y);
+		//OutputDebugStringA(buf);
+
 		m_LaneIcons[i].SetPosition(screenPos);
 		m_LaneIcons[i].Draw(cam);
+	}
+
+	//コンボ数表示
+	{
+		int combo = m_Combo;
+		if (combo > 999) combo = 999;
+
+		int digits[3] = { combo / 100,(combo / 10) % 10, combo % 10 };
+		// ヒット直後は少し拡大してから元に戻る「ポップ」演出
+		float popScale = 1.0f + (m_ComboPopTimer / 0.15f) * 0.4f; // 最大1.4倍まで膨らむ
+
+		float digitW = 40.0f;
+		float startX = 200.0f;	//画面右寄りに配置してます
+
+		for (int i = 0; i < 3; i++)
+		{
+			m_ComboDigits[i].SetUV((float)(digits[i] + 1), 1.0f, 10.0f, 1.0f);
+			m_ComboDigits[i].SetScale(40.0f * popScale, 60.0f * popScale, 1.0f);
+			m_ComboDigits[i].SetPosition(startX + digitW * i, 250.0f, 0.0f);
+			m_ComboDigits[i].Draw(cam);
+		}
 	}
 
 	cam->SetCamera(0);

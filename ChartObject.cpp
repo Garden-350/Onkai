@@ -142,6 +142,21 @@ void ChartObject::Init()
 		m_ComboDigits[i].SetUV(1.0f, 1.0f, 10.0f, 1.0f); // 初期表示は "0"
 		m_ComboDigits[i].SetScale(40.0f, 60.0f, 1.0f);
 	}
+
+	//タイミングガイド：外枠と育つ四角
+	const char* guideTexturePath_out = "assets/texture/sotohako.png";
+	const char* guideTexturePath_in = "assets/texture/utihako.png";
+	float frameSize = 100.0f;	//外枠のサイズ
+	for (int i = 0; i < 6; i++)
+	{
+		m_LaneFrame[i].Init();
+		m_LaneFrame[i].SetTexture(guideTexturePath_out);
+		m_LaneFrame[i].SetScale(frameSize, frameSize, 1.0f);
+
+		m_LaneFill[i].Init();
+		m_LaneFill[i].SetTexture(guideTexturePath_in);
+		m_LaneFill[i].SetScale(10.0f, 10.0f, 1.0f);
+	}
 }
 
 //LoadChart : JSONから譜面読み込み
@@ -428,21 +443,55 @@ void ChartObject::Draw(Camera* cam)
 	}
 	Renderer::SetBlendState(BS_NONE);
 
+	//レーンごとに一番近い未判定ノーツの接近度(0〜1)を計算
+	float laneT[6] = { 0,0,0,0,0,0 };
+	bool laneActive[6] = { false,false,false,false,false,false };
+	for (auto& note : m_Notes)
+	{
+		if (note.judged) continue;	//ミスが確定してたらスルー
+		if (note.lane < 0 || note.lane >= 6) continue;
+
+		float st = note.GetSpawnTime();
+		float et = note.time;
+		if (m_MusicTime < st || m_MusicTime > et) continue;	// 出現〜判定の範囲外はスキップ
+
+		float duration = et - st;
+		float t = (duration > 0.00001f) ? (m_MusicTime - st) / duration : 1.0f;
+		if (t < 0.0f) t = 0.0f;
+		if (t > 1.0f) t = 1.0f;
+
+		//そのレーンでもっとも判定に近いノーツを選択
+		if (!laneActive[note.lane] || t > laneT[note.lane])
+		{
+			laneActive[note.lane] = true;
+			laneT[note.lane] = t;
+		}
+	}
+
 	//判定円アイコン：judgeCirclesの3D座標を画面に投影して表示
 	const Matrix view = cam->GetViewMatrix();
+	Renderer::SetBlendState(BS_ALPHABLEND);
 	for (int i = 0; i < 6; i++)
 	{
 		Vector3 circlePos3D = m_JudgeCircles[i].GetPosition(m_MusicTime);
 		Vector3 screenPos = WorldToTexture2DPos(circlePos3D, view);
 
-		//char buf[128];
-		//sprintf_s(buf, "[Icon%d] world=(%.1f,%.1f,%.1f) screen=(%.1f,%.1f)\n",
-		//	i, circlePos3D.x, circlePos3D.y, circlePos3D.z, screenPos.x, screenPos.y);
-		//OutputDebugStringA(buf);
-
 		m_LaneIcons[i].SetPosition(screenPos);
 		m_LaneIcons[i].Draw(cam);
+
+		Renderer::SetBlendState(BS_ALPHABLEND);
+		m_LaneFrame[i].SetPosition(screenPos);
+		m_LaneFrame[i].Draw(cam);
+
+		if (laneActive[i])
+		{
+			float fillSize = 10.0f + laneT[i] * 90.0f;
+			m_LaneFill[i].SetScale(fillSize, fillSize, 1.0f);
+			m_LaneFill[i].SetPosition(screenPos);
+			m_LaneFill[i].Draw(cam);
+		}
 	}
+	Renderer::SetBlendState(BS_NONE);
 
 	//コンボ数表示
 	{
@@ -456,6 +505,7 @@ void ChartObject::Draw(Camera* cam)
 		float digitW = 40.0f;
 		float startX = 200.0f;	//画面右寄りに配置してます
 
+		Renderer::SetBlendState(BS_ALPHABLEND);
 		for (int i = 0; i < 3; i++)
 		{
 			m_ComboDigits[i].SetUV((float)(digits[i] + 1), 1.0f, 10.0f, 1.0f);

@@ -73,6 +73,8 @@ private:
 	RingQuad m_ApproachRing;	// 接近リング（3D空間）
 	Texture2D m_LaneIcons[6];	// S/D/F/J/K/Lの判定円アイコン（画面固定2D）
 	Texture2D m_ComboDigits[3];
+	Texture2D m_LaneFrame[6];	//外側の四角
+	Texture2D m_LaneFill[6];	//内側の育つ四角
 	std::vector<SUBSET> m_Subsets;
 	std::vector<std::unique_ptr<Material>> m_Materials;
 	std::vector<std::unique_ptr<Texture>> m_Textures;

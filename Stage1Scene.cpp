@@ -28,7 +28,7 @@ void Stage1Scene::Init()
 	// オブジェクトを作成
 	//ここでカメラ固定してます。必要なら変数で動くようにしてあげてね
 	Game::GetInstance()->GetCamera()->SetFixedPose(
-		Vector3(0.0f, 50.0f, -600.0f),	//カメラポス
+		Vector3(0.0f, 00.0f, -600.0f),	//カメラポス
 		Vector3(0.0f, -55.0f, -200.0f)	//注視点
 	);
 	//譜面再生オブジェクトを生成してJSONをロード

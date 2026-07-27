@@ -108,6 +108,13 @@
     <ClCompile Include="Camera.cpp">
       <Filter>ソースファイル\Object</Filter>
     </ClCompile>
+    <ClCompile Include="Particle.cpp">
+      <Filter>ソースファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticleQuad.cpp">
+      <Filter>ソースファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="Enemy.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -218,6 +225,13 @@
     <ClInclude Include="sound.h">
       <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
+    <ClInclude Include="Particle.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleQuad.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="Enemy.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">
@@ -258,6 +272,12 @@
     </Filter>
     <Filter Include="ヘッダーファイル\Sky">
       <UniqueIdentifier>{efb1d68d-be1d-495b-bf3d-b5ae0c6db24d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Particle">
+      <UniqueIdentifier>{718ae840-1374-4bb9-86ba-3a00da803e2f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Particle">
+      <UniqueIdentifier>{1fb19a19-dc7a-404c-a789-c4b0b5030908}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

@@ -6,10 +6,12 @@
 #include "Texture.h"
 #include "RingQuad.h"
 #include "Texture2D.h"
+#include "ParticleQuad.h"
 #include <string>
 #include <vector>
 #include <memory>
 #include <chrono>
+#include "Particle.h"
 
 // エディターで作った譜面(JSON)を読み込み、ノーツを3Dモデルで流して
 // S/D/F/J/K/Lキーで判定するだけの再生専用オブジェクト。
@@ -71,11 +73,13 @@ private:
 	Shader m_shader;
 	MeshRenderer m_MeshRenderer;
 	RingQuad m_ApproachRing;	// 接近リング（3D空間）
+	ParticleQuad m_ParticleQuad;
 	Texture2D m_LaneIcons[6];	// S/D/F/J/K/Lの判定円アイコン（画面固定2D）
 	Texture2D m_ComboDigits[3];
 	Texture2D m_LaneFrame[6];	//外側の四角
 	Texture2D m_LaneFill[6];	//内側の育つ四角
 	std::vector<SUBSET> m_Subsets;
+	std::vector<Particle> m_Particle;
 	std::vector<std::unique_ptr<Material>> m_Materials;
 	std::vector<std::unique_ptr<Texture>> m_Textures;
 	std::chrono::steady_clock::time_point m_LastUpdateClock;

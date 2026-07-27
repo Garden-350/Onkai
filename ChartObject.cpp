@@ -116,6 +116,8 @@ void ChartObject::Init()
 	}
 	//接近時に表示されるテクスチャ
 	m_ApproachRing.Init("assets/texture/ring.png");
+	//パーティクルの画像セット
+	m_ParticleQuad.Init("assets/texture/sakura2.png");
 
 	//判定円アイコン
 	const char* iconPaths[6] = {
@@ -326,6 +328,16 @@ void ChartObject::Update()
 		note.judgePos = m_JudgeCircles[note.lane].GetPosition(m_MusicTime);
 	}
 
+	for (auto it = m_Particle.begin(); it != m_Particle.end();)
+	{
+		it->Update(deltaTime);
+
+		if (it->IsStop())
+			it = m_Particle.erase(it);
+		else
+			++it;
+	}
+
 	//ミス判定
 	for (auto& note : m_Notes)
 	{
@@ -373,11 +385,35 @@ void ChartObject::JudgeLane(int key, int laneIndex)
 
 void ChartObject::OnJudge(int laneIndex, int rank)
 {
+	OutputDebugStringA("[Particle] OnJudge called\n");
 	m_Combo++;
 	m_ComboPopTimer = 0.15f;
 	// TODO: 判定エフェクト（回転する四角バースト）をここに実装する。
 	// VertexBuffer/IndexBufferのAPIが分かり次第、動的頂点バッファで
 	// Texture2Dと同じ要領のクワッドを複数枚描画する形にする予定。
+
+	Vector3 pos = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
+
+	//あとでパーティクルの数は変数化するかも
+	for (int i = 0; i < 100; i++)
+	{
+		float deg = rand() % 360;
+
+		Particle p(
+			pos,
+			1.5f,                         // 寿命
+			50.0f,                        // 重力を弱める
+			Color(1, 1, 1, 1),
+			Color(1, 1, 1, 0),
+			0.7f,                         // 終盤30%だけフェード
+			80.0f,                        // 開始サイズ:80
+			40.0f,                        // 終了サイズ
+			Vector3(80, 120, 80),         // 速度を弱める
+			deg
+		);
+		m_Particle.push_back(p);
+	}
+
 	(void)laneIndex;
 	(void)rank;
 }
@@ -386,6 +422,11 @@ void ChartObject::Draw(Camera* cam)
 {
 	// 3Dカメラを再アサート（他オブジェクトがTexture2Dで2Dに切り替えている場合があるため）
 	cam->SetCamera(0);
+
+	char buf[64];
+	//std::cout << "Particle Count = "
+	//	<< m_Particle.size()
+	//	<< std::endl;
 
 	Renderer::SetBlendState(BS_NONE);
 
@@ -490,6 +531,20 @@ void ChartObject::Draw(Camera* cam)
 			m_LaneFill[i].SetPosition(screenPos);
 			m_LaneFill[i].Draw(cam);
 		}
+	}
+	Renderer::SetBlendState(BS_NONE);
+
+	//パーティクル
+	cam->SetCamera(0);
+	Renderer::SetBlendState(BS_ALPHABLEND);
+	for (auto& p : m_Particle)
+	{
+		m_ParticleQuad.Draw(
+			cam,
+			p.GetPosition(),
+			p.GetScale(),
+			p.GetColor()
+		);
 	}
 	Renderer::SetBlendState(BS_NONE);
 

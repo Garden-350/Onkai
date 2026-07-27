@@ -3,6 +3,7 @@
 #include "Input.h"
 #include "ChartObject.h"
 #include "SkyBox.h"
+#include "Enemy.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -28,7 +29,7 @@ void Stage1Scene::Init()
 	// オブジェクトを作成
 	//ここでカメラ固定してます。必要なら変数で動くようにしてあげてね
 	Game::GetInstance()->GetCamera()->SetFixedPose(
-		Vector3(0.0f, 00.0f, -600.0f),	//カメラポス
+		Vector3(0.0f, 00.0f, -700.0f),	//カメラポス
 		Vector3(0.0f, -55.0f, -200.0f)	//注視点
 	);
 	//譜面再生オブジェクトを生成してJSONをロード
@@ -38,6 +39,8 @@ void Stage1Scene::Init()
 	auto* player = Game::GetInstance()->AddObject<ChartObject>();
 	player->LoadChart("bezye2");	//charts/chartname.jsonを読み込み
 	m_MySceneObjects.emplace_back(player);
+	auto* enemy = Game::GetInstance()->AddObject<Enemy>();
+	m_MySceneObjects.emplace_back(enemy);
 }
 
 

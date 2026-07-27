@@ -148,12 +148,15 @@
     <ClCompile Include="ChartObject.cpp" />
     <ClCompile Include="Collision.cpp" />
     <ClCompile Include="DebugCollision.cpp" />
+    <ClCompile Include="Enemy.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Ground.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Note.cpp" />
     <ClCompile Include="Object.cpp" />
+    <ClCompile Include="Particle.cpp" />
+    <ClCompile Include="ParticleQuad.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="ResultScene.cpp" />
     <ClCompile Include="RingQuad.cpp" />
@@ -180,6 +183,7 @@
     <ClInclude Include="ChartObject.h" />
     <ClInclude Include="Collision.h" />
     <ClInclude Include="DebugCollision.h" />
+    <ClInclude Include="Enemy.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="Ground.h" />
     <ClInclude Include="IndexBuffer.h" />
@@ -190,6 +194,8 @@
     <ClInclude Include="MeshRenderer.h" />
     <ClInclude Include="Note.h" />
     <ClInclude Include="Object.h" />
+    <ClInclude Include="Particle.h" />
+    <ClInclude Include="ParticleQuad.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="ResultScene.h" />
     <ClInclude Include="RingQuad.h" />

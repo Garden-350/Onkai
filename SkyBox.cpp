@@ -1,57 +1,127 @@
 #include "SkyBox.h"
 #include "Game.h"
 
+using namespace DirectX::SimpleMath;
+
 void SkyBox::Init()
 {
-	//const char* skyTextures[6] = {
-	//	"assets/texture/S.png",
-	//	"assets/texture/D.png",
-	//	"assets/texture/F.png",
-	//	"assets/texture/J.png",
-	//	"assets/texture/K.png",
-	//	"assets/texture/L.png",
-	//};
-	//for (int i = 0; i < 6; i++)
-	//{
-	//	m_SkyBoxIndex[i].Init();
-	//	m_SkyBoxIndex[i].SetTexture(skyTextures[i]);
-	//	m_SkyBoxIndex[i].SetScale(1000.0f, 1000.0f, 1);	//仮決め
-	//}
-
-	////各面の向き
-	//m_SkyBoxIndex[0].SetRotation(0, -90, 0);	//right
-	//m_SkyBoxIndex[1].SetRotation(0, 90, 0);		//left
-	//m_SkyBoxIndex[2].SetRotation(90, 0, 0);		//top
-	//m_SkyBoxIndex[3].SetRotation(-90, 0, 0);	//bottom
-	//m_SkyBoxIndex[4].SetRotation(0, 180, 0);	//front
-	//m_SkyBoxIndex[5].SetRotation(0, 0, 0);		//back
-
-	StaticMesh mesh;
-
-	mesh.Load(
-		//ここに3Dモデルを読みこみ 今仮表示あとで四角のやつ作ってね
-		"assets/model/SkyBlock/SkyBox1.fbx",
-		"assets/model/SkyBox"
-	);
-
-	m_MeshRenderer.Init(mesh);
-
-	m_Shader.Create(
-		"shader/litTextureVS.hlsl",
-		"shader/litTexturePS.hlsl"
-	);
-
-	m_Subsets = mesh.GetSubsets();
-	m_Textures = mesh.GetTextures();
-
-	auto materials = mesh.GetMaterials();
-
-	for (auto& m : materials)
+	// right, left, top, bottom, front(+Z), back(-Z)
+	const char* texturePaths[6] =
 	{
-		auto material = std::make_unique<Material>();
-		material->Create(m);
-		m_Materials.emplace_back(std::move(material));
+		"assets/texture/skybox/py.jpg",
+		"assets/texture/skybox/py.jpg",
+		"assets/texture/skybox/py.jpg",
+		"assets/texture/skybox/ny.jpg",
+		"assets/texture/skybox/py.jpg",
+		"assets/texture/skybox/py.jpg",
+	};
+
+	for (size_t i = 0; i < m_Textures.size(); ++i)
+	{
+		m_TextureLoaded[i] = m_Textures[i].Load(texturePaths[i]);
 	}
+
+	const float h = 0.5f;
+
+	auto addFace = [this](
+		const Vector3& a,
+		const Vector3& b,
+		const Vector3& c,
+		const Vector3& d
+		)
+		{
+			const unsigned int base =
+				static_cast<unsigned int>(m_Vertices.size());
+
+			const Vector3 positions[4] = { a, b, c, d };
+			const Vector2 uv[4] =
+			{
+				{0,0},
+				{1,0},
+				{1,1},
+				{0,1}
+			};
+
+			for (int i = 0; i < 4; ++i)
+			{
+				VERTEX_3D vertex{};
+				vertex.position = positions[i];
+				vertex.color = Color(1, 1, 1, 1);
+				vertex.uv = uv[i];
+				m_Vertices.emplace_back(vertex);
+			}
+
+			m_Indices.insert(
+				m_Indices.end(),
+				{
+					base, base + 1, base + 2,
+					base, base + 2, base + 3
+				}
+			);
+		};
+
+	// right
+	addFace(
+		Vector3(h, h, -h),
+		Vector3(h, h, h),
+		Vector3(h, -h, h),
+		Vector3(h, -h, -h)
+	);
+	//left
+	addFace(
+		Vector3(-h, h, h),
+		Vector3(-h, h, -h),
+		Vector3(-h, -h, -h),
+		Vector3(-h, -h, h)
+	);
+	//top
+	addFace(
+		Vector3(-h, h, -h),
+		Vector3(-h, h, h),
+		Vector3(h, h, h),
+		Vector3(h, h, -h)
+	);
+	//bottom
+	addFace(
+		Vector3(-h, -h, h),
+		Vector3(-h, -h, -h),
+		Vector3(h, -h, -h),
+		Vector3(h, -h, h)
+	);
+	//front(+Z)
+	addFace(
+		Vector3(-h, h, h),
+		Vector3(-h, -h, h),
+		Vector3(h, -h, h),
+		Vector3(h, h, h)
+	);
+	//back
+	addFace(
+		Vector3(h, h, -h),
+		Vector3(h, -h, -h),
+		Vector3(-h, -h, -h),
+		Vector3(-h, h, -h)
+	);
+
+	m_VertexBuffer.Create(m_Vertices);
+	m_IndexBuffer.Create(m_Indices);
+
+	//空は照明の影響を受けない
+	m_Shader.Create(
+		"shader/unlitTextureVS.hlsl",
+		"shader/unlitTexturePS.hlsl"
+	);
+
+	//箱の内側だけ描画する
+	D3D11_RASTERIZER_DESC rasterizerDesc{};
+	rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+	rasterizerDesc.CullMode = D3D11_CULL_FRONT;
+	rasterizerDesc.DepthClipEnable = TRUE;
+
+	Renderer::GetDevice()->CreateRasterizerState(
+		&rasterizerDesc,
+		m_InsideRasterizer.GetAddressOf()
+	);
 }
 
 void SkyBox::Update()
@@ -65,39 +135,49 @@ void SkyBox::Draw(Camera* cam)
 
 	Renderer::SetBlendState(BS_NONE);
 
-	//深度を書き込まない
+	// 空が手前の物体を隠さないよう、深度を書き込まない
 	Renderer::SetDepthEnable(false);
 
-	//箱の内部を描画 一回これなしで読み込んでみてうまくいかんかったらrenderer内に記入
-	//Renderer::SetCullMode(CULL_FRONT);
-
-	m_Shader.SetGPU();
-
-	m_MeshRenderer.BeforeDraw();
-
-	Matrix s = Matrix::CreateScale(m_Size);
-	Matrix t = Matrix::CreateTranslation(m_Position);
-
-	Matrix world = s * t;
+	Matrix world =
+		Matrix::CreateScale(m_Size) *
+		Matrix::CreateTranslation(m_Position);
 
 	Renderer::SetWorldMatrix(&world);
 
-	for (size_t i = 0; i < m_Subsets.size(); i++)
+	ID3D11DeviceContext* deviceContext =
+		Renderer::GetDeviceContext();
+
+	deviceContext->RSSetState(m_InsideRasterizer.Get());
+	deviceContext->IASetPrimitiveTopology(
+		D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST
+	);
+
+	m_Shader.SetGPU();
+	m_VertexBuffer.SetGPU();
+	m_IndexBuffer.SetGPU();
+
+	Renderer::SetUV(0, 0, 1, 1);
+
+	for (size_t i = 0; i < m_Textures.size(); ++i)
 	{
-		m_Materials[m_Subsets[i].MaterialIdx]->SetGPU();
-
-		if (m_Materials[m_Subsets[i].MaterialIdx]->isTextureEnable())
+		if (!m_TextureLoaded[i])
 		{
-			m_Textures[m_Subsets[i].MaterialIdx]->SetGPU();
+			continue;
 		}
-		m_MeshRenderer.DrawSubset(
-			m_Subsets[i].IndexNum,
-			m_Subsets[i].IndexBase,
-			m_Subsets[i].VertexBase
-		);
 
-		//Renderer::SetCullMode(D3D10_CULL_BACK);
+		m_Textures[i].SetGPU();
+
+		// 1面につきインデックス6個
+		deviceContext->DrawIndexed(
+			6,
+			static_cast<UINT>(i * 6),
+			0
+		);
 	}
+
+	// 通常の背面カリングへ戻す
+	deviceContext->RSSetState(nullptr);
+
 	Renderer::SetDepthEnable(true);
 }
 

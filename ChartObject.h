@@ -7,6 +7,7 @@
 #include "RingQuad.h"
 #include "Texture2D.h"
 #include "ParticleQuad.h"
+#include "sound.h"
 #include <string>
 #include <vector>
 #include <memory>
@@ -26,6 +27,7 @@ struct ChartNote
 	std::vector<DirectX::SimpleMath::Vector3> controlPoints;	// 0=直線 1=2次ベジェ 2=3次ベジェ
 
 	bool judged = false; // 判定済み/ミス確定済みなら true（以後描画しない）
+	bool approcachPlayed = false;	//判定前に一度だけ鳴らす音フラグ
 
 	float GetSpawnTime() const
 	{
@@ -70,7 +72,7 @@ public:
 
 private:
 	//ノーツ本体の3Dモデル一式
-	Shader m_shader;
+	Sound sound;
 	MeshRenderer m_MeshRenderer;
 	RingQuad m_ApproachRing;	// 接近リング（3D空間）
 	ParticleQuad m_ParticleQuad;
@@ -93,7 +95,11 @@ private:
 	std::chrono::steady_clock::time_point m_StartClock;
 	bool m_Started = false;
 	float m_MusicTime = 0.0f;
+	float m_Bpm = 120.0f;	//BPMメタデータから読み込み
+	float m_CountInTime = 0.0f;   // カウントインの長さ（1小節分の秒数）
+	int m_CountInNextBeat = 0;    // 次に鳴らすべき拍番号（0始まり）
 
+	int m_BeatsPerBar = 4;	//拍子メタデータから読み込み
 	int m_Combo = 0;
 	//判定
 	int m_Perfect = 0;
@@ -102,6 +108,7 @@ private:
 	int m_Miss = 0;
 
 	float m_ComboPopTimer = 0.0f;
+	float m_NuberSplite_Size = 80.0f;
 
 	//判定値
 	static constexpr float kPerfect = 0.02f;

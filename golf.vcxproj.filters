@@ -96,9 +96,6 @@
     <ClCompile Include="TestPlane.cpp">
       <Filter>ソースファイル\Object</Filter>
     </ClCompile>
-    <ClCompile Include="sound.cpp">
-      <Filter>ソースファイル\Appli</Filter>
-    </ClCompile>
     <ClCompile Include="Texture.cpp">
       <Filter>ソースファイル\Appli</Filter>
     </ClCompile>
@@ -115,6 +112,9 @@
       <Filter>ソースファイル\Particle</Filter>
     </ClCompile>
     <ClCompile Include="Enemy.cpp" />
+    <ClCompile Include="sound.cpp">
+      <Filter>ソースファイル\Sound</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -222,9 +222,6 @@
     <ClInclude Include="Texture2D.h">
       <Filter>ヘッダーファイル\Appli</Filter>
     </ClInclude>
-    <ClInclude Include="sound.h">
-      <Filter>ヘッダーファイル\Appli</Filter>
-    </ClInclude>
     <ClInclude Include="Particle.h">
       <Filter>ヘッダーファイル\Particle</Filter>
     </ClInclude>
@@ -232,6 +229,9 @@
       <Filter>ヘッダーファイル\Particle</Filter>
     </ClInclude>
     <ClInclude Include="Enemy.h" />
+    <ClInclude Include="sound.h">
+      <Filter>ヘッダーファイル\Sound</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">
@@ -278,6 +278,12 @@
     </Filter>
     <Filter Include="ヘッダーファイル\Particle">
       <UniqueIdentifier>{1fb19a19-dc7a-404c-a789-c4b0b5030908}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Sound">
+      <UniqueIdentifier>{642a23bd-4dec-4202-a7ca-02ace0d66a1d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Sound">
+      <UniqueIdentifier>{3d9e283b-60fa-4058-91eb-552818fc01cf}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

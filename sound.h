@@ -24,6 +24,8 @@ typedef enum
 	SOUND_LABEL_SE009,
 	SOUND_LABEL_SE010,
 	SOUND_LABEL_BGM001,
+	SOUND_LABEL_SE_METRO_CLICK,
+	SOUND_LABEL_SE_METRO_ACCENT,
 
 
 	SOUND_LABEL_MAX,
@@ -56,12 +58,14 @@ private:
 		{"assets/se/kuria.wav",false},
 		{"assets/se/kizibato.wav",false},
 		{"assets/bgm/people.wav", true},
+		{"assets/se/メトロノームのカチッ.wav",false},
+		{"assets/se/メトロノームのチーン.wav", false},
 
 	};
 
 	IXAudio2* m_pXAudio2 = NULL;
 	IXAudio2MasteringVoice* m_pMasteringVoice = NULL;
-	IXAudio2SourceVoice* m_pSourceVoice[SOUND_LABEL_MAX];
+	IXAudio2SourceVoice* m_pSourceVoice[SOUND_LABEL_MAX] = {};
 	WAVEFORMATEXTENSIBLE m_wfx[SOUND_LABEL_MAX]; // WAVフォーマット
 	XAUDIO2_BUFFER m_buffer[SOUND_LABEL_MAX];
 	BYTE* m_DataBuffer[SOUND_LABEL_MAX];

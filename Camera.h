@@ -14,7 +14,21 @@ private:
 	DirectX::SimpleMath::Vector3	m_Target{};
 	DirectX::SimpleMath::Matrix		m_ViewMatrix{};
 
-	float m_CameraDirection = 0;	//カメラの方向
+	float m_theta = 3.14f;	//カメラの角度(horizontal)
+	float m_phi = 0.15f;	//カメラの角度(vertical)
+	float m_distance = 300.0f;	//カメラの距離
+
+	float m_targetTheta = m_theta;
+	float m_targetPhi = m_phi;
+	float m_targetDistance = m_distance;
+
+	float m_minPhi = -1.2f;
+	float m_maxPhi = 1.2f;
+	float m_minDistance = 50.0f;
+	float m_maxDistance = 2000.0f;
+
+	float m_smooth = 0.12f;	//カメラの追従速度
+	float m_CameraDirection = 0;	//カメラの距離
 
 	bool m_Fixed = false;
 

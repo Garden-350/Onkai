@@ -5,6 +5,7 @@
 #include "Input.h"
 #include "Game.h"
 #include "Application.h"
+#include "sound.h"
 #include <algorithm>
 #include <cmath>
 
@@ -79,6 +80,7 @@ Vector3 ChartJudgeCircle::GetPosition(float now) const
 
 void ChartObject::Init()
 {
+	sound.Init();
 	StaticMesh staticmesh;
 
 	std::string modelFile = "assets/model/note/music_sord_1.obj";
@@ -140,9 +142,9 @@ void ChartObject::Init()
 	for (int i = 0; i < 3; i++)
 	{
 		m_ComboDigits[i].Init();
-		m_ComboDigits[i].SetTexture("assets/texture/number.png");
+		m_ComboDigits[i].SetTexture("assets/texture/number_2.png");
 		m_ComboDigits[i].SetUV(1.0f, 1.0f, 10.0f, 1.0f); // 初期表示は "0"
-		m_ComboDigits[i].SetScale(40.0f, 60.0f, 1.0f);
+		m_ComboDigits[i].SetScale(m_NuberSplite_Size, m_NuberSplite_Size, 1.0f);
 	}
 
 	//タイミングガイド：外枠と育つ四角
@@ -171,7 +173,19 @@ bool ChartObject::LoadChart(const std::string& name)
 		OutputDebugStringA(("[ChartObject] Load failed: " + err + "\n").c_str());
 		return false;
 	}
+
+	//メタデータからBGMのパスを取得
+	if (root.Has("bpm")) m_Bpm = root["bpm"].AsFloat(m_Bpm);
+	else if (root.Has("meta") && root["meta"].Has("bpm")) m_Bpm = root["meta"]["bpm"].AsFloat(m_Bpm);
+
+	if(root.Has("beatsPerBar")) m_BeatsPerBar = root["beatsPerBar"].AsInt(m_BeatsPerBar);
+	else if (root.Has("meta") && root["meta"].Has("beatsPerBar")) m_BeatsPerBar = root["meta"]["beatsPerBar"].AsInt(m_BeatsPerBar);
 	m_Notes.clear();
+
+	// ── メトロノームのカウントイン準備（1小節分）──────────────
+	float secondsPerBeatForCue = (m_Bpm > 0.0f) ? 60.0f / m_Bpm : 0.5f;
+	m_CountInTime = secondsPerBeatForCue * m_BeatsPerBar;
+	m_CountInNextBeat = 0;
 
 	//ノーツ
 	if (root.Has("notes") && root["notes"].IsArray())
@@ -217,6 +231,9 @@ bool ChartObject::LoadChart(const std::string& name)
 					);
 				}
 			}
+			//判定前アプローチ音の再生フラグ初期化
+			note.judged = false;
+			note.approcachPlayed = false;
 			m_Notes.push_back(note);
 		}
 		std::sort(m_Notes.begin(), m_Notes.end(),
@@ -301,16 +318,25 @@ Vector3 ChartObject::EvaluateNotePosition(const ChartNote& note, float now) cons
 //Update
 void ChartObject::Update()
 {
+	const auto nowClock = std::chrono::steady_clock::now();
+
 	if (!m_Started)
 	{
-		m_StartClock = std::chrono::steady_clock::now();
-		m_LastUpdateClock = m_StartClock;
+		//m_StartClock = std::chrono::steady_clock::now();
+		//m_LastUpdateClock = m_StartClock;
+		m_StartClock = nowClock;
+		m_LastUpdateClock = nowClock;
 		m_Started = true;
 	}
-	auto nowClock = std::chrono::steady_clock::now();
-	m_MusicTime = std::chrono::duration<float>(nowClock - m_StartClock).count();
+	const float elapsed =
+		std::chrono::duration<float>(nowClock - m_StartClock).count();
 
-	float deltaTime = std::chrono::duration<float>(nowClock - m_LastUpdateClock).count();
+	// カウントイン中は -m_CountInTime ～ 0 秒になる。
+	// 0 秒が譜面・ノーツ再生開始時刻。
+	m_MusicTime = elapsed - m_CountInTime;
+
+	const float deltaTime =
+		std::chrono::duration<float>(nowClock - m_LastUpdateClock).count();
 	m_LastUpdateClock = nowClock;
 
 	if (m_ComboPopTimer > 0.0f)
@@ -338,6 +364,21 @@ void ChartObject::Update()
 			++it;
 	}
 
+	//メトロノームのカウントイン
+	if(m_Bpm > 0.0f && m_BeatsPerBar > 0)
+	{
+		float secondsPerBeat = 60.0f / m_Bpm;
+		while (m_CountInNextBeat < m_BeatsPerBar)
+		{
+			float beatTime = -m_CountInTime + m_CountInNextBeat * secondsPerBeat;
+			if (m_MusicTime < beatTime) break; // まだこの拍のタイミングに来ていない
+
+			bool isLastBeat = (m_CountInNextBeat == m_BeatsPerBar - 1);
+			sound.Play(isLastBeat ? SOUND_LABEL_SE_METRO_ACCENT : SOUND_LABEL_SE_METRO_CLICK);
+			m_CountInNextBeat++;
+		}
+	}
+
 	//ミス判定
 	for (auto& note : m_Notes)
 	{
@@ -346,6 +387,22 @@ void ChartObject::Update()
 		{
 			note.judged = true;
 			m_Miss++;
+		}
+	}
+
+	//BPM　拍子が未設定な場合のフォールバック
+	float secondPerBar = (m_BeatsPerBar > 0 && m_Bpm > 0.0f) ? (60.0f / m_Bpm) * m_BeatsPerBar : 2.0f;
+
+	for (auto& note : m_Notes)
+	{
+		if (note.judged || note.approcachPlayed) continue;
+
+		float cueTime = note.time - secondPerBar;	//判定の一小節前
+		if (m_MusicTime >= cueTime)
+		{
+			sound.Play(SOUND_LABEL_SE001);
+			note.approcachPlayed = true;
+			// TODO: アプローチ音を再生する処理をここに追加
 		}
 	}
 
@@ -564,7 +621,7 @@ void ChartObject::Draw(Camera* cam)
 		for (int i = 0; i < 3; i++)
 		{
 			m_ComboDigits[i].SetUV((float)(digits[i] + 1), 1.0f, 10.0f, 1.0f);
-			m_ComboDigits[i].SetScale(40.0f * popScale, 60.0f * popScale, 1.0f);
+			m_ComboDigits[i].SetScale(m_NuberSplite_Size * popScale, m_NuberSplite_Size * popScale, 1.0f);
 			m_ComboDigits[i].SetPosition(startX + digitW * i, 250.0f, 0.0f);
 			m_ComboDigits[i].Draw(cam);
 		}
@@ -575,5 +632,4 @@ void ChartObject::Draw(Camera* cam)
 
 void ChartObject::Uninit()
 {
-
 }

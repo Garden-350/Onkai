@@ -1,6 +1,8 @@
 #include "Game.h"
 #include "Renderer.h"
 #include "Input.h"
+#include "main.h"
+#include "ChartObject.h"
 
 
 Game* Game::m_Instance;
@@ -31,6 +33,9 @@ void Game::Init()
 
 	// カメラ初期化
 	m_Instance->m_Camera.Init();
+
+	//ポストエフェクト初期か
+	m_Instance->m_PostFlash.Init(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	//最初のシーンを読み込む
 	m_Instance->m_Scene = new Stage1Scene;
@@ -75,13 +80,24 @@ void Game::Update()
 void Game::Draw()
 {
 	// 描画前処理
-	Renderer::DrawStart();
-
+	//Renderer::DrawStart();
+	m_Instance->m_PostFlash.BeginScene();
 	
 	for (auto& o : m_Instance->m_Objects)
 	{
 		o->Draw(&m_Instance->m_Camera);
 	}
+
+	float flashAlpha = 0.0f;
+	for (auto& o : m_Instance->m_Objects)
+	{
+		if (auto chart = dynamic_cast<ChartObject*>(o.get()))
+		{
+			flashAlpha = chart->GetFlashAlpha();
+			break;
+		}
+	}
+	m_Instance->m_PostFlash.EndSceneAndApply(flashAlpha);
 	//new
 	// 描画後処理
 	Renderer::DrawEnd();

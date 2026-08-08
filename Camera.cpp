@@ -93,9 +93,11 @@ void Camera::SetCamera(int mode)
 	//3D
 	if (mode == 0)
 	{
+		Vector3 shakenPos = m_Position + m_ShakeOffset;
+		Vector3 shakenTarget = m_Target + m_ShakeOffset;
 		// ビュー変換行列作成
 		Vector3 up = Vector3(0.0f, 1.0f, 0.0f);
-		m_ViewMatrix = DirectX::XMMatrixLookAtLH(m_Position, m_Target, up); //左手系
+		m_ViewMatrix = DirectX::XMMatrixLookAtLH(shakenPos, shakenTarget, up); //左手系
 		Renderer::SetViewMatrix(&m_ViewMatrix);
 		//プロジェクション行列の生成
 		constexpr float fieldOfView = DirectX::XMConvertToRadians(45.0f); // 視野角

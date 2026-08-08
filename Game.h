@@ -6,6 +6,7 @@
 #include "Stage1Scene.h"
 #include "ResultScene.h"
 #include "Note.h"
+#include "PostFlashEffect.h"
 
 enum SceneName {
 	TITLE,
@@ -24,6 +25,7 @@ private:
 	Camera m_Camera;
 
 	Note m_Note;
+	PostFlashEffect m_PostFlash;
 
 	
 	//オブジェクト配列

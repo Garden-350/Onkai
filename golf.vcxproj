@@ -157,6 +157,7 @@
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="Particle.cpp" />
     <ClCompile Include="ParticleQuad.cpp" />
+    <ClCompile Include="PostFlashEffect.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="ResultScene.cpp" />
     <ClCompile Include="RingQuad.cpp" />
@@ -196,6 +197,7 @@
     <ClInclude Include="Object.h" />
     <ClInclude Include="Particle.h" />
     <ClInclude Include="ParticleQuad.h" />
+    <ClInclude Include="PostFlashEffect.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="ResultScene.h" />
     <ClInclude Include="RingQuad.h" />
@@ -217,6 +219,20 @@
     <ClInclude Include="VertexBuffer.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="FullscreenVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <FileType>Document</FileType>
+    </None>
+    <None Include="PostFlashPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <FileType>Document</FileType>
+    </None>
     <FxCompile Include="shader\common.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

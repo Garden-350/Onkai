@@ -33,6 +33,7 @@ void Enemy::Init()
 
 void Enemy::Update()
 {
+	m_Position.y = 150.0f;
 	m_Rotation.y += 0.1f;
 }
 
@@ -53,7 +54,7 @@ void Enemy::Draw(Camera* cam)
 	Matrix t = Matrix::CreateTranslation(m_Position);
 	Matrix r = Matrix::CreateRotationY(m_Rotation.y);
 
-	Matrix world = s * t * r;
+	Matrix world = s * r * t;
 
 	Renderer::SetWorldMatrix(&world);
 

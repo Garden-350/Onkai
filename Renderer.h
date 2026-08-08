@@ -130,6 +130,12 @@ public:
 
 	static ID3D11Device* GetDevice( void ){ return m_pDevice; }
 	static ID3D11DeviceContext* GetDeviceContext( void ){ return m_pDeviceContext; }
+	static ID3D11RenderTargetView* GetBackBufferRTV() { return m_pRenderTargetView; }
+	static ID3D11DepthStencilView* GetDepthStencilView() { return m_pDepthStencilView; }
+	static void SetRenderTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv)
+	{
+		m_pDeviceContext->OMSetRenderTargets(1, &rtv, dsv);
+	}
 
 	static HRESULT CompileShader(const char* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, void** ppShaderObject, int* pShaderObjectSize);
 	static HRESULT CreateVertexShader(ID3D11VertexShader** ppVertexShader, ID3D11InputLayout** ppVertexLayout, D3D11_INPUT_ELEMENT_DESC* pLayout, unsigned int numElements, const char* szFileName);

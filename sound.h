@@ -5,28 +5,15 @@
 // サウンドファイル
 typedef enum
 {
-	//SOUND_LABEL_BGM000 = 0,		// サンプルBGM
-	//SOUND_LABEL_BGM001,		// サンプルBGM
-	//SOUND_LABEL_SE000,		// サンプルSE
-	//SOUND_LABEL_SE001,		// サンプルSE
-	//SOUND_LABEL_SE002,
-	//SOUND_LABEL_SE003,
-	//SOUND_LABEL_SE004,
-	SOUND_LABEL_SE001,
-	SOUND_LABEL_SE002,
-	SOUND_LABEL_SE003,
-	SOUND_LABEL_SE004,
-	SOUND_LABEL_SE005,
-	SOUND_LABEL_SE006,
-	SOUND_LABEL_BGM000,
-	SOUND_LABEL_SE007,
-	SOUND_LABEL_SE008,
-	SOUND_LABEL_SE009,
-	SOUND_LABEL_SE010,
-	SOUND_LABEL_BGM001,
-	SOUND_LABEL_SE_METRO_CLICK,
-	SOUND_LABEL_SE_METRO_ACCENT,
+	SOUND_LABEL_METRO_KATI,
+	SOUND_LABEL_METRO_TI,
+	SOUND_BEAM_SARCH,
+	SOUND_BEAM_DECITION,
+	SOUND_BEAM_FIRING,
+	SOUND_SEKKIN,
 
+	SOUND_LABEL_BGM001,
+	SOUND_LABEL_BGM002,
 
 	SOUND_LABEL_MAX,
 } SOUND_LABEL;
@@ -44,34 +31,31 @@ private:
 	{
 		//{"asset/BGM/sample000.wav", true},	// サンプルBGM（ループさせるのでtrue設定）
 		//{"asset/BGM/○○○.wav", true},	// サンプルBGM
-  		// サンプルSE（ループしないのでfalse設定）
+		// サンプルSE（ループしないのでfalse設定）
 
-		{"assets/se/move.wav",false},
-		{"assets/se/select_1.wav", false},
-		{"assets/se/zan.wav",false},
-		{"assets/se/hissatu_1.wav",false},
-		{"assets/se/Pary.wav", false},
-		{"assets/se/damage.wav",false},
-		{"assets/bgm/Battle.wav", true},
-		{"assets/se/kaiten.wav", false},
-		{"assets/se/sasaru.wav", false},
-		{"assets/se/kuria.wav",false},
-		{"assets/se/kizibato.wav",false},
-		{"assets/bgm/people.wav", true},
 		{"assets/se/メトロノームのカチッ.wav",false},
 		{"assets/se/メトロノームのチーン.wav", false},
+		{"assets/se/beam_sarch.mp3",false},
+		{"assets/se/beam_kakutei.mp3",false},
+		{"assets/se/beam_Go.wav",false},
+		{"assets/se/Pary.wav",false},
 
+		{"assets/bgm/mirror.wav", true},
+		{"assets/bgm/maou_bgm_piano39.wav", true},
 	};
 
 	IXAudio2* m_pXAudio2 = NULL;
 	IXAudio2MasteringVoice* m_pMasteringVoice = NULL;
-	IXAudio2SourceVoice* m_pSourceVoice[SOUND_LABEL_MAX] = {};
+	IXAudio2SourceVoice* m_pSourceVoice[SOUND_LABEL_MAX] = { nullptr };
 	WAVEFORMATEXTENSIBLE m_wfx[SOUND_LABEL_MAX]; // WAVフォーマット
 	XAUDIO2_BUFFER m_buffer[SOUND_LABEL_MAX];
 	BYTE* m_DataBuffer[SOUND_LABEL_MAX];
 
+	UINT32 m_playPos[SOUND_LABEL_MAX] = { 0 };
+
 	HRESULT FindChunk(HANDLE, DWORD, DWORD&, DWORD&);
 	HRESULT ReadChunkData(HANDLE, void*, DWORD, DWORD);
+	HRESULT LoadMp3AsPCM(LPCSTR filename, WAVEFORMATEXTENSIBLE& outWfx, BYTE*& outData, DWORD& outSize);
 
 public:
 	// ゲームループ開始前に呼び出すサウンドの初期化処理
@@ -86,7 +70,14 @@ public:
 	// 引数で指定したサウンドを停止する
 	void Stop(SOUND_LABEL label);
 
+	void Pause(SOUND_LABEL label);
+
 	// 引数で指定したサウンドの再生を再開する
 	void Resume(SOUND_LABEL label);
+
+	void SetPlayPositionSeconds(SOUND_LABEL label, float seconds);
+	void SeekSeconds(SOUND_LABEL label, float seconds);
+
+	void SetVolume(SOUND_LABEL label, float volume);
 
 };

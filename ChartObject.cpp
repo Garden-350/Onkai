@@ -6,21 +6,29 @@
 #include "Game.h"
 #include "Application.h"
 #include "sound.h"
+#include "Enemy.h"
 #include <algorithm>
 #include <cmath>
+#undef min
+#undef max
 
 using namespace DirectX::SimpleMath;
 
+// ============================================================
+// 無名namespace：このファイル内だけで使う小道具関数
+// ============================================================
 namespace
 {
+	// 2つのVector3を線形補間する
 	Vector3 LerpVector3(const Vector3& a, const Vector3& b, float t)
 	{
 		return a + (b - a) * t;
 	}
-	// レーン(0〜5) <-> S/D/F/J/K/Lキー
+
+	// レーン(0〜5) <-> S/D/F/J/K/Lキーの対応表
 	constexpr int kLaneKeys[6] = { VK_S, VK_D, VK_F, VK_J, VK_K, VK_L };
 
-	//ワールド座標をTexture2Dの座標系（画面中心が原点）に変換する
+	// ワールド座標を、画面固定2D描画(Texture2D)が使う座標系（画面中心=原点）に変換する
 	Vector3 WorldToTexture2DPos(const Vector3& worldPos, const Matrix& view)
 	{
 		float screenW = (float)Application::GetWidth();
@@ -38,29 +46,36 @@ namespace
 
 		Vector3 screenPos;
 		DirectX::XMStoreFloat3(&screenPos, projected);
-		// Texture2Dの2Dモードは画面中心が原点・Yが上向き正なので変換する
+		// スクリーン座標(左上原点)→Texture2D座標系(中心原点、Y上向き正)へ変換
 		return Vector3(screenPos.x - screenW * 0.5f, screenH * 0.5f - screenPos.y, 0.0f);
 	}
 }
 
+// ============================================================
+// ChartJudgeCircle::GetPosition
+//   now(秒)時点での判定円の座標を、前後のキーフレーム間で線形補間して返す。
+//   キーフレームが1個しかない場合は常にその座標を返す（=動かない判定円）。
+// ============================================================
 Vector3 ChartJudgeCircle::GetPosition(float now) const
 {
 	if (keyframe.empty()) return Vector3::Zero;
 	if (keyframe.size() == 1)
 		return Vector3(keyframe[0].x, keyframe[0].y, keyframe[0].z);
 
-	//nowより前後のキーフレームを探して補間
+	// nowが最初のキーフレームより前 → 先頭の座標に固定
 	if (now <= keyframe.front().time)
 	{
 		const auto& k = keyframe.front();
 		return Vector3(k.x, k.y, k.z);
 	}
+	// nowが最後のキーフレームより後 → 末尾の座標に固定
 	if (now >= keyframe.back().time)
 	{
 		const auto& k = keyframe.back();
 		return Vector3(k.x, k.y, k.z);
 	}
 
+	// nowを挟む2つのキーフレームを探して線形補間
 	for (size_t i = 0; i + 1 < keyframe.size(); i++)
 	{
 		const auto& a = keyframe[i];
@@ -74,23 +89,101 @@ Vector3 ChartJudgeCircle::GetPosition(float now) const
 			return LerpVector3(pa, pb, t);
 		}
 	}
+	// ここに来ることは理論上ないが、保険として末尾を返す
 	const auto& k = keyframe.back();
 	return Vector3(k.x, k.y, k.z);
 }
 
+// ============================================================
+// LoadOptionalModel : 「無くても構わない」補助モデルの読み込み共通処理。
+//   ロード失敗してもfalseを返すだけで、呼び出し側はTAPモデル等に
+//   フォールバックできるようにするためのヘルパー。
+//
+//   注意：StaticMesh::Load は戻り値がvoidの実装のため、
+//         ロード成功可否は「サブセットが1つ以上あるか」で簡易判定している。
+// ============================================================
+static bool LoadOptionalModel(
+	const char* modelPath, const char* texDir,
+	MeshRenderer& renderer, Shader& shader,
+	std::vector<SUBSET>& subsets,
+	std::vector<std::unique_ptr<Material>>& materials,
+	std::vector<std::unique_ptr<Texture>>& textures)
+{
+	StaticMesh mesh;
+	mesh.Load(modelPath, texDir);
+
+	// サブセットが空 = 実質ロード失敗とみなす
+	if (mesh.GetSubsets().empty())
+	{
+		OutputDebugStringA("[LoadOptionalModel] Failed to load mesh\n");
+		return false;
+	}
+
+	renderer.Init(mesh);
+	shader.Create("shader/litTextureVS.hlsl", "shader/litTexturePS.hlsl");
+	subsets = mesh.GetSubsets();
+	textures = mesh.GetTextures();
+
+	std::vector<MATERIAL> mats = mesh.GetMaterials();
+	for (auto& m : mats)
+	{
+		auto mat = std::make_unique<Material>();
+		mat->Create(m);
+		materials.push_back(std::move(mat));
+	}
+	return true;
+}
+
+// ============================================================
+// DrawModel : 指定したモデル一式(subsets/materials/textures)を
+//             指定ワールド行列で1回描画する共通処理。
+//
+//   Renderer::SetWorldMatrix が非constの Matrix* を要求するため、
+//   const参照で受け取った行列を一度ローカル変数へコピーしてから渡している。
+// ============================================================
+static void DrawModel(MeshRenderer& renderer, Shader& shader,
+	std::vector<SUBSET>& subsets,
+	std::vector<std::unique_ptr<Material>>& materials,
+	std::vector<std::unique_ptr<Texture>>& textures,
+	const Matrix& worldConst)
+{
+	Matrix world = worldConst; // const→非constコピー
+	Renderer::SetWorldMatrix(&world);
+	shader.SetGPU();
+	renderer.BeforeDraw();
+
+	for (size_t i = 0; i < subsets.size(); i++)
+	{
+		materials[subsets[i].MaterialIdx]->SetGPU();
+		if (materials[subsets[i].MaterialIdx]->isTextureEnable())
+			textures[subsets[i].MaterialIdx]->SetGPU();
+
+		renderer.DrawSubset(
+			subsets[i].IndexNum,
+			subsets[i].IndexBase,
+			subsets[i].VertexBase
+		);
+	}
+}
+
+// ============================================================
+// Init : オブジェクト初期化。
+//   各種3Dモデル・テクスチャ・判定円のデフォルト値をセットアップする。
+//   実際の譜面データは LoadChart で別途読み込む。
+// ============================================================
 void ChartObject::Init()
 {
+	// ── サウンドエンジン初期化 ──
 	sound.Init();
-	StaticMesh staticmesh;
 
+	// ── TAPノーツ本体モデルのロード（これは必須。無いと何も表示されない）──
+	StaticMesh staticmesh;
 	std::string modelFile = "assets/model/note/music_sord_1.obj";
 	std::string texDirectory = "assets/model/note";
 
 	staticmesh.Load(modelFile, texDirectory);
 	m_MeshRenderer.Init(staticmesh);
-
 	m_Shader.Create("shader/litTextureVS.hlsl", "shader/litTexturePS.hlsl");
-
 	m_Subsets = staticmesh.GetSubsets();
 	m_Textures = staticmesh.GetTextures();
 
@@ -102,8 +195,47 @@ void ChartObject::Init()
 		m_Materials.push_back(std::move(m));
 	}
 
-	// デフォルトでは6レーン分の判定円を「動かない」位置で用意しておく
-	// （LoadChartでjudgeCirclesがあれば上書きされる）
+	// ── ロングノーツ：先端(sentan)モデルのロード ──
+	// エディター側の kusari_sentan_2.fbx に相当するアセットを想定。
+	// 無ければ m_LongSentanLoaded=false のままとなり、描画側でTAPモデルにフォールバックする。
+	m_LongSentanLoaded = LoadOptionalModel(
+		"assets/model/kusari/kusari_sentan_2.fbx", "assets/model/long_sentan",
+		m_LongSentanRenderer, m_LongSentanShader, m_LongSentanSubsets, m_LongSentanMaterials, m_LongSentanTextures);
+	if (!m_LongSentanLoaded)
+		OutputDebugStringA("[ChartObject] Long sentan model not found. Fallback to TAP model.\n");
+
+	// ── ロングノーツ：本体(dou/鎖)モデルのロード ──
+	// エディター側の kusari_dou.fbx に相当。押している間、先端〜終端の間に繰り返し並べる。
+	m_LongDouLoaded = LoadOptionalModel(
+		"assets/model/kusari/kusari_dou.fbx", "assets/model/long_dou",
+		m_LongDouRenderer, m_LongDouShader, m_LongDouSubsets, m_LongDouMaterials, m_LongDouTextures);
+	if (!m_LongDouLoaded)
+		OutputDebugStringA("[ChartObject] Long dou model not found. Fallback to TAP model.\n");
+
+	// ── ロングノーツ：終端(o/輪)モデルのロード ──
+	// エディター側の kusari_o_2.fbx に相当。先端よりholdDuration秒遅れて追従する。
+	m_LongOLoaded = LoadOptionalModel(
+		"assets/model/kusari/kusari_o_2.fbx", "assets/model/long_o",
+		m_LongORenderer, m_LongOShader, m_LongOSubsets, m_LongOMaterials, m_LongOTextures);
+	if (!m_LongOLoaded)
+		OutputDebugStringA("[ChartObject] Long o model not found. Fallback to TAP model.\n");
+
+	// ── フリック用モデルのロード ──
+	m_FlickModelLoaded = LoadOptionalModel(
+		"assets/model/Flick/allow.fbx", "assets/model/flick",
+		m_FlickMeshRenderer, m_FlickShader, m_FlickSubsets, m_FlickMaterials, m_FlickTextures);
+	if (!m_FlickModelLoaded)
+		OutputDebugStringA("[ChartObject] Flick model not found. Fallback to TAP model.\n");
+
+	// ── ビーム用モデルのロード ──
+	// 棒状のFBXを想定。無い場合、ビームは一切描画されない（DrawHomingBeams内でreturnする）。
+	m_BeamModelLoaded = LoadOptionalModel(
+		"assets/model/Beam/beam.fbx", "assets/model/beam",
+		m_BeamMeshRenderer, m_BeamShader, m_BeamSubsets, m_BeamMaterials, m_BeamTextures);
+	if (!m_BeamModelLoaded)
+		OutputDebugStringA("[ChartObject] Beam model not found. Beam will not be drawn.\n");
+
+	// ── 判定円の初期配置（JSONにjudgeCirclesが無い旧フォーマット用のデフォルト値）──
 	m_JudgeCircles.resize(6);
 	for (int i = 0; i < 6; i++)
 	{
@@ -116,29 +248,24 @@ void ChartObject::Init()
 		key.z = -210.0f;
 		m_JudgeCircles[i].keyframe.push_back(key);
 	}
-	//接近時に表示されるテクスチャ
+
+	// ── 接近リング・パーティクルの画像セット ──
 	m_ApproachRing.Init("assets/texture/ring.png");
-	//パーティクルの画像セット
 	m_ParticleQuad.Init("assets/texture/sakura2.png");
 
-	//判定円アイコン
+	// ── レーンアイコン(S/D/F/J/K/L)のセットアップ ──
 	const char* iconPaths[6] = {
-		"assets/texture/S.png",
-		"assets/texture/D.png",
-		"assets/texture/F.png",
-		"assets/texture/J.png",
-		"assets/texture/K.png",
-		"assets/texture/L.png",
+		"assets/texture/S.png", "assets/texture/D.png", "assets/texture/F.png",
+		"assets/texture/J.png", "assets/texture/K.png", "assets/texture/L.png",
 	};
-	float spacing = 90.0f;
 	for (int i = 0; i < 6; i++)
 	{
 		m_LaneIcons[i].Init();
 		m_LaneIcons[i].SetTexture(iconPaths[i]);
-		m_LaneIcons[i].SetScale(70.0f, 70.0f, 1.0f);
+		m_LaneIcons[i].SetScale(170.0f, 170.0f, 1.0f);
 	}
 
-	//コンボ数表示
+	// ── コンボ数字(3桁分)のセットアップ ──
 	for (int i = 0; i < 3; i++)
 	{
 		m_ComboDigits[i].Init();
@@ -147,10 +274,25 @@ void ChartObject::Init()
 		m_ComboDigits[i].SetScale(m_NuberSplite_Size, m_NuberSplite_Size, 1.0f);
 	}
 
-	//タイミングガイド：外枠と育つ四角
+	auto initDigitRow = [this](Texture2D* row)
+		{
+			for (int i = 0; i < 3; i++)
+			{
+				row[i].Init();
+				row[i].SetTexture("assets/texture/number_2.png");
+				row[i].SetUV(1.0f, 1.0f, 10.0f, 1.0f);
+				row[i].SetScale(m_NuberSplite_Size * 0.6f, m_NuberSplite_Size * 0.6f, 1.0f); // コンボより小さめ
+			}
+		};
+	initDigitRow(m_PerfectDigits);
+	initDigitRow(m_GreatDigits);
+	initDigitRow(m_GoodDigits);
+	initDigitRow(m_MissDigits);
+
+	// ── タイミングガイド：外枠と育つ四角のセットアップ ──
 	const char* guideTexturePath_out = "assets/texture/sotohako.png";
 	const char* guideTexturePath_in = "assets/texture/utihako.png";
-	float frameSize = 100.0f;	//外枠のサイズ
+	float frameSize = 100.0f;
 	for (int i = 0; i < 6; i++)
 	{
 		m_LaneFrame[i].Init();
@@ -159,11 +301,18 @@ void ChartObject::Init()
 
 		m_LaneFill[i].Init();
 		m_LaneFill[i].SetTexture(guideTexturePath_in);
-		m_LaneFill[i].SetScale(10.0f, 10.0f, 1.0f);
+		m_LaneFill[i].SetScale(frameSize / 10, frameSize / 10, 1.0f);
 	}
 }
 
-//LoadChart : JSONから譜面読み込み
+// ============================================================
+// LoadChart : charts/<name>.json を読み込み、譜面データ一式をセットする。
+//   JSONの座標系はエディター側と符号が逆(X軸反転)なので、
+//   spawnPos/judgePos/path/judgeCirclesのxだけマイナスを掛けて読み込む。
+//
+//   各フィールドは、旧フォーマット(項目が無いJSON)でも動くように
+//   Has()チェックのうえデフォルト値を補完している。
+// ============================================================
 bool ChartObject::LoadChart(const std::string& name)
 {
 	JsonValue root;
@@ -174,20 +323,22 @@ bool ChartObject::LoadChart(const std::string& name)
 		return false;
 	}
 
-	//メタデータからBGMのパスを取得
+	// ── メタ情報（bpm/beatsPerBarはトップ直下 or "meta"の下のどちらにも対応）──
 	if (root.Has("bpm")) m_Bpm = root["bpm"].AsFloat(m_Bpm);
 	else if (root.Has("meta") && root["meta"].Has("bpm")) m_Bpm = root["meta"]["bpm"].AsFloat(m_Bpm);
 
-	if(root.Has("beatsPerBar")) m_BeatsPerBar = root["beatsPerBar"].AsInt(m_BeatsPerBar);
+	if (root.Has("beatsPerBar")) m_BeatsPerBar = root["beatsPerBar"].AsInt(m_BeatsPerBar);
 	else if (root.Has("meta") && root["meta"].Has("beatsPerBar")) m_BeatsPerBar = root["meta"]["beatsPerBar"].AsInt(m_BeatsPerBar);
-	m_Notes.clear();
 
-	// ── メトロノームのカウントイン準備（1小節分）──────────────
+	m_Notes.clear();
+	m_HomingBeams.clear();
+
+	// ── メトロノームのカウントイン準備（1小節分）──
 	float secondsPerBeatForCue = (m_Bpm > 0.0f) ? 60.0f / m_Bpm : 0.5f;
 	m_CountInTime = secondsPerBeatForCue * m_BeatsPerBar;
 	m_CountInNextBeat = 0;
 
-	//ノーツ
+	// ── ノーツ読み込み ──
 	if (root.Has("notes") && root["notes"].IsArray())
 	{
 		for (const auto& n : root["notes"].arrayValue)
@@ -200,6 +351,25 @@ bool ChartObject::LoadChart(const std::string& name)
 			if (n.Has("spawnTime"))
 				note.spawnTime = n["spawnTime"].AsFloat(-1.0f);
 
+			// arrivalTime（ロングノーツの先端到達時刻。無ければtimeと同じにしておく）
+			if (n.Has("arrivalTime"))
+				note.arrivalTime = n["arrivalTime"].AsFloat(note.time);
+			else
+				note.arrivalTime = note.time;
+
+			// フリック終点レーン（無ければ未設定=-1）
+			if (n.Has("flickLaneTo"))
+				note.flickLaneTo = n["flickLaneTo"].AsInt(-1);
+			else
+				note.flickLaneTo = -1;
+
+			// ロングノーツの保持時間（無ければ arrivalTime と time の差から逆算）
+			if (n.Has("holdDuration"))
+				note.holdDuration = n["holdDuration"].AsFloat(0.0f);
+			else
+				note.holdDuration = std::max(0.0f, note.time - note.arrivalTime);
+
+			// 出現位置（無ければレーン番号から自動配置）
 			if (n.Has("spawnPos"))
 			{
 				const auto& sp = n["spawnPos"];
@@ -211,6 +381,7 @@ bool ChartObject::LoadChart(const std::string& name)
 				note.spawnPos = Vector3(-laneX, -55.0f, 1000.0f);
 			}
 
+			// 判定位置（無ければレーン番号から自動配置）
 			if (n.Has("judgePos"))
 			{
 				const auto& jp = n["judgePos"];
@@ -222,6 +393,7 @@ bool ChartObject::LoadChart(const std::string& name)
 				note.judgePos = Vector3(-laneX, -55.0f, -210.0f);
 			}
 
+			// ベジェ曲線の制御点（あれば）
 			if (n.Has("path") && n["path"].IsArray())
 			{
 				for (const auto& p : n["path"].arrayValue)
@@ -231,16 +403,21 @@ bool ChartObject::LoadChart(const std::string& name)
 					);
 				}
 			}
-			//判定前アプローチ音の再生フラグ初期化
+
+			// 状態フラグの初期化
 			note.judged = false;
 			note.approcachPlayed = false;
+			note.longStarted = false;
+			note.longFailed = false;
+
 			m_Notes.push_back(note);
 		}
+		// 判定時刻の昇順にソート（描画・判定処理を楽にするため）
 		std::sort(m_Notes.begin(), m_Notes.end(),
 			[](const ChartNote& a, const ChartNote& b) {return a.time < b.time; });
 	}
 
-	//判定円のキーフレーム
+	// ── 判定円のキーフレーム読み込み ──
 	if (root.Has("judgeCircles") && root["judgeCircles"].IsArray())
 	{
 		for (const auto& jc : root["judgeCircles"].arrayValue)
@@ -263,32 +440,86 @@ bool ChartObject::LoadChart(const std::string& name)
 					circle.keyframe.push_back(key);
 				}
 			}
+			// 時刻順にソート
 			std::sort(circle.keyframe.begin(), circle.keyframe.end(),
 				[](const ChartCircleKeyframe& a, const ChartCircleKeyframe& b) {
 					return a.time < b.time;
 				});
 		}
 	}
-	//再生開始状態にリセット
+
+	// ── ホーミングビームの読み込み ──
+	if (root.Has("homingBeams") && root["homingBeams"].IsArray())
+	{
+		for (const auto& b : root["homingBeams"].arrayValue)
+		{
+			ChartHomingBeam beam;
+			beam.chargeTime = b["chargeTime"].AsFloat(0.0f);
+			beam.lockTime = b["lockTime"].AsFloat(0.0f);
+			beam.hitTime = b["hitTime"].AsFloat(0.0f);
+			InitBeamScatter(beam); // 探索中に表示するバラけた線の初期位置を決めておく
+			m_HomingBeams.push_back(beam);
+		}
+		// ロック時刻の昇順にソート
+		std::sort(m_HomingBeams.begin(), m_HomingBeams.end(),
+			[](const ChartHomingBeam& a, const ChartHomingBeam& b) { return a.lockTime < b.lockTime; });
+	}
+
+	// ── 再生開始状態にリセット ──
 	m_Started = false;
 	m_MusicTime = 0.0f;
 	m_Perfect = 0;
 	m_Great = 0;
 	m_Good = 0;
 	m_Miss = 0;
+	m_PlayerSide = 0;
+	m_PlayerVisualX = 0.0f;
 
 	OutputDebugStringA(("[ChartPlayObject] Loaded: charts/" + name + ".json notes=" +
-		std::to_string(m_Notes.size()) + "\n").c_str());
+		std::to_string(m_Notes.size()) + " beams=" + std::to_string(m_HomingBeams.size()) + "\n").c_str());
 	return true;
 }
 
-//EvaluateNotePosition : ベジェ補間
+// side > 0 : S/D/F側(index 0,1,2)、side <= 0 : J/K/L側(index 3,4,5)
+DirectX::SimpleMath::Vector3 ChartObject::GetPlayerSideAnchor(int side) const
+{
+	int startLane = (side > 0) ? 0 : 3;
+	Vector3 sum = Vector3::Zero;
+	for (int i = 0; i < 3; i++)
+	{
+		sum += m_JudgeCircles[startLane + i].GetPosition(m_MusicTime);
+	}
+	return sum / 3.0f;
+}
+
+void ChartObject::TriggerScreenShake(float duration, float strength)
+{
+	//既に揺れている場合長い方を優先する
+	if (duration > m_ShakeDuration - m_ShakeTimer)
+	{
+		m_ShakeDuration = duration;
+		m_ShakeTimer = duration;
+	}
+	m_ShakeStrength = std::max(m_ShakeStrength, strength);
+}
+
+void ChartObject::TriggerFlash(float duration)
+{
+	m_FlashDuration = duration;
+	m_FlashTimer = duration;
+}
+
+// ============================================================
+// EvaluateNotePosition : TAP/FLICK用の位置補間。
+//   spawnTime〜timeの範囲でtを[0,1]にクランプしてから、
+//   制御点の数に応じて直線/2次ベジェ/3次ベジェで補間する。
+// ============================================================
 Vector3 ChartObject::EvaluateNotePosition(const ChartNote& note, float now) const
 {
 	float startTime = note.GetSpawnTime();
 	float endTime = note.time;
 	float duration = endTime - startTime;
-	if (duration < 0.0001f) duration = 0.0001f;
+	if (duration < 0.0001f) duration = 0.0001f; // ゼロ除算防止
 
 	float t = (now - startTime) / duration;
 	if (t < 0.0f) t = 0.0f;
@@ -297,16 +528,18 @@ Vector3 ChartObject::EvaluateNotePosition(const ChartNote& note, float now) cons
 	const auto& p0 = note.spawnPos;
 	const auto& p3 = note.judgePos;
 
+	// 制御点なし → 直線補間
 	if (note.controlPoints.empty())
 	{
 		return LerpVector3(p0, p3, t);
 	}
-
+	// 制御点1個 → 2次ベジェ
 	if (note.controlPoints.size() == 1)
 	{
 		const auto& p1 = note.controlPoints[0];
 		return LerpVector3(LerpVector3(p0, p1, t), LerpVector3(p1, p3, t), t);
 	}
+	// 制御点2個 → 3次ベジェ（De Casteljauアルゴリズム）
 	const auto& p1 = note.controlPoints[0];
 	const auto& p2 = note.controlPoints[1];
 	auto a = LerpVector3(p0, p1, t);
@@ -315,15 +548,35 @@ Vector3 ChartObject::EvaluateNotePosition(const ChartNote& note, float now) cons
 	return LerpVector3(LerpVector3(a, b, t), LerpVector3(b, c, t), t);
 }
 
-//Update
+// ============================================================
+// EvaluateLongNotePosition : LONGNOTE専用の位置補間。
+//   spawnTime〜arrivalTimeの速度を基準に、tを「クランプせず」直線補間する。
+//   これにより、先端(sentan)がarrivalTimeを過ぎても同じ速度で
+//   判定ラインの奥へ進み続けられる（＝押している間、鎖が伸び続けるように見える）。
+// ============================================================
+Vector3 ChartObject::EvaluateLongNotePosition(const ChartNote& note, float now) const
+{
+	float startTime = note.GetSpawnTime();
+	float arriveTime = note.arrivalTime;
+	float duration = arriveTime - startTime;
+	if (duration < 0.0001f) duration = 0.0001f;
+
+	float t = (now - startTime) / duration; // クランプしない
+	return LerpVector3(note.spawnPos, note.judgePos, t);
+}
+
+// ============================================================
+// Update : 毎フレームのゲームロジック更新。
+//   時間経過→判定円の追従→カウントイン→ミス判定→接近音→
+//   各種判定処理→判定済みノーツの削除→ビーム更新、の順で行う。
+// ============================================================
 void ChartObject::Update()
 {
 	const auto nowClock = std::chrono::steady_clock::now();
 
+	// 初回フレームで開始時刻を記録
 	if (!m_Started)
 	{
-		//m_StartClock = std::chrono::steady_clock::now();
-		//m_LastUpdateClock = m_StartClock;
 		m_StartClock = nowClock;
 		m_LastUpdateClock = nowClock;
 		m_Started = true;
@@ -331,41 +584,74 @@ void ChartObject::Update()
 	const float elapsed =
 		std::chrono::duration<float>(nowClock - m_StartClock).count();
 
-	// カウントイン中は -m_CountInTime ～ 0 秒になる。
-	// 0 秒が譜面・ノーツ再生開始時刻。
+	// カウントイン中は-m_CountInTime〜0秒になり、0秒が譜面再生開始時刻
 	m_MusicTime = elapsed - m_CountInTime;
 
 	const float deltaTime =
 		std::chrono::duration<float>(nowClock - m_LastUpdateClock).count();
 	m_LastUpdateClock = nowClock;
 
+	//画面シェイク
+	if (m_ShakeTimer > 0.0f)
+	{
+		m_ShakeTimer -= deltaTime;
+		if (m_ShakeTimer < 0.0f) m_ShakeTimer = 0.0f;
+
+		//残り時間の割合で強度を減衰させる(終盤ほど揺れが小さくなる)
+		float t = (m_ShakeDuration > 0.0001f) ? (m_ShakeTimer / m_ShakeDuration) : 0.0f;
+		float currentStrength = m_ShakeStrength * t;
+
+		float ox = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * currentStrength;
+		float oy = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * currentStrength;
+		m_ShakeOffset = Vector3(ox, oy, 0.0f);
+
+		if (m_ShakeTimer <= 0.0f)
+		{
+			m_ShakeStrength = 0.0f;
+			m_ShakeOffset = Vector3::Zero;
+		}
+	}
+	else
+	{
+		m_ShakeOffset = Vector3::Zero;
+	}
+
+	//フラッシュの更新
+	if (m_FlashTimer > 0.0f)
+	{
+		m_FlashTimer -= deltaTime;
+		if (m_FlashTimer < 0.0f) m_FlashTimer = 0.0f;
+	}
+
+	// コンボ数字のポップアニメーションのタイマー減算
 	if (m_ComboPopTimer > 0.0f)
 	{
 		m_ComboPopTimer -= deltaTime;
 		if (m_ComboPopTimer < 0.0f) m_ComboPopTimer = 0.0f;
 	}
 
-	// 判定円をキーフレームアニメーションに合わせて動かし、
-	// まだ判定されていないノーツの judgePos を追従させる
+	// 判定円の動きに合わせて、未判定ノーツのjudgePosを追従させる
+	// （フリックはjudgePosがenemy側固定なので対象外）
 	for (auto& note : m_Notes)
 	{
 		if (note.judged) continue;
+		if (note.IsFlick()) continue;
 		if (note.lane < 0 || note.lane >= (int)m_JudgeCircles.size()) continue;
 		note.judgePos = m_JudgeCircles[note.lane].GetPosition(m_MusicTime);
 	}
 
+	// パーティクルの更新（寿命切れは削除）
 	for (auto it = m_Particle.begin(); it != m_Particle.end();)
 	{
 		it->Update(deltaTime);
-
 		if (it->IsStop())
 			it = m_Particle.erase(it);
 		else
 			++it;
 	}
 
-	//メトロノームのカウントイン
-	if(m_Bpm > 0.0f && m_BeatsPerBar > 0)
+	// メトロノームのカウントイン音（1小節分、拍ごとにクリック音を鳴らす）
+	if (m_Bpm > 0.0f && m_BeatsPerBar > 0)
 	{
 		float secondsPerBeat = 60.0f / m_Bpm;
 		while (m_CountInNextBeat < m_BeatsPerBar)
@@ -374,15 +660,17 @@ void ChartObject::Update()
 			if (m_MusicTime < beatTime) break; // まだこの拍のタイミングに来ていない
 
 			bool isLastBeat = (m_CountInNextBeat == m_BeatsPerBar - 1);
-			sound.Play(isLastBeat ? SOUND_LABEL_SE_METRO_ACCENT : SOUND_LABEL_SE_METRO_CLICK);
+			sound.Play(isLastBeat ? SOUND_LABEL_METRO_TI : SOUND_LABEL_METRO_KATI);
 			m_CountInNextBeat++;
 		}
 	}
 
-	//ミス判定
+	// TAPノーツの自動ミス判定（判定圏外を過ぎたら強制ミス）
+	// LONG/FLICKは専用の判定関数(JudgeLongNoteHold/JudgeFlickNotes)側でミス処理する
 	for (auto& note : m_Notes)
 	{
 		if (note.judged) continue;
+		if (!note.IsTap()) continue;
 		if (m_MusicTime - note.time > kGud)
 		{
 			note.judged = true;
@@ -390,47 +678,66 @@ void ChartObject::Update()
 		}
 	}
 
-	//BPM　拍子が未設定な場合のフォールバック
+	// 接近音（判定時刻の1小節前になったら一度だけ再生）
 	float secondPerBar = (m_BeatsPerBar > 0 && m_Bpm > 0.0f) ? (60.0f / m_Bpm) * m_BeatsPerBar : 2.0f;
-
 	for (auto& note : m_Notes)
 	{
 		if (note.judged || note.approcachPlayed) continue;
 
-		float cueTime = note.time - secondPerBar;	//判定の一小節前
+		float cueTime = note.time - secondPerBar;
 		if (m_MusicTime >= cueTime)
 		{
-			sound.Play(SOUND_LABEL_SE001);
+			sound.Play(SOUND_SEKKIN);	//いる？
 			note.approcachPlayed = true;
-			// TODO: アプローチ音を再生する処理をここに追加
 		}
 	}
 
-	// S/D/F/J/K/Lキーで判定
+	// S/D/F/J/K/Lキーで、TAPノーツのトリガー判定を行う
 	for (int lane = 0; lane < 6; lane++)
 	{
 		JudgeLane(kLaneKeys[lane], lane);
 	}
+
+	// フリック・ロングノーツの判定
+	JudgeFlickNotes();
+	JudgeLongNoteHold();
+
+	// 判定済み(judged=true)になったノーツをまとめて削除
+	// （TAPの判定はJudgeLaneで即座にjudged=trueにするが、実削除はここでまとめて行う）
+	m_Notes.erase(
+		std::remove_if(m_Notes.begin(), m_Notes.end(),
+			[](const ChartNote& n) { return n.judged; }),
+		m_Notes.end());
+
+	// ホーミングビームの状態遷移とプレイヤー移動の更新
+	UpdateHomingBeams(deltaTime);
 }
 
+// ============================================================
+// JudgeLane : 指定キーを「押した瞬間」に、そのレーンで
+//             最も判定時刻が近いTAPノーツを判定する。
+// ============================================================
 void ChartObject::JudgeLane(int key, int laneIndex)
 {
-	if (!Input::GetKeyTrigger(key)) return;
+	if (!Input::GetKeyTrigger(key)) return; // 押した瞬間でなければ何もしない
 
 	int bestIndex = -1;
 	float bestDiff = 9999.0f;
 
+	// 対象レーンのTAPノーツの中から、最も時間差が小さいものを探す
 	for (int i = 0; i < (int)m_Notes.size(); i++)
 	{
 		if (m_Notes[i].judged) continue;
 		if (m_Notes[i].lane != laneIndex) continue;
+		if (!m_Notes[i].IsTap()) continue; // LONG/FLICKはここでは判定しない
 
 		float diff = std::fabs(m_Notes[i].time - m_MusicTime);
 		if (diff < bestDiff) { bestDiff = diff; bestIndex = i; }
 	}
 	if (bestIndex == -1) return;
-	if (bestDiff > kGud) return;	//判定圏外
+	if (bestDiff > kGud) return; // 判定圏外なら何もしない
 
+	// 時間差に応じてランクを決定
 	int rank = (bestDiff < kPerfect) ? 0 : (bestDiff < kGreat) ? 1 : 2;
 	if (rank == 0) m_Perfect++;
 	else if (rank == 1) m_Great++;
@@ -440,58 +747,538 @@ void ChartObject::JudgeLane(int key, int laneIndex)
 	OnJudge(laneIndex, rank);
 }
 
+// ============================================================
+// JudgeFlickNotes : 横フリックの判定（時間ベース）。
+//   毎フレーム呼び出し、判定ウィンドウ(±kGud)に入っている間、
+//   プレイヤーが要求サイドにいれば時間差でランク判定して成立させる。
+//   ウィンドウを過ぎてしまったらミス確定。
+// ============================================================
+void ChartObject::JudgeFlickNotes()
+{
+	for (auto& n : m_Notes)
+	{
+		if (n.judged) continue;
+		if (!n.IsFlick()) continue;
+
+		float diff = n.time - m_MusicTime;    // 正：まだ来ていない　負：過ぎた
+		int requiredSide = n.IsFlickRight() ? 1 : -1; // 右フリックなら1、左フリックなら-1
+
+		if (fabsf(diff) <= kGud && m_PlayerSide == requiredSide)
+		{
+			float absDiff = fabsf(diff);
+			int rank = (absDiff < kPerfect) ? 0 : (absDiff < kGreat) ? 1 : 2;
+
+			// レーン範囲（From〜To）を求めて、範囲内すべてのレーンに判定エフェクトを出す
+			int laneFrom = n.lane;
+			int laneTo = (n.flickLaneTo >= 0) ? n.flickLaneTo : n.lane;
+			int lo = std::min(laneFrom, laneTo);
+			int hi = std::max(laneFrom, laneTo);
+
+			if (rank == 0) m_Perfect++;
+			else if (rank == 1) m_Great++;
+			else m_Good++;
+
+			for (int L = lo; L <= hi; L++)
+			{
+				if (L < 0 || L >= 6) continue;
+				OnJudge(L, rank);
+			}
+
+			n.judged = true;
+			continue;
+		}
+
+		// 判定ウィンドウを過ぎても成立しなかった場合はミス確定
+		if (diff < -kGud)
+		{
+			n.judged = true;
+			m_Miss++;
+		}
+	}
+}
+
+// ============================================================
+// JudgeLongNoteHold : ロングノーツの押しっぱなし判定。
+//   1. 先端が判定ラインに到達するタイミングでキーが押されていれば「開始」成立
+//   2. 開始後は一定間隔(kLongTickInterval)ごとにtick加算（継続判定）
+//   3. 終了時刻まで押しっぱなしならクリア、途中で離したら即ミス
+// ============================================================
+void ChartObject::JudgeLongNoteHold()
+{
+	for (auto& n : m_Notes)
+	{
+		if (!n.IsLong()) continue;
+		if (n.judged) continue;
+
+		if (n.lane < 0 || n.lane >= 6) continue;
+		bool isDown = Input::GetKeyPress(kLaneKeys[n.lane]);
+
+		// ── まだ開始していない場合 ──
+		if (!n.longStarted && !n.longFailed)
+		{
+			float diff = n.arrivalTime - m_MusicTime;
+			if (isDown && fabsf(diff) <= kGud)
+			{
+				float absDiff = fabsf(diff);
+				int rank = (absDiff < kPerfect) ? 0 : (absDiff < kGreat) ? 1 : 2;
+				if (rank == 0) m_Perfect++;
+				else if (rank == 1) m_Great++;
+				else m_Good++;
+				OnJudge(n.lane, rank);
+
+				n.longStarted = true;
+				n.nextTickTime = n.arrivalTime + kLongTickInterval;
+			}
+			else if (diff < -kGud)
+			{
+				// 開始を逃した → Failed扱いにするだけ。ノーツはendTimeまで残す
+				n.longFailed = true;
+				m_Miss++;
+			}
+		}
+		// ── 開始済み・まだ成功継続中 ──
+		else if (n.longStarted && !n.longFailed)
+		{
+			if (isDown)
+			{
+				while (n.nextTickTime <= m_MusicTime && n.nextTickTime < n.time)
+				{
+					m_Perfect++;
+					n.nextTickTime += kLongTickInterval;
+				}
+			}
+			else
+			{
+				// 離した瞬間 → Failedにするが、ノーツはendTimeまで残す
+				n.longFailed = true;
+				m_Miss++;
+			}
+		}
+
+		// ── 終了時刻に到達したら、ここで初めて judged=true にする ──
+		if (m_MusicTime >= n.time)
+		{
+			if (!n.longFailed) m_Perfect++; // 最後まで成功していればクリア扱い
+			n.judged = true;
+		}
+	}
+}
+
+// ============================================================
+// InitBeamScatter : ビームの「収束前バラけ位置」をランダムに決める。
+//   プレイヤー予測位置の周囲、上下左右にランダムなオフセットを複数用意し、
+//   探索中(Homing状態)にこの位置から線が伸びるように見せる。
+// ============================================================
+void ChartObject::InitBeamScatter(ChartHomingBeam& beam)
+{
+	for (int i = 0; i < ChartHomingBeam::kScatterCount; i++)
+	{
+		float angle = ((float)rand() / RAND_MAX) * DirectX::XM_2PI;
+		float radius = 150.0f + ((float)rand() / RAND_MAX) * 250.0f;    // 150〜400の範囲でばらける
+		float heightOffset = ((float)rand() / RAND_MAX - 0.5f) * 200.0f; // 高さ方向のばらつき
+
+		beam.scatterOffsets[i] = Vector3(
+			cosf(angle) * radius,
+			heightOffset,
+			sinf(angle) * radius
+		);
+	}
+}
+
+// ============================================================
+// UpdateHomingBeams : 毎フレーム呼ばれる、ビーム全体の更新処理。
+//   1. プレイヤーの左右移動の補間更新
+//   2. 各ビームの状態遷移：
+//        Homing（探索中。タンタンタン→ロック確定）
+//        → Fired（発射済み。一定間隔で命中/回避判定）
+//        → Resolved（判定終了）
+// ============================================================
+void ChartObject::UpdateHomingBeams(float deltaTime)
+{
+	// ── プレイヤーの入力サイド判定（S/D/F=右、J/K/L=左。エディタと同じ割り当て）──
+	if (GetAsyncKeyState('S') & 0x8000 || GetAsyncKeyState('D') & 0x8000 || GetAsyncKeyState('F') & 0x8000)
+		m_PlayerSide = 1;
+	else if (GetAsyncKeyState('J') & 0x8000 || GetAsyncKeyState('K') & 0x8000 || GetAsyncKeyState('L') & 0x8000)
+		m_PlayerSide = -1;
+	else
+		m_PlayerSide = 0;
+
+	// ── プレイヤー見た目位置の補間（急に瞬間移動しないよう最大移動量を制限）──
+	float targetX = m_PlayerSide * m_PlayerMoveRange;
+	float diff = targetX - m_PlayerVisualX;
+	float maxStep = m_PlayerMoveSpeed * deltaTime;
+	if (fabsf(diff) <= maxStep) m_PlayerVisualX = targetX;
+	else m_PlayerVisualX += (diff > 0.0f ? maxStep : -maxStep);
+
+	// ── 各ビームの状態遷移 ──
+	for (auto& beam : m_HomingBeams)
+	{
+		if (beam.state == ChartHomingBeam::State::Resolved) continue;
+		if (m_MusicTime < beam.chargeTime) continue; // まだ探索開始時刻に達していない
+
+		// ── タンタンタン：chargeTime〜lockTimeをkSearchBeatCount等分した時刻に鳴らす ──
+		{
+			float total = beam.lockTime - beam.chargeTime;
+			if (total < 0.01f) total = 0.01f;
+			float beatInterval = total / ChartHomingBeam::kSearchBeatCount;
+			while (beam.searchBeatsPlayed < ChartHomingBeam::kSearchBeatCount)
+			{
+				float beatTime = beam.chargeTime + beatInterval * beam.searchBeatsPlayed;
+				if (m_MusicTime >= beatTime)
+				{
+					sound.Play(SOUND_BEAM_SARCH); // タン（サウンドラベル未定義のためコメントアウト中。用意でき次第有効化）
+					beam.searchBeatsPlayed++;
+				}
+				else break;
+			}
+		}
+
+		if (beam.state == ChartHomingBeam::State::Homing)
+		{
+			// タンを規定回数鳴らし終えた瞬間、ロック確定
+			if (!beam.judgmentLocked && beam.searchBeatsPlayed >= ChartHomingBeam::kSearchBeatCount)
+			{
+				beam.judgmentLocked = true;
+				if (!beam.lockSoundPlayed)
+				{
+					sound.Play(SOUND_BEAM_DECITION); // カン
+					beam.lockSoundPlayed = true;
+				}
+			}
+
+			// ロックされるまでは、通常通りプレイヤーの位置を追従する
+			if (!beam.judgmentLocked)
+			{
+				beam.lockedSide = m_PlayerSide;
+				beam.lockedPos = GetPlayerSideAnchor(m_PlayerSide);
+				beam.lockedPos.x += m_PlayerSide * m_PlayerMoveRange;
+			}
+
+			// 発射時刻に到達したら発射状態へ
+			if (m_MusicTime >= beam.lockTime)
+			{
+				if (!beam.fireSoundPlayed)
+				{
+					sound.Play(SOUND_BEAM_FIRING);
+					beam.fireSoundPlayed = true;
+				}
+				beam.state = ChartHomingBeam::State::Fired;
+				beam.nextCountTime = m_MusicTime + ChartHomingBeam::kCountInterval; // 命中判定の初回時刻をセット
+			}
+		}
+		else if (beam.state == ChartHomingBeam::State::Fired)
+		{
+			// 命中判定終了時刻に到達したら解決済みへ
+			if (m_MusicTime >= beam.hitTime)
+			{
+				beam.state = ChartHomingBeam::State::Resolved;
+			}
+			else if (m_MusicTime >= beam.nextCountTime && beam.nextCountTime < beam.hitTime)
+			{
+				// 一定間隔ごとに、プレイヤーがロック位置と異なるサイドにいれば回避成功
+				bool dodged = (m_PlayerSide != beam.lockedSide);
+				if (dodged) 
+				{
+					m_Perfect++;
+					TriggerScreenShake(0.1f, 4.0f);
+				}
+				else
+				{
+					m_Miss++;
+					TriggerScreenShake(0.25f, 15.0f);	//揺れ幅15px,0.25s
+					TriggerFlash(0.15f);				//白フラッシュ0.15s
+				}
+				beam.nextCountTime += ChartHomingBeam::kCountInterval;
+			}
+		}
+	}
+}
+
+// ============================================================
+// OnJudge : 判定がヒットした瞬間に呼ばれるフック。
+//   コンボを加算し、判定円の位置に花びらパーティクルを100個生成する。
+// ============================================================
 void ChartObject::OnJudge(int laneIndex, int rank)
 {
-	OutputDebugStringA("[Particle] OnJudge called\n");
 	m_Combo++;
-	m_ComboPopTimer = 0.15f;
-	// TODO: 判定エフェクト（回転する四角バースト）をここに実装する。
-	// VertexBuffer/IndexBufferのAPIが分かり次第、動的頂点バッファで
-	// Texture2Dと同じ要領のクワッドを複数枚描画する形にする予定。
+	m_ComboPopTimer = 0.15f; // コンボ数字が一瞬拡大表示される演出用タイマー
 
+	if (laneIndex < 0 || laneIndex >= 6) return;
 	Vector3 pos = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
 
-	//あとでパーティクルの数は変数化するかも
 	for (int i = 0; i < 100; i++)
 	{
-		float deg = rand() % 360;
-
+		float deg = (float)(rand() % 360);
 		Particle p(
 			pos,
-			1.5f,                         // 寿命
-			50.0f,                        // 重力を弱める
-			Color(1, 1, 1, 1),
-			Color(1, 1, 1, 0),
-			0.7f,                         // 終盤30%だけフェード
-			80.0f,                        // 開始サイズ:80
-			40.0f,                        // 終了サイズ
-			Vector3(80, 120, 80),         // 速度を弱める
+			1.5f,                          // 寿命
+			50.0f,                         // 重力
+			Color(1, 1, 1, 1),				// 開始色
+			Color(1, 1, 1, 0),				// 終了色（透明にフェード）
+			0.7f,                          // フェード開始位置（終盤30%だけフェード）
+			80.0f,                         // 開始サイズ
+			40.0f,                         // 終了サイズ
+			Vector3(80, 120, 80),          // 初速
 			deg
 		);
 		m_Particle.push_back(p);
 	}
-
-	(void)laneIndex;
-	(void)rank;
+	(void)rank; // 現状rank別の演出差はまだ未実装。将来ランクごとに色や量を変える場合はここで分岐する
 }
 
+// ============================================================
+// DrawBeamSegment : from→to の間にビームモデルを引き伸ばして1本描画する。
+//   モデルのローカルZ軸方向をdir(from→to方向)に向け、
+//   X/Yスケールで太さを、Zスケールで長さを調整する。
+// ============================================================
+void ChartObject::DrawBeamSegment(Camera* cam,
+	const Vector3& from, const Vector3& to,
+	float thicknessX, float thicknessY)
+{
+	if (!m_BeamModelLoaded) return;
+
+	Vector3 dir = to - from;
+	float len = dir.Length();
+	if (len < 0.01f) return;
+	dir.Normalize();
+
+	Vector3 upHint = Vector3::Up;
+	if (fabsf(dir.Dot(upHint)) > 0.98f) upHint = Vector3::Right;
+
+	Vector3 right = upHint.Cross(dir);
+	right.Normalize();
+	Vector3 up = dir.Cross(right);
+	up.Normalize();
+
+	Vector3 mid = from + dir * (len * 0.5f);
+
+	// CreateWorldに頼らず、基底ベクトルから直接ワールド行列を組む
+	// （モデルのローカルZ軸が「長さ方向」である前提。もし違う軸なら
+	//   下のbasis内のright/up/dirの並び順を入れ替えて調整してください）
+	Matrix basis(
+		right.x, right.y, right.z, 0.0f,
+		up.x, up.y, up.z, 0.0f,
+		dir.x, dir.y, dir.z, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	);
+
+	Matrix world =
+		Matrix::CreateScale(thicknessX, thicknessY, len / m_BeamModelLength) *
+		basis *
+		Matrix::CreateTranslation(mid);
+
+	DrawModel(m_BeamMeshRenderer, m_BeamShader, m_BeamSubsets, m_BeamMaterials, m_BeamTextures, world);
+}
+
+// ============================================================
+// DrawHomingBeams : 全ビームの描画をまとめて行う。
+//   Homing中：探索中の「バラけた線」が収束していく様子を表現
+//   Fired中　：ロック位置へ向けて1本の太いビームを描画
+// ============================================================
+void ChartObject::DrawHomingBeams(Camera* cam)
+{
+	if (!m_BeamModelLoaded) return;
+	if (m_HomingBeams.empty()) return;
+
+	// ビームの発射元座標。Enemyの参照が無ければ仮の固定値を使う
+	Vector3 beamOrigin = m_EnemyRef
+		? (m_EnemyRef->GetPosition() + Vector3(0.0f, 50.0f, 0.0f))
+		: Vector3(0.0f, 0.0f, 500.0f);
+
+	cam->SetCamera(0);
+	Renderer::SetBlendState(BS_ALPHABLEND);
+
+	for (auto& beam : m_HomingBeams)
+	{
+		if (beam.state == ChartHomingBeam::State::Resolved) continue;
+		if (m_MusicTime < beam.chargeTime) continue;
+
+		// ロック確定済みならロック座標へ、まだならプレイヤーの現在位置へ収束させる
+		Vector3 lockTarget = beam.judgmentLocked
+			? beam.lockedPos
+			: GetPlayerSideAnchor(m_PlayerSide);
+
+		if (beam.state == ChartHomingBeam::State::Homing)
+		{
+			// 収束の進行度t(0=バラバラ, 1=収束完了)をease-inで計算
+			float total = beam.lockTime - beam.chargeTime;
+			if (total < 0.01f) total = 0.01f;
+			float t = std::clamp((m_MusicTime - beam.chargeTime) / total, 0.0f, 1.0f);
+			float easedT = t * t;
+
+			// 散らばった候補線を描画。tが進むほどlockTargetへ寄っていく
+			for (int i = 0; i < ChartHomingBeam::kScatterCount; i++)
+			{
+				Vector3 scatterPos = lockTarget + beam.scatterOffsets[i];
+				Vector3 to = scatterPos + (lockTarget - scatterPos) * easedT;
+
+				float thick = 2.0f + easedT * 4.0f; // 収束が進むほど少し太くする
+				DrawBeamSegment(cam, beamOrigin, to, thick, thick);
+			}
+		}
+		else // Fired：発射済みなので1本の太いビームを描画
+		{
+			DrawBeamSegment(cam, beamOrigin, beam.lockedPos, 15.0f, 15.0f);
+		}
+	}
+
+	Renderer::SetBlendState(BS_NONE);
+}
+
+// ============================================================
+// DrawLongNotes : ロングノーツを sentan(先端) / dou(本体・鎖) / o(終端の輪) の
+//                 3パーツで描画する。
+//
+//   時間の流れ：
+//     displayStart(出現) → arrivalTime(先端が判定ラインに到達) → endTime(終端が到達し消える)
+//
+//   sentanは arrivalTime を過ぎても kGraceTime 秒だけ進み続け、
+//   oはholdDuration秒だけ遅れてsentanを追いかける。
+//   douはその間を一定間隔でサンプリングして敷き詰める（鎖のように見せる）。
+// ============================================================
+void ChartObject::DrawLongNotes(Camera* cam)
+{
+	constexpr float kGraceTime = 0.5f;		// 判定ラインを越えても先端が進み続ける猶予秒数
+	constexpr float kBodySpacing = 0.02f;	// dou（本体）を敷き詰める間隔（秒）。小さいほど密になるが重くなる
+	constexpr int   kMaxBodySegments = 60;	// dou描画数の安全上限（負荷対策）
+
+	// 各パーツごとに「専用モデルがあればそれを、無ければTAPモデルを」使う
+	auto& sentanRenderer = m_LongSentanLoaded ? m_LongSentanRenderer : m_MeshRenderer;
+	auto& sentanShader = m_LongSentanLoaded ? m_LongSentanShader : m_Shader;
+	auto& sentanSubsets = m_LongSentanLoaded ? m_LongSentanSubsets : m_Subsets;
+	auto& sentanMaterials = m_LongSentanLoaded ? m_LongSentanMaterials : m_Materials;
+	auto& sentanTextures = m_LongSentanLoaded ? m_LongSentanTextures : m_Textures;
+
+	auto& douRenderer = m_LongDouLoaded ? m_LongDouRenderer : m_MeshRenderer;
+	auto& douShader = m_LongDouLoaded ? m_LongDouShader : m_Shader;
+	auto& douSubsets = m_LongDouLoaded ? m_LongDouSubsets : m_Subsets;
+	auto& douMaterials = m_LongDouLoaded ? m_LongDouMaterials : m_Materials;
+	auto& douTextures = m_LongDouLoaded ? m_LongDouTextures : m_Textures;
+
+	auto& oRenderer = m_LongOLoaded ? m_LongORenderer : m_MeshRenderer;
+	auto& oShader = m_LongOLoaded ? m_LongOShader : m_Shader;
+	auto& oSubsets = m_LongOLoaded ? m_LongOSubsets : m_Subsets;
+	auto& oMaterials = m_LongOLoaded ? m_LongOMaterials : m_Materials;
+	auto& oTextures = m_LongOLoaded ? m_LongOTextures : m_Textures;
+
+	for (auto& note : m_Notes)
+	{
+		if (!note.IsLong()) continue;
+		if (note.judged) continue;
+
+		float displayStart = note.GetSpawnTime();	// 出現時刻
+		float arrivalTime = note.arrivalTime;		// 先端が判定ラインに着く時刻
+		float endTime = note.time;					// 終端が判定ラインに着く時刻（消滅予定）
+		float holdDuration = endTime - arrivalTime;	// ノーツの長さ（先端と終端の時間差）
+
+		// 出現〜到達が短すぎる（≒0秒）場合は0除算やワープ表示を避けるためスキップ
+		if (arrivalTime - displayStart <= 0.0001f) continue;
+		if (holdDuration <= 0.0001f) holdDuration = 0.0001f;
+
+		// 終端が消えるまで（猶予込み）の間だけ表示対象とする
+		float extendedEnd = endTime + kGraceTime;
+		if (m_MusicTime < displayStart || m_MusicTime > extendedEnd) continue;
+
+		// ── 1) sentan（先端）の現在位置 ──
+		// arrivalTimeを過ぎてもkGraceTime秒だけ進み続ける（急に消えないようにするため）
+		float headTime = std::min(m_MusicTime, endTime);
+		Vector3 headPos = EvaluateLongNotePosition(note, headTime);
+		{
+			Matrix world = Matrix::CreateScale(20.0f) * Matrix::CreateTranslation(headPos);
+			DrawModel(sentanRenderer, sentanShader, sentanSubsets, sentanMaterials, sentanTextures, world);
+		}
+
+		// ── 3) o（終端の輪）の現在位置 ──
+		// sentanよりholdDuration秒だけ遅れて追従する（まだ出現範囲に入っていなければ非表示）
+		float tailTime = headTime - holdDuration;
+		bool tailVisible = (tailTime >= displayStart);
+		if (tailVisible)
+		{
+			Vector3 tailPos = EvaluateLongNotePosition(note, tailTime);
+			Matrix world = Matrix::CreateScale(20.0f) * Matrix::CreateTranslation(tailPos);
+			DrawModel(oRenderer, oShader, oSubsets, oMaterials, oTextures, world);
+		}
+
+		// ── 2) dou（本体・鎖）の描画 ──
+		// tailTime〜headTimeの区間を一定間隔でサンプリングし、間を鎖状に敷き詰める
+		{
+			float bodyStart = tailVisible ? tailTime : displayStart;
+			float bodyEnd = headTime;
+			float bodyDuration = bodyEnd - bodyStart;
+			if (bodyDuration > 0.0001f)
+			{
+				int segments = std::max(2, (int)std::ceil(bodyDuration / kBodySpacing));
+				segments = std::min(segments, kMaxBodySegments); // 描画数に上限をかけて負荷を抑える
+
+				for (int s = 1; s < segments; s++) // 両端(sentan/o)は上ですでに描画済みなので中間だけ
+				{
+					float p = (float)s / (float)segments;
+					float sampleTime = bodyStart + bodyDuration * p;
+					Vector3 pos = EvaluateLongNotePosition(note, sampleTime);
+					Matrix world = Matrix::CreateScale(10.0f) * Matrix::CreateTranslation(pos);
+					DrawModel(douRenderer, douShader, douSubsets, douMaterials, douTextures, world);
+				}
+			}
+		}
+	}
+}
+
+// ============================================================
+// DrawFlickNotes : 横フリックノーツの描画。
+//   右フリック/左フリックで回転を変える（モデルの向きに応じて要調整）。
+// ============================================================
+void ChartObject::DrawFlickNotes(Camera* cam)
+{
+	auto& renderer = m_FlickModelLoaded ? m_FlickMeshRenderer : m_MeshRenderer;
+	auto& shader = m_FlickModelLoaded ? m_FlickShader : m_Shader;
+	auto& subsets = m_FlickModelLoaded ? m_FlickSubsets : m_Subsets;
+	auto& materials = m_FlickModelLoaded ? m_FlickMaterials : m_Materials;
+	auto& textures = m_FlickModelLoaded ? m_FlickTextures : m_Textures;
+
+	for (auto& note : m_Notes)
+	{
+		if (!note.IsFlick()) continue;
+		if (note.judged) continue;
+
+		float st = note.GetSpawnTime();
+		float et = note.time;
+		if (m_MusicTime < st || m_MusicTime > et) continue;
+
+		Vector3 pos = EvaluateNotePosition(note, m_MusicTime);
+
+		// 右フリックと左フリックで回転を反転（※モデルの向きに応じて調整が必要）
+		float rotY = note.IsFlickRight() ? 0.0f : DirectX::XM_PI;
+
+		Matrix world =
+			Matrix::CreateScale(m_NoteScale * 0.7f) *
+			Matrix::CreateRotationY(rotY) *
+			Matrix::CreateTranslation(pos);
+
+		DrawModel(renderer, shader, subsets, materials, textures, world);
+	}
+}
+
+// ============================================================
+// Draw : 毎フレームの描画本体。
+//   TAPノーツ本体 → ロングノーツ → フリックノーツ → 接近リング →
+//   レーンアイコン/判定円ガイド → パーティクル → コンボ表示 → ビーム
+//   の順に描画する。
+// ============================================================
 void ChartObject::Draw(Camera* cam)
 {
+	cam->SetShakeOffset(m_ShakeOffset);
 	// 3Dカメラを再アサート（他オブジェクトがTexture2Dで2Dに切り替えている場合があるため）
 	cam->SetCamera(0);
 
-	char buf[64];
-	//std::cout << "Particle Count = "
-	//	<< m_Particle.size()
-	//	<< std::endl;
-
 	Renderer::SetBlendState(BS_NONE);
 
+	// ── TAPノーツ本体の描画 ──
 	m_Shader.SetGPU();
 	m_MeshRenderer.BeforeDraw();
 
 	for (auto& note : m_Notes)
 	{
+		if (!note.IsTap()) continue;
 		if (note.judged) continue;
 
 		float st = note.GetSpawnTime();
@@ -518,14 +1305,22 @@ void ChartObject::Draw(Camera* cam)
 			);
 		}
 	}
-	//接近リング　判定ラインに近づくにつれて大きく濃くなる
+
+	// ── ロングノーツ・フリックノーツの描画 ──
+	DrawLongNotes(cam);
+	DrawFlickNotes(cam);
+
+	// ── 接近リング（判定ラインに近づくにつれて大きく濃くなる）──
+	// フリックは対象外（エディタと同じ扱い）
 	Renderer::SetBlendState(BS_ALPHABLEND);
 	for (auto& note : m_Notes)
 	{
 		if (note.judged) continue;
+		if (note.IsFlick()) continue;
 
 		float st = note.GetSpawnTime();
-		float et = note.time;
+		// LONGは先端が到達するarrivalTimeを終点とする。TAPは通常のtime
+		float et = note.IsLong() ? note.arrivalTime : note.time;
 		if (m_MusicTime < st || m_MusicTime > et) continue;
 
 		float duration = et - st;
@@ -533,7 +1328,9 @@ void ChartObject::Draw(Camera* cam)
 		if (t < 0.0f) t = 0.0f;
 		if (t > 1.0f) t = 1.0f;
 
-		Vector3 pos = EvaluateNotePosition(note, m_MusicTime);
+		Vector3 pos = note.IsLong()
+			? EvaluateLongNotePosition(note, m_MusicTime)
+			: EvaluateNotePosition(note, m_MusicTime);
 
 		float ringScale = 100.0f + t * 60.0f;
 		float ringAlpha = 0.2f + t * 0.6f;
@@ -541,24 +1338,26 @@ void ChartObject::Draw(Camera* cam)
 	}
 	Renderer::SetBlendState(BS_NONE);
 
-	//レーンごとに一番近い未判定ノーツの接近度(0〜1)を計算
+	// ── レーンごとに一番近い未判定ノーツの接近度(0〜1)を計算 ──
+	// （判定円ガイドの「育つ四角」の大きさに使う。フリックは対象外）
 	float laneT[6] = { 0,0,0,0,0,0 };
 	bool laneActive[6] = { false,false,false,false,false,false };
 	for (auto& note : m_Notes)
 	{
-		if (note.judged) continue;	//ミスが確定してたらスルー
+		if (note.judged) continue;
+		if (note.IsFlick()) continue;
 		if (note.lane < 0 || note.lane >= 6) continue;
 
 		float st = note.GetSpawnTime();
-		float et = note.time;
-		if (m_MusicTime < st || m_MusicTime > et) continue;	// 出現〜判定の範囲外はスキップ
+		float et = note.IsLong() ? note.arrivalTime : note.time;
+		if (m_MusicTime < st || m_MusicTime > et) continue;
 
 		float duration = et - st;
 		float t = (duration > 0.00001f) ? (m_MusicTime - st) / duration : 1.0f;
 		if (t < 0.0f) t = 0.0f;
 		if (t > 1.0f) t = 1.0f;
 
-		//そのレーンでもっとも判定に近いノーツを選択
+		// そのレーンで最も判定に近い(t最大)ノーツを採用
 		if (!laneActive[note.lane] || t > laneT[note.lane])
 		{
 			laneActive[note.lane] = true;
@@ -566,7 +1365,7 @@ void ChartObject::Draw(Camera* cam)
 		}
 	}
 
-	//判定円アイコン：judgeCirclesの3D座標を画面に投影して表示
+	// ── 判定円アイコン：judgeCirclesの3D座標を画面に投影して表示 ──
 	const Matrix view = cam->GetViewMatrix();
 	Renderer::SetBlendState(BS_ALPHABLEND);
 	for (int i = 0; i < 6; i++)
@@ -591,31 +1390,25 @@ void ChartObject::Draw(Camera* cam)
 	}
 	Renderer::SetBlendState(BS_NONE);
 
-	//パーティクル
+	// ── パーティクル（判定ヒット時の花びら演出）──
 	cam->SetCamera(0);
 	Renderer::SetBlendState(BS_ALPHABLEND);
 	for (auto& p : m_Particle)
 	{
-		m_ParticleQuad.Draw(
-			cam,
-			p.GetPosition(),
-			p.GetScale(),
-			p.GetColor()
-		);
+		m_ParticleQuad.Draw(cam, p.GetPosition(), p.GetScale(), p.GetColor());
 	}
 	Renderer::SetBlendState(BS_NONE);
 
-	//コンボ数表示
+	// ── コンボ数表示（3桁、ヒット直後は少し拡大する演出）──
 	{
 		int combo = m_Combo;
 		if (combo > 999) combo = 999;
 
 		int digits[3] = { combo / 100,(combo / 10) % 10, combo % 10 };
-		// ヒット直後は少し拡大してから元に戻る「ポップ」演出
 		float popScale = 1.0f + (m_ComboPopTimer / 0.15f) * 0.4f; // 最大1.4倍まで膨らむ
 
 		float digitW = 40.0f;
-		float startX = 200.0f;	//画面右寄りに配置してます
+		float startX = 200.0f;
 
 		Renderer::SetBlendState(BS_ALPHABLEND);
 		for (int i = 0; i < 3; i++)
@@ -627,9 +1420,43 @@ void ChartObject::Draw(Camera* cam)
 		}
 	}
 
+	// ── 判定内訳の表示（PERFECT/GREAT/GOOD/MISS）──
+	{
+		auto drawCountRow = [&](Texture2D* row, int value, float y)
+			{
+				if (value > 999) value = 999;
+				int digits[3] = { value / 100, (value / 10) % 10, value % 10 };
+				float digitW = 26.0f;   // コンボより詰めて表示
+				float startX = 40.0f;
+
+				for (int i = 0; i < 3; i++)
+				{
+					row[i].SetUV((float)(digits[i] + 1), 1.0f, 10.0f, 1.0f);
+					row[i].SetPosition(startX + digitW * i, y - 100.0f, 0.0f);
+					row[i].Draw(cam);
+				}
+			};
+		float topY = 400.0f;	//一番上のY座標
+		float rowSpacing = 60.0f;	//行間
+
+		Renderer::SetBlendState(BS_ALPHABLEND);
+		drawCountRow(m_PerfectDigits, m_Perfect, topY);
+		drawCountRow(m_GreatDigits, m_Great, topY - rowSpacing);
+		drawCountRow(m_GoodDigits, m_Good, topY - rowSpacing * 2);
+		drawCountRow(m_MissDigits, m_Miss, topY - rowSpacing * 3);
+		Renderer::SetBlendState(BS_NONE);
+	}
+
+	// ── ホーミングビームの描画（他要素の最後に描くことで前面に出す）──
+	DrawHomingBeams(cam);
+
 	cam->SetCamera(0);
 }
 
+// ============================================================
+// Uninit : 終了処理。現状、明示的な解放が必要なリソースは無い
+// （メンバのunique_ptr/vectorがデストラクタで自動解放される）。
+// ============================================================
 void ChartObject::Uninit()
 {
 }

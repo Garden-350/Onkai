@@ -17,6 +17,7 @@ public:
 	void Draw(Camera* cam) override;
 	void Uninit() override;
 
+	DirectX::SimpleMath::Vector3 GetPosition() const { return m_Position; }
 private:
 	float m_Size = 40.0f;
 

@@ -14,44 +14,123 @@
 #include <chrono>
 #include "Particle.h"
 
-// エディターで作った譜面(JSON)を読み込み、ノーツを3Dモデルで流して
-// S/D/F/J/K/Lキーで判定するだけの再生専用オブジェクト。
+class Enemy;
+
+// ============================================================
+// ノーツ種別
+// ※ エディター(Game.cpp)側の NoteType enum と数値を必ず一致させること！
+//    TAP=0, LONGNOTE=1, FLICK_RIGHT=2, FLICK_LEFT=3
+// ============================================================
+enum class ChartNoteType
+{
+	TAP = 0,
+	LONGNOTE = 1,
+	FLICK_RIGHT = 2,
+	FLICK_LEFT = 3
+};
+
+// ============================================================
+// 1つのノーツが持つデータ
+// エディターが吐き出す JSON の1要素をそのまま格納する入れ物
+// ============================================================
 struct ChartNote
 {
-	int lane = 0;
-	int type = 0;	//今はTAPしかない
-	float time = 0.0f;	//判定時刻
-	float spawnTime = -1.0f;	//出発時刻（未設定なら time - kDefaultTravel で自動計算）
-	DirectX::SimpleMath::Vector3 spawnPos{};
-	DirectX::SimpleMath::Vector3 judgePos{};
-	std::vector<DirectX::SimpleMath::Vector3> controlPoints;	// 0=直線 1=2次ベジェ 2=3次ベジェ
+	int lane = 0;			// レーン番号(0〜5 = S,D,F,J,K,L)
+	int type = 0;			// ノーツ種別。ChartNoteType のint値を入れる
+	float time = 0.0f;		// 終了/判定時刻（TAPなら判定時刻、LONGなら終端が判定ラインに着く時刻）
+	float spawnTime = -1.0f;	// 出現時刻。-1なら GetSpawnTime() が自動計算する
+	float arrivalTime = 0.0f;	// LONGNOTE専用：先端が判定ラインに到達する時刻
+	float holdDuration = 0.0f;	// LONGNOTE専用：保持時間（エディタUI入力補助用。実描画では time-arrivalTime を都度計算するので必須ではない）
+	int flickLaneTo = -1;		// FLICK専用：フリックの着地先レーン。-1なら「lane と同じ」扱い
 
-	bool judged = false; // 判定済み/ミス確定済みなら true（以後描画しない）
-	bool approcachPlayed = false;	//判定前に一度だけ鳴らす音フラグ
+	DirectX::SimpleMath::Vector3 spawnPos{};	// 出現位置（ワールド座標）
+	DirectX::SimpleMath::Vector3 judgePos{};	// 判定位置（ワールド座標）
+	std::vector<DirectX::SimpleMath::Vector3> controlPoints;	// ベジェ曲線の制御点。0個=直線 1個=2次ベジェ 2個=3次ベジェ
 
+	// ── 判定の進行状態 ──
+	bool judged = false;			// true になったら以後描画・判定の対象から外す（Update末尾で一括削除される）
+	bool approcachPlayed = false;	// 接近時の効果音を一度だけ鳴らすためのフラグ
+
+	// ── LONGNOTE専用の状態 ──
+	int m_LongTick = 0;
+	bool  longStarted = false;	// 判定ラインに先端が到達し、押し始めが成立したか
+	bool  longFailed = false;	// 押しっぱなしを離してしまい失敗が確定したか
+	float nextTickTime = 0.0f;	// 次に「継続判定(tick)」を加算すべき時刻
+
+	// 出現時刻を取得。未設定なら「判定時刻の1秒前」をデフォルトとする
 	float GetSpawnTime() const
 	{
 		if (spawnTime >= 0.0f) return spawnTime;
-		return time - 1.0f;	// デフォルト：判定1秒前に出現
+		return time - 1.0f;
 	}
+
+	// ── 種別判定ヘルパー（type番号を直接比較しないためのラッパー）──
+	bool IsTap()    const { return type == (int)ChartNoteType::TAP; }
+	bool IsLong()   const { return type == (int)ChartNoteType::LONGNOTE; }
+	bool IsFlick()  const { return type == (int)ChartNoteType::FLICK_RIGHT || type == (int)ChartNoteType::FLICK_LEFT; }
+	bool IsFlickRight() const { return type == (int)ChartNoteType::FLICK_RIGHT; }
 };
 
-//判定円のキーフレームアニメーション
+// ============================================================
+// 判定円の1キーフレーム（time秒時点でのxyz座標）
+// ============================================================
 struct ChartCircleKeyframe
 {
 	float time = 0.0f;
 	float x = 0.0f, y = 0.0f, z = 0.0f;
 };
 
+// ============================================================
+// 判定円1個分のアニメーションデータ（レーン0〜5、各1個）
+// ============================================================
 struct ChartJudgeCircle
 {
 	int lane = 0;
 	std::vector<ChartCircleKeyframe> keyframe;
 
-	//now(秒)における位置をキーフレーム間の線形補完で求める
+	// now(秒)時点の位置を、前後のキーフレーム間で線形補間して返す
 	DirectX::SimpleMath::Vector3 GetPosition(float now) const;
 };
 
+// ============================================================
+// ホーミングビーム1発分のデータと実行時状態
+// ============================================================
+struct ChartHomingBeam
+{
+	float chargeTime = 0.0f;	// 探索(タンタンタン)を開始する時刻
+	float lockTime = 0.0f;		// 発射する時刻
+	float hitTime = 0.0f;		// 命中判定(ダメージ/ドッジ確定)を打ち切る時刻
+
+	// ビームの進行段階
+	enum class State
+	{
+		Homing,		// 探索中〜発射待ち。プレイヤーを追いかけながらバラけた線を表示
+		Fired,		// 発射済み。命中/回避を一定間隔でチェック中
+		Resolved	// 判定終了。以後何もしない
+	};
+	State state = State::Homing;
+
+	bool judgmentLocked = false;			// ロック位置が確定したか
+	int  lockedSide = 0;					// ロック時のプレイヤー位置(-1/0/1)
+	DirectX::SimpleMath::Vector3 lockedPos{};	// ロックされた着弾座標
+
+	bool lockSoundPlayed = false;	// ロック音を鳴らしたか
+	bool fireSoundPlayed = false;	// 発射音を鳴らしたか
+	int  searchBeatsPlayed = 0;	// 「タン」を何回鳴らしたか
+	float nextCountTime = 0.0f;	// 次に命中判定を行う時刻
+
+	static constexpr int   kSearchBeatCount = 3;	// 「タン」を鳴らす回数
+	static constexpr float kCountInterval = 0.5f;	// 発射後、何秒おきに命中判定するか
+	static constexpr int   kScatterCount = 6;		// 探索中に表示するバラけた線の本数
+	DirectX::SimpleMath::Vector3 scatterOffsets[kScatterCount]; // 各線のランダムな初期オフセット
+};
+
+// ============================================================
+// ChartObject : エディターが吐き出した .json 譜面を読み込んで
+//               実際にノーツ/ビームを流し、判定するプレイ専用オブジェクト。
+//
+// 対応ノーツ：TAP / LONGNOTE(sentan・dou・oの3パーツ) / FLICK(左右) / ホーミングビーム
+// ============================================================
 class ChartObject : public Object
 {
 public:
@@ -60,66 +139,175 @@ public:
 	void Draw(Camera* cam) override;
 	void Uninit() override;
 
-	// Stage1Scene::Init() から呼ぶ：JSON譜面をロードして再生準備をする
-	// name : "charts/<name>.json" というパスのファイル名部分（拡張子・ディレクトリ不要）
+	// Stage1Scene::Init() から呼ぶ：charts/<name>.json を読み込んで再生準備する
 	bool LoadChart(const std::string& name);
 
-	//判定結果
+	// ビームの発射元座標として Enemy を紐付ける（Stage1Sceneから呼ぶ）
+	void SetEnemyRef(Enemy* enemy) { m_EnemyRef = enemy; }
+
+	// 判定結果の参照用
 	int GetPerfectCount() const { return m_Perfect; }
 	int GetGreatCount()   const { return m_Great; }
 	int GetGoodCount()    const { return m_Good; }
 	int GetMissCount()    const { return m_Miss; }
 
+	float GetFlashAlpha()
+	{
+		return (m_FlashDuration > 0.0001f) ? (m_FlashTimer / m_FlashDuration) : 0.0f;
+	}
+
 private:
-	//ノーツ本体の3Dモデル一式
+	// ────────────────────────────────────────
+	// TAPノーツ本体の3Dモデル・エフェクト一式
+	// ────────────────────────────────────────
 	Sound sound;
+	Shader m_Shader;
 	MeshRenderer m_MeshRenderer;
-	RingQuad m_ApproachRing;	// 接近リング（3D空間）
-	ParticleQuad m_ParticleQuad;
-	Texture2D m_LaneIcons[6];	// S/D/F/J/K/Lの判定円アイコン（画面固定2D）
-	Texture2D m_ComboDigits[3];
-	Texture2D m_LaneFrame[6];	//外側の四角
-	Texture2D m_LaneFill[6];	//内側の育つ四角
+	RingQuad m_ApproachRing;		// 接近リング（判定ラインに近づくほど大きく濃くなる）
+	ParticleQuad m_ParticleQuad;	// 判定ヒット時の花びらパーティクル
+	Texture2D m_LaneIcons[6];		// S/D/F/J/K/Lアイコン（画面固定2D）
+	Texture2D m_ComboDigits[3];	// コンボ数の3桁表示
+	Texture2D m_PerfectDigits[3];
+	Texture2D m_GreatDigits[3];
+	Texture2D m_GoodDigits[3];
+	Texture2D m_MissDigits[3];
+	Texture2D m_LaneFrame[6];		// 判定円の外枠
+	Texture2D m_LaneFill[6];		// 判定円の内側（接近度に応じて育つ）
 	std::vector<SUBSET> m_Subsets;
 	std::vector<Particle> m_Particle;
 	std::vector<std::unique_ptr<Material>> m_Materials;
 	std::vector<std::unique_ptr<Texture>> m_Textures;
 	std::chrono::steady_clock::time_point m_LastUpdateClock;
-	float m_NoteScale = 15.0f;	//モデルの大きさ
+	float m_NoteScale = 15.0f;	// TAPモデルの表示スケール
 
-	//譜面データ
+	// ────────────────────────────────────────
+	// ロングノーツ用モデル（sentan=先端／dou=本体(鎖)／o=終端の輪）
+	// エディター(Game.cpp)の m_Long_Sentan_Model 等に対応する3パーツ構成。
+	// ロード失敗時は個別に「TAPモデルで代用」にフォールバックする。
+	// ────────────────────────────────────────
+	bool m_LongSentanLoaded = false;
+	MeshRenderer m_LongSentanRenderer;
+	Shader m_LongSentanShader;
+	std::vector<SUBSET> m_LongSentanSubsets;
+	std::vector<std::unique_ptr<Material>> m_LongSentanMaterials;
+	std::vector<std::unique_ptr<Texture>> m_LongSentanTextures;
+
+	bool m_LongDouLoaded = false;
+	MeshRenderer m_LongDouRenderer;
+	Shader m_LongDouShader;
+	std::vector<SUBSET> m_LongDouSubsets;
+	std::vector<std::unique_ptr<Material>> m_LongDouMaterials;
+	std::vector<std::unique_ptr<Texture>> m_LongDouTextures;
+
+	bool m_LongOLoaded = false;
+	MeshRenderer m_LongORenderer;
+	Shader m_LongOShader;
+	std::vector<SUBSET> m_LongOSubsets;
+	std::vector<std::unique_ptr<Material>> m_LongOMaterials;
+	std::vector<std::unique_ptr<Texture>> m_LongOTextures;
+
+	// ────────────────────────────────────────
+	// フリック用モデル（無ければTAPモデルで代用）
+	// ────────────────────────────────────────
+	bool m_FlickModelLoaded = false;
+	MeshRenderer m_FlickMeshRenderer;
+	Shader m_FlickShader;
+	std::vector<SUBSET> m_FlickSubsets;
+	std::vector<std::unique_ptr<Material>> m_FlickMaterials;
+	std::vector<std::unique_ptr<Texture>> m_FlickTextures;
+
+	// ────────────────────────────────────────
+	// ホーミングビーム用モデル（棒状FBXを引き伸ばして使う想定）
+	// ────────────────────────────────────────
+	bool m_BeamModelLoaded = false;
+	MeshRenderer m_BeamMeshRenderer;
+	Shader m_BeamShader;
+	std::vector<SUBSET> m_BeamSubsets;
+	std::vector<std::unique_ptr<Material>> m_BeamMaterials;
+	std::vector<std::unique_ptr<Texture>> m_BeamTextures;
+	float m_BeamModelLength = 1.0f;	// モデルのローカルZ方向の長さ（アセットの実寸に合わせて調整）
+	DirectX::SimpleMath::Vector3 GetPlayerSideAnchor(int side)const;
+	DirectX::SimpleMath::Vector3 m_ShakeOffset = DirectX::SimpleMath::Vector3::Zero;
+
+	float m_ShakeTimer = 0.0f;
+	float m_ShakeDuration = 0.0f;
+	float m_ShakeStrength = 0.0f;
+	float m_FlashTimer = 0.0f;
+	float m_FlashDuration = 0.0f;
+	
+	void TriggerScreenShake(float duration, float strength);
+	void TriggerFlash(float duration);
+
+
+	// ────────────────────────────────────────
+	// 譜面データ本体（LoadChartで詰められる）
+	// ────────────────────────────────────────
 	std::vector<ChartNote> m_Notes;
-	std::vector<ChartJudgeCircle> m_JudgeCircles; // レーン0〜5に対応
+	std::vector<ChartJudgeCircle> m_JudgeCircles;	// レーン0〜5に対応
+	std::vector<ChartHomingBeam> m_HomingBeams;
 
-	// 再生時間管理（BGM同期は今回スコープ外、経過時間だけで進める）
+	Enemy* m_EnemyRef = nullptr;	// ビームの発射元座標を取得するための参照
+
+	// ── プレイヤーの左右移動（S/D/F=右, J/K/L=左）──
+	int   m_PlayerSide = 0;			// 現在の入力サイド(-1/0/1)
+	float m_PlayerVisualX = 0.0f;		// 見た目上のX座標（補間で追従させる）
+	DirectX::SimpleMath::Vector3 m_PlayerBasePos{ 0.0f, -55.0f, -260.0f }; // プレイヤーの基準座標。実際の見た目に合わせて要調整
+	float m_PlayerMoveRange = 100.0f;	// 左右移動時のX方向の振れ幅。要調整
+	float m_PlayerMoveSpeed = 800.0f;	// 移動の補間速度。要調整
+
+	// ── 再生時間管理（BGM同期はスコープ外。経過時間ベースで進める）──
 	std::chrono::steady_clock::time_point m_StartClock;
 	bool m_Started = false;
-	float m_MusicTime = 0.0f;
-	float m_Bpm = 120.0f;	//BPMメタデータから読み込み
-	float m_CountInTime = 0.0f;   // カウントインの長さ（1小節分の秒数）
-	int m_CountInNextBeat = 0;    // 次に鳴らすべき拍番号（0始まり）
+	float m_MusicTime = 0.0f;		// 現在の楽曲内時刻（カウントイン中は負の値）
+	float m_Bpm = 120.0f;			// メタデータから読み込むBPM
+	float m_CountInTime = 0.0f;	// カウントインの長さ（1小節分の秒数）
+	int m_CountInNextBeat = 0;		// 次に鳴らすべきカウントインの拍番号
 
-	int m_BeatsPerBar = 4;	//拍子メタデータから読み込み
-	int m_Combo = 0;
-	//判定
+	int m_BeatsPerBar = 4;	// 拍子（メタデータから読み込み）
+	int m_Combo = 0;		// 現在のコンボ数
+
+	// ── 判定カウント ──
 	int m_Perfect = 0;
 	int m_Great = 0;
 	int m_Good = 0;
 	int m_Miss = 0;
 
-	float m_ComboPopTimer = 0.0f;
-	float m_NuberSplite_Size = 80.0f;
+	float m_ComboPopTimer = 0.0f;		// コンボ数字が拡大表示される残り時間
+	float m_NuberSplite_Size = 80.0f;	// コンボ数字1桁の表示サイズ
 
-	//判定値
+	// ── 判定タイミングの許容誤差（秒）。値が小さいほどシビア ──
 	static constexpr float kPerfect = 0.02f;
 	static constexpr float kGreat = 0.04f;
-	static constexpr float kGud = 0.06f;
+	static constexpr float kGud = 0.06f;			// この範囲を過ぎたら自動ミス
+	static constexpr float kLongTickInterval = 0.2f;	// ロングノーツの継続判定(tick)間隔
 
+	bool m_PrevLaneKeyDown[6] = { false,false,false,false,false,false }; // （現状未使用。将来の押した瞬間検出用に予約）
+
+	// ── ノーツの位置補間 ──
+	// TAP/FLICK用：spawnPos〜judgePosを [0,1] にクランプして補間（ベジェ対応）
 	DirectX::SimpleMath::Vector3 EvaluateNotePosition(const ChartNote& note, float now) const;
-	void JudgeLane(int key, int laneIndex);
+	// LONGNOTE用：spawnPos〜judgePosを「クランプせず」直線補間（先端が判定ラインを越えても進み続けられるように）
+	DirectX::SimpleMath::Vector3 EvaluateLongNotePosition(const ChartNote& note, float now) const;
 
-	// ── 判定エフェクトのフック（後で差し替え予定）──────────────
-	//   ここに回転する四角バーストの描画を実装する。
+	// ── 判定処理 ──
+	void JudgeLane(int key, int laneIndex);	// TAPノーツ：キーを押した瞬間の判定
+	void JudgeFlickNotes();					// FLICKノーツ：時間ウィンドウ内でサイド一致を判定
+	void JudgeLongNoteHold();					// LONGNOTE：押し始め〜押しっぱなし〜離すを判定
+
+	// ── ホーミングビーム ──
+	void UpdateHomingBeams(float deltaTime);	// 状態遷移（探索→ロック→発射→解決）とプレイヤー移動更新
+	void InitBeamScatter(ChartHomingBeam& beam);	// 探索中に表示するバラけた線の初期位置を決める
+	void DrawBeamSegment(Camera* cam,				// from→to の間にビームモデルを引き伸ばして1本描画
+		const DirectX::SimpleMath::Vector3& from,
+		const DirectX::SimpleMath::Vector3& to,
+		float thicknessX, float thicknessY);
+	void DrawHomingBeams(Camera* cam);				// 全ビームの描画をまとめて行う
+
+	// ── ロングノーツ描画（sentan/dou/oの3パーツ） ──
+	void DrawLongNotes(Camera* cam);
+	// ── フリックノーツ描画 ──
+	void DrawFlickNotes(Camera* cam);
+
+	// ── 判定ヒット時のフック：コンボ加算＋パーティクル生成 ──
 	void OnJudge(int laneIndex, int rank); // rank: 0=PERFECT 1=GREAT 2=GOOD
 };
-

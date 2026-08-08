@@ -1,4 +1,15 @@
+#define NOMINMAX
 #include "sound.h"
+#include <mfapi.h>
+#include <mfidl.h>
+#include <mfreadwrite.h>
+#include <algorithm>
+#include <mferror.h>
+#include <string>
+#include <vector>
+#pragma comment(lib, "mfplat.lib")
+#pragma comment(lib, "mfreadwrite.lib")
+#pragma comment(lib, "mfuuid.lib")
 
 #ifdef _XBOX //Big-Endian
 #define fourccRIFF 'RIFF'
@@ -15,6 +26,7 @@
 #define fourccWAVE 'EVAW'
 #define fourccXWMA 'AMWX'
 #define fourccDPDS 'sdpd'
+
 #endif
 
 //=============================================================================
@@ -32,6 +44,14 @@ HRESULT Sound::Init()
 	// COMの初期化
 	hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	if (FAILED(hr)) {
+		CoUninitialize();
+		return -1;
+	}
+
+	//Media Foundationの初期か
+	hr = MFStartup(MF_VERSION);
+	if (FAILED(hr))
+	{
 		CoUninitialize();
 		return -1;
 	}
@@ -59,40 +79,76 @@ HRESULT Sound::Init()
 		memset(&m_wfx[i], 0, sizeof(WAVEFORMATEXTENSIBLE));
 		memset(&m_buffer[i], 0, sizeof(XAUDIO2_BUFFER));
 
-		hFile = CreateFileA(m_param[i].filename, GENERIC_READ, FILE_SHARE_READ, NULL,
-			OPEN_EXISTING, 0, NULL);
-		if (hFile == INVALID_HANDLE_VALUE) {
-			return HRESULT_FROM_WIN32(GetLastError());
+		std::string path = m_param[i].filename;
+		std::string ext = path.substr(path.find_last_of(".") + 1);
+		for (auto& c : ext) c = (char)tolower((unsigned char)c);
+
+		bool loaded = false;
+
+		if (ext == "mp3")
+		{
+			DWORD dataSize = 0;
+			HRESULT hrLocal = LoadMp3AsPCM(m_param[i].filename, m_wfx[i], m_DataBuffer[i], dataSize);
+			if (SUCCEEDED(hrLocal))
+			{
+				m_buffer[i].AudioBytes = dataSize;
+				m_buffer[i].pAudioData = m_DataBuffer[i];
+				m_buffer[i].Flags = XAUDIO2_END_OF_STREAM;
+				m_buffer[i].LoopCount = m_param[i].bLoop ? XAUDIO2_LOOP_INFINITE : 0;
+				loaded = true;
+			}
+			else
+			{
+				char buf[256];
+				sprintf_s(buf, "[Sound] mp3 load failed idx=%d hr=0x%08X (%s)\n", i, hrLocal, m_param[i].filename);
+				OutputDebugStringA(buf);
+			}
 		}
-		if (SetFilePointer(hFile, 0, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
-			return HRESULT_FROM_WIN32(GetLastError());
-		}
-
-		//check the file type, should be fourccWAVE or 'XWMA'
-		FindChunk(hFile, fourccRIFF, dwChunkSize, dwChunkPosition);
-		ReadChunkData(hFile, &filetype, sizeof(DWORD), dwChunkPosition);
-		if (filetype != fourccWAVE)		return S_FALSE;
-
-		FindChunk(hFile, fourccFMT, dwChunkSize, dwChunkPosition);
-		ReadChunkData(hFile, &m_wfx[i], dwChunkSize, dwChunkPosition);
-
-		//fill out the audio data buffer with the contents of the fourccDATA chunk
-		FindChunk(hFile, fourccDATA, dwChunkSize, dwChunkPosition);
-		m_DataBuffer[i] = new BYTE[dwChunkSize];
-		ReadChunkData(hFile, m_DataBuffer[i], dwChunkSize, dwChunkPosition);
-
-		CloseHandle(hFile);
-
-		// 	サブミットボイスで利用するサブミットバッファの設定
-		m_buffer[i].AudioBytes = dwChunkSize;
-		m_buffer[i].pAudioData = m_DataBuffer[i];
-		m_buffer[i].Flags = XAUDIO2_END_OF_STREAM;
-		if (m_param[i].bLoop)
-			m_buffer[i].LoopCount = XAUDIO2_LOOP_INFINITE;
 		else
-			m_buffer[i].LoopCount = 0;
+		{
+			HANDLE hFileLocal = CreateFileA(m_param[i].filename, GENERIC_READ, FILE_SHARE_READ, NULL,
+				OPEN_EXISTING, 0, NULL);
+			if (hFileLocal == INVALID_HANDLE_VALUE)
+			{
+				char buf[256];
+				sprintf_s(buf, "[Sound] wav open failed idx=%d (%s)\n", i, m_param[i].filename);
+				OutputDebugStringA(buf);
+			}
+			else
+			{
+				// ここは元のFindChunk等の処理をそのまま実行
+				DWORD dwChunkSize2, dwChunkPosition2, filetype2;
+				SetFilePointer(hFileLocal, 0, NULL, FILE_BEGIN);
+				FindChunk(hFileLocal, fourccRIFF, dwChunkSize2, dwChunkPosition2);
+				ReadChunkData(hFileLocal, &filetype2, sizeof(DWORD), dwChunkPosition2);
 
-		m_pXAudio2->CreateSourceVoice(&m_pSourceVoice[i], &(m_wfx[i].Format));
+				if (filetype2 == fourccWAVE)
+				{
+					FindChunk(hFileLocal, fourccFMT, dwChunkSize2, dwChunkPosition2);
+					ReadChunkData(hFileLocal, &m_wfx[i], dwChunkSize2, dwChunkPosition2);
+
+					FindChunk(hFileLocal, fourccDATA, dwChunkSize2, dwChunkPosition2);
+					m_DataBuffer[i] = new BYTE[dwChunkSize2];
+					ReadChunkData(hFileLocal, m_DataBuffer[i], dwChunkSize2, dwChunkPosition2);
+
+					m_buffer[i].AudioBytes = dwChunkSize2;
+					m_buffer[i].pAudioData = m_DataBuffer[i];
+					m_buffer[i].Flags = XAUDIO2_END_OF_STREAM;
+					m_buffer[i].LoopCount = m_param[i].bLoop ? XAUDIO2_LOOP_INFINITE : 0;
+					loaded = true;
+				}
+				CloseHandle(hFileLocal);
+			}
+		}
+
+		if (loaded)
+		{
+			m_pXAudio2->CreateSourceVoice(&m_pSourceVoice[i], &(m_wfx[i].Format));
+		}
+		else
+		{
+			m_pSourceVoice[i] = nullptr; // 未ロード分は明示的にnullへ
+		}
 	}
 
 	return hr;
@@ -111,12 +167,15 @@ void Sound::Uninit(void)
 			m_pSourceVoice[i]->FlushSourceBuffers();
 			m_pSourceVoice[i]->DestroyVoice();			// オーディオグラフからソースボイスを削除
 			delete[]  m_DataBuffer[i];
+			m_DataBuffer[i] = nullptr;
 		}
 	}
 
-	m_pMasteringVoice->DestroyVoice();
+	if (m_pMasteringVoice)m_pMasteringVoice->DestroyVoice();
 
 	if (m_pXAudio2) m_pXAudio2->Release();
+
+	MFShutdown();
 
 	// COMの破棄
 	CoUninitialize();
@@ -129,17 +188,16 @@ void Sound::Play(SOUND_LABEL label)
 {
 	IXAudio2SourceVoice*& pSV = m_pSourceVoice[(int)label];
 
-	if (pSV != nullptr)
-	{
-		pSV->DestroyVoice();
-		pSV = nullptr;
-	}
+	if (!pSV) return;
 
-	// ソースボイス作成
-	m_pXAudio2->CreateSourceVoice(&pSV, &(m_wfx[(int)label].Format));
-	pSV->SubmitSourceBuffer(&(m_buffer[(int)label]));	// ボイスキューに新しいオーディオバッファーを追加
+	XAUDIO2_BUFFER buffer = m_buffer[(int)label];
+	buffer.PlayBegin = m_playPos[(int)label]; // 一時停止位置から再生
+	buffer.PlayLength = 0;
+	buffer.LoopCount = m_param[(int)label].bLoop ? XAUDIO2_LOOP_INFINITE : 0;
 
-	// 再生
+	pSV->Stop(0);
+	pSV->FlushSourceBuffers();
+	pSV->SubmitSourceBuffer(&buffer);
 	pSV->Start(0);
 
 }
@@ -149,14 +207,27 @@ void Sound::Play(SOUND_LABEL label)
 //=============================================================================
 void Sound::Stop(SOUND_LABEL label)
 {
-	if (m_pSourceVoice[(int)label] == NULL) return;
+	IXAudio2SourceVoice* pSV = m_pSourceVoice[(int)label];
+	if (!pSV) return;
 
-	XAUDIO2_VOICE_STATE xa2state;
-	m_pSourceVoice[(int)label]->GetState(&xa2state);
-	if (xa2state.BuffersQueued)
-	{
-		m_pSourceVoice[(int)label]->Stop(0);
-	}
+	pSV->Stop(0);
+	pSV->FlushSourceBuffers();
+	m_playPos[(int)label] = 0;
+}
+
+//=============================================================================
+// 一時停止
+//=============================================================================
+void Sound::Pause(SOUND_LABEL label)
+{
+	IXAudio2SourceVoice* pSV = m_pSourceVoice[(int)label];
+	if (!pSV) return;
+
+	pSV->Stop(0);
+
+	XAUDIO2_VOICE_STATE state;
+	pSV->GetState(&state);
+	m_playPos[(int)label] = state.SamplesPlayed; // サンプル単位で位置保存
 }
 
 //=============================================================================
@@ -164,8 +235,40 @@ void Sound::Stop(SOUND_LABEL label)
 //=============================================================================
 void Sound::Resume(SOUND_LABEL label)
 {
-	IXAudio2SourceVoice*& pSV = m_pSourceVoice[(int)label];
-	pSV->Start();
+	Play(label);
+}
+
+//=============================================================================
+// 再生位置変更
+//=============================================================================
+void Sound::SetPlayPositionSeconds(SOUND_LABEL label, float seconds)
+{
+	if (seconds < 0.0f) seconds = 0.0f;
+
+	const int index = (int)label;
+	const UINT32 sampleRate = m_wfx[index].Format.nSamplesPerSec;
+	const UINT32 blockAlign = m_wfx[index].Format.nBlockAlign;
+	const UINT32 totalSamples = blockAlign > 0 ? m_buffer[index].AudioBytes / blockAlign : 0;
+
+	UINT32 sample = (UINT32)(seconds * sampleRate);
+	if (totalSamples > 0 && sample >= totalSamples)
+	{
+		sample = totalSamples - 1;
+	}
+
+	m_playPos[index] = sample;
+}
+
+void Sound::SeekSeconds(SOUND_LABEL label, float seconds)
+{
+	SetPlayPositionSeconds(label, seconds);
+	Play(label);
+}
+void Sound::SetVolume(SOUND_LABEL label, float volume)
+{
+	if (m_pSourceVoice[(int)label] == nullptr) return;
+
+	m_pSourceVoice[(int)label]->SetVolume(volume);
 }
 
 
@@ -225,4 +328,69 @@ HRESULT Sound::ReadChunkData(HANDLE hFile, void* buffer, DWORD buffersize, DWORD
 	if (0 == ReadFile(hFile, buffer, buffersize, &dwRead, NULL))
 		hr = HRESULT_FROM_WIN32(GetLastError());
 	return hr;
+}
+
+HRESULT Sound::LoadMp3AsPCM(LPCSTR filename, WAVEFORMATEXTENSIBLE& outWfx, BYTE*& outData, DWORD& outSize)
+{
+	HRESULT hr = S_OK;
+
+	// ファイルパスをワイド文字列に変換
+	wchar_t wpath[MAX_PATH];
+	MultiByteToWideChar(CP_UTF8, 0, filename, -1, wpath, MAX_PATH);
+
+	IMFSourceReader* pReader = nullptr;
+	hr = MFCreateSourceReaderFromURL(wpath, nullptr, &pReader);
+	if (FAILED(hr)) return hr;
+
+	// 出力フォーマットをPCM(非圧縮)に指定する
+	IMFMediaType* pPCMType = nullptr;
+	MFCreateMediaType(&pPCMType);
+	pPCMType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+	pPCMType->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
+	pReader->SetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM, nullptr, pPCMType);
+
+	// 実際に決定されたフォーマットを取得
+	IMFMediaType* pActualType = nullptr;
+	pReader->GetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM, &pActualType);
+
+	WAVEFORMATEX* pWfx = nullptr;
+	UINT32 wfxSize = 0;
+	MFCreateWaveFormatExFromMFMediaType(pActualType, &pWfx, &wfxSize);
+	memcpy(&outWfx, pWfx, std::min(sizeof(WAVEFORMATEXTENSIBLE), (size_t)wfxSize));
+	CoTaskMemFree(pWfx);
+
+	// サンプルを1つずつ読み込んでPCMデータを連結していく
+	std::vector<BYTE> pcmData;
+	while (true)
+	{
+		DWORD flags = 0;
+		IMFSample* pSample = nullptr;
+		hr = pReader->ReadSample((DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM,
+			0, nullptr, &flags, nullptr, &pSample);
+		if (FAILED(hr)) break;
+		if (flags & MF_SOURCE_READERF_ENDOFSTREAM) break;
+		if (!pSample) continue;
+
+		IMFMediaBuffer* pBuffer = nullptr;
+		pSample->ConvertToContiguousBuffer(&pBuffer);
+
+		BYTE* pAudioData = nullptr;
+		DWORD dataLen = 0;
+		pBuffer->Lock(&pAudioData, nullptr, &dataLen);
+		pcmData.insert(pcmData.end(), pAudioData, pAudioData + dataLen);
+		pBuffer->Unlock();
+
+		pBuffer->Release();
+		pSample->Release();
+	}
+
+	outSize = (DWORD)pcmData.size();
+	outData = new BYTE[outSize];
+	memcpy(outData, pcmData.data(), outSize);
+
+	pActualType->Release();
+	pPCMType->Release();
+	pReader->Release();
+
+	return S_OK;
 }

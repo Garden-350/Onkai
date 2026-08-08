@@ -115,6 +115,7 @@
     <ClCompile Include="sound.cpp">
       <Filter>ソースファイル\Sound</Filter>
     </ClCompile>
+    <ClCompile Include="PostFlashEffect.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -232,6 +233,7 @@
     <ClInclude Include="sound.h">
       <Filter>ヘッダーファイル\Sound</Filter>
     </ClInclude>
+    <ClInclude Include="PostFlashEffect.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">
@@ -285,5 +287,13 @@
     <Filter Include="ヘッダーファイル\Sound">
       <UniqueIdentifier>{3d9e283b-60fa-4058-91eb-552818fc01cf}</UniqueIdentifier>
     </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="FullscreenVS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </None>
+    <None Include="PostFlashPS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </None>
   </ItemGroup>
 </Project>

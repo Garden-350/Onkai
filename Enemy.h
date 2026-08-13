@@ -19,9 +19,11 @@ public:
 
 	DirectX::SimpleMath::Vector3 GetPosition() const { return m_Position; }
 private:
-	float m_Size = 40.0f;
+	float m_Size = 0.1f;
 
-	Shader m_shader;
+	DirectX::SimpleMath::Vector3 m_Position = DirectX::SimpleMath::Vector3(0.0f, 250.0f, 90.0f);
+	DirectX::SimpleMath::Vector3 m_Rotation = DirectX::SimpleMath::Vector3::Zero;
+	Shader m_Shader; // m_shaderのままだとPlayer同様タイポの温床になるので大文字に統一推奨
 	MeshRenderer m_MeshRenderer;
 	std::vector<SUBSET> m_Subsets;
 	std::vector<std::unique_ptr<Texture>> m_Textures;

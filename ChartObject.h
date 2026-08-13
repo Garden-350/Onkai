@@ -13,7 +13,9 @@
 #include <memory>
 #include <chrono>
 #include "Particle.h"
+#include "MagicCircleQuad.h"
 
+class Player;
 class Enemy;
 
 // ============================================================
@@ -125,6 +127,14 @@ struct ChartHomingBeam
 	DirectX::SimpleMath::Vector3 scatterOffsets[kScatterCount]; // 各線のランダムな初期オフセット
 };
 
+struct BeamShaderParms
+{
+	float time;
+	float intensity;
+	float padding0[2];
+	DirectX::SimpleMath::Vector4 baseColor;
+};	//sizeof == 32 (16の倍数ならOK)
+
 // ============================================================
 // ChartObject : エディターが吐き出した .json 譜面を読み込んで
 //               実際にノーツ/ビームを流し、判定するプレイ専用オブジェクト。
@@ -145,6 +155,8 @@ public:
 	// ビームの発射元座標として Enemy を紐付ける（Stage1Sceneから呼ぶ）
 	void SetEnemyRef(Enemy* enemy) { m_EnemyRef = enemy; }
 
+	void SetPlayerRef(Player* player) { m_PlayerRef = player; }
+
 	// 判定結果の参照用
 	int GetPerfectCount() const { return m_Perfect; }
 	int GetGreatCount()   const { return m_Great; }
@@ -163,6 +175,7 @@ private:
 	Sound sound;
 	Shader m_Shader;
 	MeshRenderer m_MeshRenderer;
+	MagicCircleQuad m_MagicCircleQuad;
 	RingQuad m_ApproachRing;		// 接近リング（判定ラインに近づくほど大きく濃くなる）
 	ParticleQuad m_ParticleQuad;	// 判定ヒット時の花びらパーティクル
 	Texture2D m_LaneIcons[6];		// S/D/F/J/K/Lアイコン（画面固定2D）
@@ -179,6 +192,8 @@ private:
 	std::vector<std::unique_ptr<Texture>> m_Textures;
 	std::chrono::steady_clock::time_point m_LastUpdateClock;
 	float m_NoteScale = 15.0f;	// TAPモデルの表示スケール
+
+	void DrawSpawnMagicCircle(Camera* cam, const ChartNote& note);
 
 	// ────────────────────────────────────────
 	// ロングノーツ用モデル（sentan=先端／dou=本体(鎖)／o=終端の輪）
@@ -221,6 +236,7 @@ private:
 	// ────────────────────────────────────────
 	bool m_BeamModelLoaded = false;
 	MeshRenderer m_BeamMeshRenderer;
+	Texture m_BeamNoiseTexture;
 	Shader m_BeamShader;
 	std::vector<SUBSET> m_BeamSubsets;
 	std::vector<std::unique_ptr<Material>> m_BeamMaterials;
@@ -234,6 +250,7 @@ private:
 	float m_ShakeStrength = 0.0f;
 	float m_FlashTimer = 0.0f;
 	float m_FlashDuration = 0.0f;
+	float m_BeamShaderTime = 0.0f;
 	
 	void TriggerScreenShake(float duration, float strength);
 	void TriggerFlash(float duration);
@@ -249,11 +266,12 @@ private:
 	Enemy* m_EnemyRef = nullptr;	// ビームの発射元座標を取得するための参照
 
 	// ── プレイヤーの左右移動（S/D/F=右, J/K/L=左）──
-	int   m_PlayerSide = 0;			// 現在の入力サイド(-1/0/1)
-	float m_PlayerVisualX = 0.0f;		// 見た目上のX座標（補間で追従させる）
-	DirectX::SimpleMath::Vector3 m_PlayerBasePos{ 0.0f, -55.0f, -260.0f }; // プレイヤーの基準座標。実際の見た目に合わせて要調整
-	float m_PlayerMoveRange = 100.0f;	// 左右移動時のX方向の振れ幅。要調整
-	float m_PlayerMoveSpeed = 800.0f;	// 移動の補間速度。要調整
+	Player* m_PlayerRef = nullptr;
+	//int   m_PlayerSide = 0;			// 現在の入力サイド(-1/0/1)
+	//float m_PlayerVisualX = 0.0f;		// 見た目上のX座標（補間で追従させる）
+	//DirectX::SimpleMath::Vector3 m_PlayerBasePos{ 0.0f, -55.0f, -260.0f }; // プレイヤーの基準座標。実際の見た目に合わせて要調整
+	//float m_PlayerMoveRange = 100.0f;	// 左右移動時のX方向の振れ幅。要調整
+	//float m_PlayerMoveSpeed = 800.0f;	// 移動の補間速度。要調整
 
 	// ── 再生時間管理（BGM同期はスコープ外。経過時間ベースで進める）──
 	std::chrono::steady_clock::time_point m_StartClock;
@@ -301,6 +319,14 @@ private:
 		const DirectX::SimpleMath::Vector3& from,
 		const DirectX::SimpleMath::Vector3& to,
 		float thicknessX, float thicknessY);
+	void DrawBeamSegmentWithColor(Camera* cam, const DirectX::SimpleMath::Vector3& from,
+		const DirectX::SimpleMath::Vector3& to, float thicknessX, float thicknessY,
+		const DirectX::SimpleMath::Vector3& baseColor, float intensity);
+	void DrawJudggedBeam(Camera* cam, const DirectX::SimpleMath::Vector3& from,
+		const DirectX::SimpleMath::Vector3& to, float thickness,
+		const DirectX::SimpleMath::Vector3& color, float intensity,
+		int segments = 6, float jitter = 15.0f);
+
 	void DrawHomingBeams(Camera* cam);				// 全ビームの描画をまとめて行う
 
 	// ── ロングノーツ描画（sentan/dou/oの3パーツ） ──
@@ -309,5 +335,5 @@ private:
 	void DrawFlickNotes(Camera* cam);
 
 	// ── 判定ヒット時のフック：コンボ加算＋パーティクル生成 ──
-	void OnJudge(int laneIndex, int rank); // rank: 0=PERFECT 1=GREAT 2=GOOD
+	void OnJudge(int laneIndex, int rank); // rank: 0=PERFECT; 1=GREAT 2=GOOD
 };

@@ -1,21 +1,22 @@
-#include "Stage1Scene.h"
+ï»¿#include "Stage1Scene.h"
 #include "Game.h"
 #include "Input.h"
 #include "ChartObject.h"
 #include "SkyBox.h"
 #include "Enemy.h"
+#include "Player.h"
 
 using namespace DirectX::SimpleMath;
 
 
 
-// ƒRƒ“ƒXƒgƒ‰ƒNƒ^
+// ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 Stage1Scene::Stage1Scene()
 {
 	Init();
 }
 
-// ƒfƒXƒgƒ‰ƒNƒ^
+// ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 Stage1Scene::~Stage1Scene()
 {
 	Uninit();
@@ -23,43 +24,45 @@ Stage1Scene::~Stage1Scene()
 
 
 
-// ‰Šú‰»
+// åˆæœŸåŒ–
 void Stage1Scene::Init()
 {
-	// ƒIƒuƒWƒFƒNƒg‚ðì¬
-	//‚±‚±‚ÅƒJƒƒ‰ŒÅ’è‚µ‚Ä‚Ü‚·B•K—v‚È‚ç•Ï”‚Å“®‚­‚æ‚¤‚É‚µ‚Ä‚ ‚°‚Ä‚Ë
+	// æ¨ªã‹ã‚‰ã®æ–œã‚è¦‹ä¸‹ã‚ã—è¦–ç‚¹ï¼š
+	// ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®æ–œã‚å¾Œæ–¹ãƒ»å°‘ã—ä¸Šã‹ã‚‰ã€å¥¥ã®æ•µæ–¹å‘ã‚’è¦‹ä¸‹ã‚ã™
 	Game::GetInstance()->GetCamera()->SetFixedPose(
-		Vector3(50.0f, -30.0f, -600.0f),   // ƒJƒƒ‰ˆÊ’uFƒvƒŒƒCƒ„[‚É‹ß‚¢‚‚³E­‚µŽè‘O
-		Vector3(0.0f, 120.0f, 400.0f)     // ’Ž‹“_F“G‚ª‚¢‚é‚‚¢ˆÊ’uE‰œ‚Ì‚Ù‚¤‚Ö
+		Vector3(0.0f, 300.0f, -850.0f),   // ã‚«ãƒ¡ãƒ©ä½ç½®ï¼šãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®ã‚„ã‚„ä¸Šãƒ»å¾Œæ–¹
+		Vector3(0.0f, 100.0f, -300.0f)      // æ³¨è¦–ç‚¹ï¼šå¥¥(æ•µæ–¹å‘)ã®å°‘ã—é«˜ã„ä½ç½®
 	);
-	//•ˆ–ÊÄ¶ƒIƒuƒWƒFƒNƒg‚ð¶¬‚µ‚ÄJSON‚ðƒ[ƒh
-	// ‚½‚Ô‚ñ‚¤‚Ü‚­‚¢‚Á‚Ä‚é
-	auto* skybox = Game::GetInstance()->AddObject<SkyBox>();
-	m_MySceneObjects.emplace_back(skybox);
-	auto* player = Game::GetInstance()->AddObject<ChartObject>();
-	player->LoadChart("0808");	//charts/chartname.json‚ð“Ç‚Ýž‚Ý
-	m_MySceneObjects.emplace_back(player);
+
+	//auto* skybox = Game::GetInstance()->AddObject<SkyBox>();
+	//m_MySceneObjects.emplace_back(skybox);
+	auto* chart = Game::GetInstance()->AddObject<ChartObject>();
+	chart->LoadChart("taptest");
+	m_MySceneObjects.emplace_back(chart);
 	auto* enemy = Game::GetInstance()->AddObject<Enemy>();
 	m_MySceneObjects.emplace_back(enemy);
-	player->SetEnemyRef(enemy);
+	auto* player = Game::GetInstance()->AddObject<Player>();
+	m_MySceneObjects.emplace_back(player);
+	chart->SetEnemyRef(enemy);
+	chart->SetPlayerRef(player);
 }
 
 
 
-//XV
+//æ›´æ–°
 void Stage1Scene::Update()
 {
-	// ƒGƒ“ƒ^[ƒL[‚ð‰Ÿ‚µ‚Äƒ^ƒCƒgƒ‹‚Ö
+	// ã‚¨ãƒ³ã‚¿ãƒ¼ã‚­ãƒ¼ã‚’æŠ¼ã—ã¦ã‚¿ã‚¤ãƒˆãƒ«ã¸
 	if (Input::GetKeyTrigger(VK_RETURN))
 	{
 		Game::GetInstance()->ChangeScene(RESULT);
 	}
 }
 
-// I—¹ˆ—
+// çµ‚äº†å‡¦ç†
 void Stage1Scene::Uninit()
 {
-	// ‚±‚ÌƒV[ƒ“‚ÌƒIƒuƒWƒFƒNƒg‚ðíœ‚·‚é
+	// ã“ã®ã‚·ãƒ¼ãƒ³ã®ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’å‰Šé™¤ã™ã‚‹
 	for (auto& o : m_MySceneObjects) {
 		Game::GetInstance()->DeleteObject(o);
 	}

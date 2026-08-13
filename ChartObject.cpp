@@ -4,6 +4,7 @@
 #include "Camera.h"
 #include "Input.h"
 #include "Game.h"
+#include "Player.h"
 #include "Application.h"
 #include "sound.h"
 #include "Enemy.h"
@@ -234,24 +235,37 @@ void ChartObject::Init()
 		m_BeamMeshRenderer, m_BeamShader, m_BeamSubsets, m_BeamMaterials, m_BeamTextures);
 	if (!m_BeamModelLoaded)
 		OutputDebugStringA("[ChartObject] Beam model not found. Beam will not be drawn.\n");
+	if (m_BeamModelLoaded)
+	{
+		m_BeamShader.Create("shader/litTextureVS.hlsl", "shader/beamPS.hlsl");
+		m_BeamShader.CreatePSConstantBuffer(sizeof(BeamShaderParms));
+
+		if (!m_BeamNoiseTexture.Load("assets/texture/noise.png"))
+		{
+			std::cout << ("[ChartObject] Beam noise texture not found.\n");
+		}
+	}
 
 	// ── 判定円の初期配置（JSONにjudgeCirclesが無い旧フォーマット用のデフォルト値）──
+// ── 判定円の初期配置（JSONにjudgeCirclesが無い旧フォーマット用のデフォルト値）──
 	m_JudgeCircles.resize(6);
+	// ChartObject::Init 内
 	for (int i = 0; i < 6; i++)
 	{
 		m_JudgeCircles[i].lane = i;
-		float laneX = -310.0f + (660.0f / 6.0f) * i + (660.0f / 12.0f);
+		float laneX = -310.0f + (1660.0f / 6.0f) * i + (1660.0f / 12.0f);
 		ChartCircleKeyframe key;
 		key.time = 0.0f;
 		key.x = -laneX;
-		key.y = -55.0f;
-		key.z = -210.0f;
+		key.y = -20.0f;     // -55→-20 (プレイヤーとのY差を少し詰める)
+		key.z = 300.0f;     // 150→300 (カメラから適度に離す)
 		m_JudgeCircles[i].keyframe.push_back(key);
 	}
 
 	// ── 接近リング・パーティクルの画像セット ──
 	m_ApproachRing.Init("assets/texture/ring.png");
 	m_ParticleQuad.Init("assets/texture/sakura2.png");
+	m_MagicCircleQuad.Init("assets/texture/magic-circle.png");
 
 	// ── レーンアイコン(S/D/F/J/K/L)のセットアップ ──
 	const char* iconPaths[6] = {
@@ -262,7 +276,7 @@ void ChartObject::Init()
 	{
 		m_LaneIcons[i].Init();
 		m_LaneIcons[i].SetTexture(iconPaths[i]);
-		m_LaneIcons[i].SetScale(170.0f, 170.0f, 1.0f);
+		m_LaneIcons[i].SetScale(70.0f, 70.0f, 1.0f);
 	}
 
 	// ── コンボ数字(3桁分)のセットアップ ──
@@ -377,8 +391,8 @@ bool ChartObject::LoadChart(const std::string& name)
 			}
 			else
 			{
-				float laneX = -310.0f + (660.0f / 6.0f) * note.lane + (660.0f / 12.0f);
-				note.spawnPos = Vector3(-laneX, -55.0f, 1000.0f);
+				float laneX = -310.0f + (1660.0f / 6.0f) * note.lane + (1660.0f / 12.0f);
+				note.spawnPos = Vector3(-laneX, -55.0f, -210.0f);
 			}
 
 			// 判定位置（無ければレーン番号から自動配置）
@@ -472,12 +486,28 @@ bool ChartObject::LoadChart(const std::string& name)
 	m_Great = 0;
 	m_Good = 0;
 	m_Miss = 0;
-	m_PlayerSide = 0;
-	m_PlayerVisualX = 0.0f;
 
 	OutputDebugStringA(("[ChartPlayObject] Loaded: charts/" + name + ".json notes=" +
 		std::to_string(m_Notes.size()) + " beams=" + std::to_string(m_HomingBeams.size()) + "\n").c_str());
 	return true;
+}
+
+void ChartObject::DrawSpawnMagicCircle(Camera* cam, const ChartNote& note)
+{
+	float st = note.GetSpawnTime();
+	float et = note.IsLong() ? note.arrivalTime : note.time;	//判定・到達時刻で描画終了
+	if (m_MusicTime < st || m_MusicTime > et) return;
+
+	float duration = et - st;
+	float progress = (duration > 0.0001f) ? (m_MusicTime - st) / duration : 1.0f;
+	progress = std::clamp(progress, 0.0f, 1.0f);
+
+	Vector3 pos = note.spawnPos;	//出現地点に固定
+
+	Vector3 glowColor(0.8f, 0.2, 1.0f);
+	Vector3 tintColor(0.05f, 0.05f, 0.05f);
+
+	m_MagicCircleQuad.Draw(pos, 80.0f, progress, glowColor, tintColor);
 }
 
 // side > 0 : S/D/F側(index 0,1,2)、side <= 0 : J/K/L側(index 3,4,5)
@@ -590,6 +620,7 @@ void ChartObject::Update()
 	const float deltaTime =
 		std::chrono::duration<float>(nowClock - m_LastUpdateClock).count();
 	m_LastUpdateClock = nowClock;
+	m_BeamShaderTime += deltaTime;
 
 	//画面シェイク
 	if (m_ShakeTimer > 0.0f)
@@ -762,8 +793,9 @@ void ChartObject::JudgeFlickNotes()
 
 		float diff = n.time - m_MusicTime;    // 正：まだ来ていない　負：過ぎた
 		int requiredSide = n.IsFlickRight() ? 1 : -1; // 右フリックなら1、左フリックなら-1
+		int currentSide = m_PlayerRef ? m_PlayerRef->GetSide() : 0;
 
-		if (fabsf(diff) <= kGud && m_PlayerSide == requiredSide)
+		if (fabsf(diff) <= kGud && currentSide == requiredSide)
 		{
 			float absDiff = fabsf(diff);
 			int rank = (absDiff < kPerfect) ? 0 : (absDiff < kGreat) ? 1 : 2;
@@ -895,28 +927,15 @@ void ChartObject::InitBeamScatter(ChartHomingBeam& beam)
 // ============================================================
 void ChartObject::UpdateHomingBeams(float deltaTime)
 {
-	// ── プレイヤーの入力サイド判定（S/D/F=右、J/K/L=左。エディタと同じ割り当て）──
-	if (GetAsyncKeyState('S') & 0x8000 || GetAsyncKeyState('D') & 0x8000 || GetAsyncKeyState('F') & 0x8000)
-		m_PlayerSide = 1;
-	else if (GetAsyncKeyState('J') & 0x8000 || GetAsyncKeyState('K') & 0x8000 || GetAsyncKeyState('L') & 0x8000)
-		m_PlayerSide = -1;
-	else
-		m_PlayerSide = 0;
-
-	// ── プレイヤー見た目位置の補間（急に瞬間移動しないよう最大移動量を制限）──
-	float targetX = m_PlayerSide * m_PlayerMoveRange;
-	float diff = targetX - m_PlayerVisualX;
-	float maxStep = m_PlayerMoveSpeed * deltaTime;
-	if (fabsf(diff) <= maxStep) m_PlayerVisualX = targetX;
-	else m_PlayerVisualX += (diff > 0.0f ? maxStep : -maxStep);
+	// ── プレイヤー側の状態はPlayerクラスから取得（入力判定・移動補間はPlayer::Updateで実施済み）──
+	int playerSide = m_PlayerRef ? m_PlayerRef->GetSide() : 0;
 
 	// ── 各ビームの状態遷移 ──
 	for (auto& beam : m_HomingBeams)
 	{
 		if (beam.state == ChartHomingBeam::State::Resolved) continue;
-		if (m_MusicTime < beam.chargeTime) continue; // まだ探索開始時刻に達していない
+		if (m_MusicTime < beam.chargeTime) continue;
 
-		// ── タンタンタン：chargeTime〜lockTimeをkSearchBeatCount等分した時刻に鳴らす ──
 		{
 			float total = beam.lockTime - beam.chargeTime;
 			if (total < 0.01f) total = 0.01f;
@@ -926,7 +945,7 @@ void ChartObject::UpdateHomingBeams(float deltaTime)
 				float beatTime = beam.chargeTime + beatInterval * beam.searchBeatsPlayed;
 				if (m_MusicTime >= beatTime)
 				{
-					sound.Play(SOUND_BEAM_SARCH); // タン（サウンドラベル未定義のためコメントアウト中。用意でき次第有効化）
+					sound.Play(SOUND_BEAM_SARCH);
 					beam.searchBeatsPlayed++;
 				}
 				else break;
@@ -935,26 +954,23 @@ void ChartObject::UpdateHomingBeams(float deltaTime)
 
 		if (beam.state == ChartHomingBeam::State::Homing)
 		{
-			// タンを規定回数鳴らし終えた瞬間、ロック確定
 			if (!beam.judgmentLocked && beam.searchBeatsPlayed >= ChartHomingBeam::kSearchBeatCount)
 			{
 				beam.judgmentLocked = true;
 				if (!beam.lockSoundPlayed)
 				{
-					sound.Play(SOUND_BEAM_DECITION); // カン
+					sound.Play(SOUND_BEAM_DECITION);
 					beam.lockSoundPlayed = true;
 				}
 			}
 
-			// ロックされるまでは、通常通りプレイヤーの位置を追従する
 			if (!beam.judgmentLocked)
 			{
-				beam.lockedSide = m_PlayerSide;
-				beam.lockedPos = GetPlayerSideAnchor(m_PlayerSide);
-				beam.lockedPos.x += m_PlayerSide * m_PlayerMoveRange;
+				beam.lockedSide = playerSide;
+				beam.lockedPos = GetPlayerSideAnchor(playerSide);
+				beam.lockedPos.x += playerSide * 150.0f; // 旧m_PlayerMoveRange相当。必要ならPlayer::GetMoveRange()を公開して参照
 			}
 
-			// 発射時刻に到達したら発射状態へ
 			if (m_MusicTime >= beam.lockTime)
 			{
 				if (!beam.fireSoundPlayed)
@@ -963,37 +979,53 @@ void ChartObject::UpdateHomingBeams(float deltaTime)
 					beam.fireSoundPlayed = true;
 				}
 				beam.state = ChartHomingBeam::State::Fired;
-				beam.nextCountTime = m_MusicTime + ChartHomingBeam::kCountInterval; // 命中判定の初回時刻をセット
+
+				// 初回の判定タイミングは lockTime から開始する（必要なら + interval）
+				beam.nextCountTime = beam.lockTime;
 			}
 		}
 		else if (beam.state == ChartHomingBeam::State::Fired)
 		{
-			// 命中判定終了時刻に到達したら解決済みへ
 			if (m_MusicTime >= beam.hitTime)
 			{
 				beam.state = ChartHomingBeam::State::Resolved;
 			}
-			else if (m_MusicTime >= beam.nextCountTime && beam.nextCountTime < beam.hitTime)
+			else
 			{
-				// 一定間隔ごとに、プレイヤーがロック位置と異なるサイドにいれば回避成功
-				bool dodged = (m_PlayerSide != beam.lockedSide);
-				if (dodged) 
-				{
-					m_Perfect++;
-					TriggerScreenShake(0.1f, 4.0f);
+				// kCountInterval の安全コピー
+				const float interval = ChartHomingBeam::kCountInterval;
+				if (interval <= 0.0f) {
+					// 安全策：不正値なら解決して抜ける
+					beam.state = ChartHomingBeam::State::Resolved;
 				}
-				else
-				{
-					m_Miss++;
-					TriggerScreenShake(0.25f, 15.0f);	//揺れ幅15px,0.25s
-					TriggerFlash(0.15f);				//白フラッシュ0.15s
+				else {
+					// 複数カウント分を取りこぼさないよう while で処理する
+					while (beam.nextCountTime < beam.hitTime && m_MusicTime >= beam.nextCountTime)
+					{
+						bool dodged = (playerSide != beam.lockedSide);
+						if (dodged)
+						{
+							m_Perfect++;
+							TriggerScreenShake(0.1f, 4.0f);
+						}
+						else
+						{
+							m_Miss++;
+							TriggerScreenShake(0.25f, 15.0f);
+							TriggerFlash(0.15f);
+						}
+
+						// advance (繰り越しを残すため -= ではなく +=)
+						beam.nextCountTime += interval;
+
+						// safety: ループが止まらない可能性を防ぐ（万一のため）
+						if (interval <= 0.0f) break;
+					}
 				}
-				beam.nextCountTime += ChartHomingBeam::kCountInterval;
 			}
 		}
 	}
 }
-
 // ============================================================
 // OnJudge : 判定がヒットした瞬間に呼ばれるフック。
 //   コンボを加算し、判定円の位置に花びらパーティクルを100個生成する。
@@ -1062,12 +1094,101 @@ void ChartObject::DrawBeamSegment(Camera* cam,
 		0.0f, 0.0f, 0.0f, 1.0f
 	);
 
+	Renderer::SetBlendState(BS_ADDITIVE);
+
+	auto drawLayer = [&](float scaleMul)
+		{
+			Matrix world =
+				Matrix::CreateScale(thicknessX * scaleMul, thicknessY * scaleMul, len / m_BeamModelLength) *
+				basis *
+				Matrix::CreateTranslation(mid);
+			DrawModel(m_BeamMeshRenderer, m_BeamShader, m_BeamSubsets, m_BeamMaterials, m_BeamTextures, world);
+		};
+	// 外側から描くと、内側の明るいコアが最後に重なって一番目立つ
+	drawLayer(0.3f);   // グロー：太く薄く広がる外周
+	drawLayer(0.6f);   // ミッド：中間の明るさ
+	drawLayer(1.0f);   // コア：細く一番明るい芯
+
+	Renderer::SetBlendState(BS_NONE);
+
+	//Matrix world =
+	//	Matrix::CreateScale(thicknessX, thicknessY, len / m_BeamModelLength) *
+	//	basis *
+	//	Matrix::CreateTranslation(mid);
+
+	//DrawModel(m_BeamMeshRenderer, m_BeamShader, m_BeamSubsets, m_BeamMaterials, m_BeamTextures, world);
+}
+
+void ChartObject::DrawBeamSegmentWithColor(Camera* cam, const DirectX::SimpleMath::Vector3& from, const DirectX::SimpleMath::Vector3& to, float thicknessX, float thicknessY, const DirectX::SimpleMath::Vector3& baseColor, float intensity)
+{
+	if (!m_BeamModelLoaded) return;
+
+	Vector3 dir = to - from;
+	float len = dir.Length();
+	if (len < 0.01f) return;
+	dir.Normalize();
+
+	Vector3 upHint = Vector3::Up;
+	if (fabsf(dir.Dot(upHint)) > 0.98f) upHint = Vector3::Right;
+	Vector3 right = upHint.Cross(dir);
+	right.Normalize();
+	Vector3 up = dir.Cross(right);
+	up.Normalize();
+	Vector3 mid = from + dir * (len * 0.5f);
+
+	Matrix basis(
+		right.x, right.y, right.z, 0.0f,
+		up.x, up.y, up.z, 0.0f,
+		dir.x, dir.y, dir.z, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	);
+
+	//シェーダー適用
+	m_BeamShader.SetGPU();
+
+	BeamShaderParms parms = {};
+	parms.time = m_BeamShaderTime;
+	parms.intensity = intensity;
+	parms.baseColor = DirectX::SimpleMath::Vector4(baseColor.x, baseColor.y, baseColor.z, 1.0f);
+	m_BeamShader.UpdatePSConstantBuffer(&parms, sizeof(parms));
+
+	//ノイズテクスチャをt0にセット
+	m_BeamNoiseTexture.SetGPU();
+
 	Matrix world =
 		Matrix::CreateScale(thicknessX, thicknessY, len / m_BeamModelLength) *
 		basis *
 		Matrix::CreateTranslation(mid);
 
-	DrawModel(m_BeamMeshRenderer, m_BeamShader, m_BeamSubsets, m_BeamMaterials, m_BeamTextures, world);
+	Matrix worldCopy = world;
+	Renderer::SetWorldMatrix(&worldCopy);
+	m_BeamMeshRenderer.BeforeDraw();
+	for (size_t i = 0; i < m_BeamSubsets.size(); i++)
+	{
+		m_BeamMeshRenderer.DrawSubset(
+			m_BeamSubsets[i].IndexNum,
+			m_BeamSubsets[i].IndexBase,
+			m_BeamSubsets[i].VertexBase
+		);
+	}
+}
+
+void ChartObject::DrawJudggedBeam(Camera* cam, const DirectX::SimpleMath::Vector3& from, const DirectX::SimpleMath::Vector3& to, float thickness, const DirectX::SimpleMath::Vector3& color, float intensity, int segments, float jitter)
+{
+	Vector3 prev = from;
+	for (int i = 1; i <= segments; i++)
+	{
+		float t = (float)i / segments;
+		Vector3 base = from + (to - from) * t;
+		if (i != segments)
+		{
+			float ox = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * jitter;
+			float oy = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * jitter;
+			base += Vector3(ox, oy, 0.0f);
+		}
+		DrawBeamSegmentWithColor(cam, prev, base, thickness, thickness, color, intensity);
+		prev = base;
+	}
 }
 
 // ============================================================
@@ -1087,6 +1208,7 @@ void ChartObject::DrawHomingBeams(Camera* cam)
 
 	cam->SetCamera(0);
 	Renderer::SetBlendState(BS_ALPHABLEND);
+	//Renderer::SetBlendState(BS_NONE);
 
 	for (auto& beam : m_HomingBeams)
 	{
@@ -1096,7 +1218,10 @@ void ChartObject::DrawHomingBeams(Camera* cam)
 		// ロック確定済みならロック座標へ、まだならプレイヤーの現在位置へ収束させる
 		Vector3 lockTarget = beam.judgmentLocked
 			? beam.lockedPos
-			: GetPlayerSideAnchor(m_PlayerSide);
+			: GetPlayerSideAnchor(m_PlayerRef ? m_PlayerRef->GetSide() : 0);
+
+		Vector3 color = (beam.state == ChartHomingBeam::State::Fired)
+			? Vector3(1.0f, 0.0f, 0.0f) : Vector3(1.0f, 0.0f, 0.0f);
 
 		if (beam.state == ChartHomingBeam::State::Homing)
 		{
@@ -1113,12 +1238,13 @@ void ChartObject::DrawHomingBeams(Camera* cam)
 				Vector3 to = scatterPos + (lockTarget - scatterPos) * easedT;
 
 				float thick = 2.0f + easedT * 4.0f; // 収束が進むほど少し太くする
-				DrawBeamSegment(cam, beamOrigin, to, thick, thick);
+				float intensity = 0.4f + easedT * 0.6f;
+				DrawBeamSegmentWithColor(cam, beamOrigin, to, thick, thick, color, intensity);
 			}
 		}
 		else // Fired：発射済みなので1本の太いビームを描画
 		{
-			DrawBeamSegment(cam, beamOrigin, beam.lockedPos, 15.0f, 15.0f);
+			DrawJudggedBeam(cam, beamOrigin, beam.lockedPos, 15.0f, color, 1.0f);
 		}
 	}
 
@@ -1270,6 +1396,12 @@ void ChartObject::Draw(Camera* cam)
 	// 3Dカメラを再アサート（他オブジェクトがTexture2Dで2Dに切り替えている場合があるため）
 	cam->SetCamera(0);
 
+	Renderer::SetBlendState(BS_ALPHABLEND);
+	for (auto& note : m_Notes)
+	{
+		if (note.judged) continue;
+		DrawSpawnMagicCircle(cam, note);
+	}
 	Renderer::SetBlendState(BS_NONE);
 
 	// ── TAPノーツ本体の描画 ──

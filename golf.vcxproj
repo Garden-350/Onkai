@@ -152,11 +152,13 @@
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Ground.cpp" />
     <ClCompile Include="input.cpp" />
+    <ClCompile Include="MagicCircleQuad.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Note.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="Particle.cpp" />
     <ClCompile Include="ParticleQuad.cpp" />
+    <ClCompile Include="Player.cpp" />
     <ClCompile Include="PostFlashEffect.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="ResultScene.cpp" />
@@ -189,6 +191,7 @@
     <ClInclude Include="Ground.h" />
     <ClInclude Include="IndexBuffer.h" />
     <ClInclude Include="input.h" />
+    <ClInclude Include="MagicCircleQuad.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Mesh.h" />
@@ -197,6 +200,7 @@
     <ClInclude Include="Object.h" />
     <ClInclude Include="Particle.h" />
     <ClInclude Include="ParticleQuad.h" />
+    <ClInclude Include="Player.h" />
     <ClInclude Include="PostFlashEffect.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="ResultScene.h" />
@@ -233,6 +237,18 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <FileType>Document</FileType>
     </None>
+    <FxCompile Include="shader\magicCireclePS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="shader\beamPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
     <FxCompile Include="shader\common.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

@@ -16,6 +16,12 @@
     <FxCompile Include="shader\unlitTextureVS.hlsl">
       <Filter>リソースファイル</Filter>
     </FxCompile>
+    <FxCompile Include="shader\beamPS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\magicCireclePS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChartObject.cpp">
@@ -116,6 +122,8 @@
       <Filter>ソースファイル\Sound</Filter>
     </ClCompile>
     <ClCompile Include="PostFlashEffect.cpp" />
+    <ClCompile Include="Player.cpp" />
+    <ClCompile Include="MagicCircleQuad.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -234,6 +242,8 @@
       <Filter>ヘッダーファイル\Sound</Filter>
     </ClInclude>
     <ClInclude Include="PostFlashEffect.h" />
+    <ClInclude Include="Player.h" />
+    <ClInclude Include="MagicCircleQuad.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">

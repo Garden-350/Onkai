@@ -7,8 +7,8 @@ void Enemy::Init()
 
 	mesh.Load(
 		//‚±‚±‚É3Dƒ‚ƒfƒ‹‚ğ“Ç‚İ‚±‚İ ¡‰¼•\¦‚ ‚Æ‚ÅlŠp‚Ì‚â‚Âì‚Á‚Ä‚Ë
-		"assets/model/rock/r.fbx",
-		"assets/model/r"
+		"assets/model/Enemy/enemy.fbx",
+		"assets/model/Enemy"
 	);
 
 	m_MeshRenderer.Init(mesh);
@@ -33,7 +33,6 @@ void Enemy::Init()
 
 void Enemy::Update()
 {
-	m_Position.y = 150.0f;
 	m_Rotation.y += 0.1f;
 }
 

@@ -124,6 +124,7 @@
     <ClCompile Include="PostFlashEffect.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="MagicCircleQuad.cpp" />
+    <ClCompile Include="SelectScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -244,6 +245,10 @@
     <ClInclude Include="PostFlashEffect.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="MagicCircleQuad.h" />
+    <ClInclude Include="SelectScene.h" />
+    <ClInclude Include="ResultData.h">
+      <Filter>ヘッダーファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">

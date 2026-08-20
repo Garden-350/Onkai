@@ -162,11 +162,22 @@ public:
 	int GetGreatCount()   const { return m_Great; }
 	int GetGoodCount()    const { return m_Good; }
 	int GetMissCount()    const { return m_Miss; }
+	int GetMaxComboCount() const { return m_MaxCombo; }
 
 	float GetFlashAlpha()
 	{
 		return (m_FlashDuration > 0.0001f) ? (m_FlashTimer / m_FlashDuration) : 0.0f;
 	}
+	//曲が最後まで再生したか
+	bool IsAudioFinish() const
+	{
+		if (m_AudioFile.empty()) return false;
+		float duration = sound.GetDynamicDurationSeconds();
+		if (duration <= 0.0f) return false;
+		return m_MusicTime >= duration;
+	}
+
+	void DrawLaneGuideLines(Camera* cam);
 
 private:
 	// ────────────────────────────────────────
@@ -191,6 +202,7 @@ private:
 	std::vector<std::unique_ptr<Material>> m_Materials;
 	std::vector<std::unique_ptr<Texture>> m_Textures;
 	std::chrono::steady_clock::time_point m_LastUpdateClock;
+	std::string m_AudioFile;
 	float m_NoteScale = 15.0f;	// TAPモデルの表示スケール
 
 	void DrawSpawnMagicCircle(Camera* cam, const ChartNote& note);
@@ -257,7 +269,7 @@ private:
 
 
 	// ────────────────────────────────────────
-	// 譜面データ本体（LoadChartで詰められる）
+	// 譜面データ本体
 	// ────────────────────────────────────────
 	std::vector<ChartNote> m_Notes;
 	std::vector<ChartJudgeCircle> m_JudgeCircles;	// レーン0〜5に対応
@@ -276,6 +288,7 @@ private:
 	// ── 再生時間管理（BGM同期はスコープ外。経過時間ベースで進める）──
 	std::chrono::steady_clock::time_point m_StartClock;
 	bool m_Started = false;
+	bool m_AudioStarted = false;	//音楽再生をスタートしたか
 	float m_MusicTime = 0.0f;		// 現在の楽曲内時刻（カウントイン中は負の値）
 	float m_Bpm = 120.0f;			// メタデータから読み込むBPM
 	float m_CountInTime = 0.0f;	// カウントインの長さ（1小節分の秒数）
@@ -289,6 +302,7 @@ private:
 	int m_Great = 0;
 	int m_Good = 0;
 	int m_Miss = 0;
+	int m_MaxCombo = 0;
 
 	float m_ComboPopTimer = 0.0f;		// コンボ数字が拡大表示される残り時間
 	float m_NuberSplite_Size = 80.0f;	// コンボ数字1桁の表示サイズ
@@ -336,4 +350,15 @@ private:
 
 	// ── 判定ヒット時のフック：コンボ加算＋パーティクル生成 ──
 	void OnJudge(int laneIndex, int rank); // rank: 0=PERFECT; 1=GREAT 2=GOOD
+
+	static DirectX::SimpleMath::Vector3 GetLaneColor(int lane)
+	{
+		switch (lane)
+		{
+		case 0: case 3: return DirectX::SimpleMath::Vector3(1.0f, 0.15f, 0.15f); // S, J = 赤
+		case 1: case 4: return DirectX::SimpleMath::Vector3(0.2f, 0.4f, 1.0f);   // D, K = 青
+		case 2: case 5: return DirectX::SimpleMath::Vector3(0.2f, 1.0f, 0.3f);   // F, L = 緑
+		default: return DirectX::SimpleMath::Vector3(1.0f, 1.0f, 1.0f);
+		}
+	}
 };

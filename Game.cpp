@@ -38,7 +38,7 @@ void Game::Init()
 	m_Instance->m_PostFlash.Init(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	//最初のシーンを読み込む
-	m_Instance->m_Scene = new Stage1Scene;
+	m_Instance->m_Scene = new SelectScene;
 }
 
 // 更新
@@ -146,6 +146,10 @@ void Game::ChangeScene(SceneName sName)
 	{
 	case TITLE:
 		m_Instance->m_Scene = new TitleScene;
+		break;
+
+	case SELECT:
+		m_Instance->m_Scene = new SelectScene;
 		break;
 
 	case STAGE1:

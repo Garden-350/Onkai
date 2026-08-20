@@ -174,13 +174,13 @@ static void DrawModel(MeshRenderer& renderer, Shader& shader,
 // ============================================================
 void ChartObject::Init()
 {
-	// ── サウンドエンジン初期化 ──
+	// サウンドエンジン初期化 
 	sound.Init();
 
-	// ── TAPノーツ本体モデルのロード（これは必須。無いと何も表示されない）──
+	//  TAPノーツ本体モデルのロード（これは必須。無いと何も表示されない）
 	StaticMesh staticmesh;
-	std::string modelFile = "assets/model/note/music_sord_1.obj";
-	std::string texDirectory = "assets/model/note";
+	std::string modelFile = "assets/model/maru/maru.fbx";
+	std::string texDirectory = "assets/model/maru";
 
 	staticmesh.Load(modelFile, texDirectory);
 	m_MeshRenderer.Init(staticmesh);
@@ -344,6 +344,21 @@ bool ChartObject::LoadChart(const std::string& name)
 	if (root.Has("beatsPerBar")) m_BeatsPerBar = root["beatsPerBar"].AsInt(m_BeatsPerBar);
 	else if (root.Has("meta") && root["meta"].Has("beatsPerBar")) m_BeatsPerBar = root["meta"]["beatsPerBar"].AsInt(m_BeatsPerBar);
 
+	// ── 音声ファイル名の読み込み ──
+	if (root.Has("audioFile"))
+		m_AudioFile = root["audioFile"].AsString("");
+	else if (root.Has("meta") && root["meta"].Has("audioFile"))
+		m_AudioFile = root["meta"]["audioFile"].AsString("");
+	else
+		m_AudioFile = "";
+
+	if (!m_AudioFile.empty())
+	{
+		std::string fullPath = "assets/bgm/" + m_AudioFile; //曲を読み込んだ際は絶対にエディターで使ってる曲を入れること
+		HRESULT hr = sound.LoadDynamic(fullPath, true);
+		if (FAILED(hr))
+			OutputDebugStringA(("[ChartObject] Failed to load audio: " + fullPath + "\n").c_str());
+	}
 	m_Notes.clear();
 	m_HomingBeams.clear();
 
@@ -481,6 +496,7 @@ bool ChartObject::LoadChart(const std::string& name)
 
 	// ── 再生開始状態にリセット ──
 	m_Started = false;
+	m_AudioStarted = false;
 	m_MusicTime = 0.0f;
 	m_Perfect = 0;
 	m_Great = 0;
@@ -490,6 +506,28 @@ bool ChartObject::LoadChart(const std::string& name)
 	OutputDebugStringA(("[ChartPlayObject] Loaded: charts/" + name + ".json notes=" +
 		std::to_string(m_Notes.size()) + " beams=" + std::to_string(m_HomingBeams.size()) + "\n").c_str());
 	return true;
+}
+
+void ChartObject::DrawLaneGuideLines(Camera* cam)
+{
+	if (!m_BeamModelLoaded) return; // 線描画にはビームモデルの仕組みを流用しているため必須
+
+	for (auto& note : m_Notes)
+	{
+		if (note.judged) continue;
+
+		float st = note.GetSpawnTime();
+		float et = note.IsLong() ? note.arrivalTime : note.time;
+		if (m_MusicTime < st || m_MusicTime > et) continue;
+
+		Vector3 color = GetLaneColor(note.lane);
+
+		// ノーツ本体と同じ出現点・判定点を線の両端にする
+		Vector3 from = note.spawnPos;
+		Vector3 to = note.judgePos;
+
+		DrawBeamSegmentWithColor(cam, from, to, 3.0f, 3.0f, color, 0.1f);
+	}
 }
 
 void ChartObject::DrawSpawnMagicCircle(Camera* cam, const ChartNote& note)
@@ -507,7 +545,7 @@ void ChartObject::DrawSpawnMagicCircle(Camera* cam, const ChartNote& note)
 	Vector3 glowColor(0.8f, 0.2, 1.0f);
 	Vector3 tintColor(0.05f, 0.05f, 0.05f);
 
-	m_MagicCircleQuad.Draw(pos, 80.0f, progress, glowColor, tintColor);
+	m_MagicCircleQuad.Draw(pos, 200.0f, progress, glowColor, tintColor);
 }
 
 // side > 0 : S/D/F側(index 0,1,2)、side <= 0 : J/K/L側(index 3,4,5)
@@ -617,6 +655,16 @@ void ChartObject::Update()
 	// カウントイン中は-m_CountInTime〜0秒になり、0秒が譜面再生開始時刻
 	m_MusicTime = elapsed - m_CountInTime;
 
+	//m_MusicTime >= 0 に音楽再生を開始
+	if (!m_AudioStarted && m_MusicTime >= 0.0f)
+	{
+		m_AudioStarted = true;
+		if (!m_AudioFile.empty())
+		{
+			sound.PlayDynamic();
+		}
+	}
+
 	const float deltaTime =
 		std::chrono::duration<float>(nowClock - m_LastUpdateClock).count();
 	m_LastUpdateClock = nowClock;
@@ -691,7 +739,7 @@ void ChartObject::Update()
 			if (m_MusicTime < beatTime) break; // まだこの拍のタイミングに来ていない
 
 			bool isLastBeat = (m_CountInNextBeat == m_BeatsPerBar - 1);
-			sound.Play(isLastBeat ? SOUND_LABEL_METRO_TI : SOUND_LABEL_METRO_KATI);
+			sound.Play(isLastBeat ? SOUND_LABEL_METRO_KATI : SOUND_LABEL_METRO_TI);
 			m_CountInNextBeat++;
 		}
 	}
@@ -718,7 +766,7 @@ void ChartObject::Update()
 		float cueTime = note.time - secondPerBar;
 		if (m_MusicTime >= cueTime)
 		{
-			sound.Play(SOUND_SEKKIN);	//いる？
+			//sound.Play(SOUND_SEKKIN);	//いる？
 			note.approcachPlayed = true;
 		}
 	}
@@ -1033,6 +1081,7 @@ void ChartObject::UpdateHomingBeams(float deltaTime)
 void ChartObject::OnJudge(int laneIndex, int rank)
 {
 	m_Combo++;
+	if (m_Combo > m_MaxCombo) m_MaxCombo = m_Combo;
 	m_ComboPopTimer = 0.15f; // コンボ数字が一瞬拡大表示される演出用タイマー
 
 	if (laneIndex < 0 || laneIndex >= 6) return;
@@ -1404,6 +1453,10 @@ void ChartObject::Draw(Camera* cam)
 	}
 	Renderer::SetBlendState(BS_NONE);
 
+	Renderer::SetBlendState(BS_ADDITIVE);
+	DrawLaneGuideLines(cam);
+	Renderer::SetBlendState(BS_NONE);
+
 	// ── TAPノーツ本体の描画 ──
 	m_Shader.SetGPU();
 	m_MeshRenderer.BeforeDraw();
@@ -1418,25 +1471,63 @@ void ChartObject::Draw(Camera* cam)
 		if (m_MusicTime < st || m_MusicTime > et) continue;
 
 		Vector3 pos = EvaluateNotePosition(note, m_MusicTime);
-
-		Matrix s = Matrix::CreateScale(m_NoteScale);
-		Matrix t = Matrix::CreateTranslation(pos);
-		Matrix world = s * t;
-		Renderer::SetWorldMatrix(&world);
-
-		for (size_t i = 0; i < m_Subsets.size(); i++)
+		Vector3 laneColor = GetLaneColor(note.lane);
 		{
-			m_Materials[m_Subsets[i].MaterialIdx]->SetGPU();
-			if (m_Materials[m_Subsets[i].MaterialIdx]->isTextureEnable())
-				m_Textures[m_Subsets[i].MaterialIdx]->SetGPU();
+			Matrix world = Matrix::CreateScale(m_NoteScale) * Matrix::CreateTranslation(pos);
+			Renderer::SetWorldMatrix(&world);
 
-			m_MeshRenderer.DrawSubset(
-				m_Subsets[i].IndexNum,
-				m_Subsets[i].IndexBase,
-				m_Subsets[i].VertexBase
-			);
+			for (size_t i = 0; i < m_Subsets.size(); i++)
+			{
+				m_Materials[m_Subsets[i].MaterialIdx]->SetDiffuse(
+					DirectX::XMFLOAT4(laneColor.x, laneColor.y, laneColor.z, 1.0f)
+				);
+				m_Materials[m_Subsets[i].MaterialIdx]->SetEmission(
+					DirectX::XMFLOAT4(laneColor.z, laneColor.y, laneColor.z, 1.0f)
+				);
+				m_Materials[m_Subsets[i].MaterialIdx]->Update();
+
+				m_Materials[m_Subsets[i].MaterialIdx]->SetGPU();
+				if (m_Materials[m_Subsets[i].MaterialIdx]->isTextureEnable())
+					m_Textures[m_Subsets[i].MaterialIdx]->SetGPU();
+
+				m_MeshRenderer.DrawSubset(
+					m_Subsets[i].IndexNum,
+					m_Subsets[i].IndexBase,
+					m_Subsets[i].VertexBase
+				);
+			}
+		}
+
+		//Matrix s = Matrix::CreateScale(m_NoteScale);
+		//Matrix t = Matrix::CreateTranslation(pos);
+		//Matrix world = s * t;
+		//Renderer::SetWorldMatrix(&world);
+
+
+		//グロー処理
+		{
+			Renderer::SetBlendState(BS_ADDITIVE);
+			Matrix world = Matrix::CreateScale(m_NoteScale * 1.6f) * Matrix::CreateTranslation(pos);
+			Renderer::SetWorldMatrix(&world);
+
+			for (size_t i = 0; i < m_Subsets.size(); i++)
+			{
+				m_Materials[m_Subsets[i].MaterialIdx]->SetDiffuse(
+					DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));	//光源反射なし
+				m_Materials[m_Subsets[i].MaterialIdx]->SetEmission(
+					DirectX::XMFLOAT4(laneColor.x * 0.5f, laneColor.y * 0.5f, laneColor.z * 0.5f, 1.0f));
+				m_Materials[m_Subsets[i].MaterialIdx]->Update();
+				m_Materials[m_Subsets[i].MaterialIdx]->SetGPU();
+				m_MeshRenderer.DrawSubset(
+					m_Subsets[i].IndexNum,
+					m_Subsets[i].IndexBase,
+					m_Subsets[i].VertexBase
+				);
+			}
+			Renderer::SetBlendState(BS_NONE);
 		}
 	}
+
 
 	// ── ロングノーツ・フリックノーツの描画 ──
 	DrawLongNotes(cam);
@@ -1591,4 +1682,5 @@ void ChartObject::Draw(Camera* cam)
 // ============================================================
 void ChartObject::Uninit()
 {
+	sound.StopDynamic();
 }

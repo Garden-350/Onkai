@@ -1,16 +1,18 @@
 #pragma once
 
 #include <xaudio2.h>
+#include <string>
 
 // サウンドファイル
 typedef enum
 {
-	SOUND_LABEL_METRO_KATI,
-	SOUND_LABEL_METRO_TI,
+	SOUND_LABEL_SE001,
+	SOUND_LABEL_SE002,
 	SOUND_BEAM_SARCH,
 	SOUND_BEAM_DECITION,
 	SOUND_BEAM_FIRING,
-	SOUND_SEKKIN,
+	SOUND_LABEL_METRO_TI,
+	SOUND_LABEL_METRO_KATI,
 
 	SOUND_LABEL_BGM001,
 	SOUND_LABEL_BGM002,
@@ -38,7 +40,8 @@ private:
 		{"assets/se/beam_sarch.mp3",false},
 		{"assets/se/beam_kakutei.mp3",false},
 		{"assets/se/beam_Go.wav",false},
-		{"assets/se/Pary.wav",false},
+		{"assets/se/メトロノームのカチッ.wav",false},
+		{"assets/se/メトロノームのチーン.wav",false},
 
 		{"assets/bgm/mirror.wav", true},
 		{"assets/bgm/maou_bgm_piano39.wav", true},
@@ -46,12 +49,19 @@ private:
 
 	IXAudio2* m_pXAudio2 = NULL;
 	IXAudio2MasteringVoice* m_pMasteringVoice = NULL;
-	IXAudio2SourceVoice* m_pSourceVoice[SOUND_LABEL_MAX] = { nullptr };
+	IXAudio2SourceVoice* m_pSourceVoice[SOUND_LABEL_MAX];
 	WAVEFORMATEXTENSIBLE m_wfx[SOUND_LABEL_MAX]; // WAVフォーマット
 	XAUDIO2_BUFFER m_buffer[SOUND_LABEL_MAX];
 	BYTE* m_DataBuffer[SOUND_LABEL_MAX];
 
 	UINT32 m_playPos[SOUND_LABEL_MAX] = { 0 };
+	IXAudio2SourceVoice* m_pDynamicVoice = nullptr;
+	WAVEFORMATEXTENSIBLE  m_dynamicWfx = {};
+	XAUDIO2_BUFFER        m_dynamicBuffer = {};
+	BYTE* m_dynamicData = nullptr;
+	UINT32                m_dynamicPlayPos = 0;
+	bool                  m_dynamicLoop = true;
+	std::string           m_dynamicLoadedPath;
 
 	HRESULT FindChunk(HANDLE, DWORD, DWORD&, DWORD&);
 	HRESULT ReadChunkData(HANDLE, void*, DWORD, DWORD);
@@ -80,4 +90,13 @@ public:
 
 	void SetVolume(SOUND_LABEL label, float volume);
 
+	HRESULT LoadDynamic(const std::string& path, bool loop = true);
+	void PlayDynamic();
+	void StopDynamic();
+	void PauseDynamic();
+	void ResumeDynamic();
+	void SetPlayPositionSecondsDynamic(float seconds);
+	void SeekSecondsDynamic(float seconds);
+	void SetVolumeDynamic(float volume);
+	float GetDynamicDurationSeconds() const;
 };

@@ -50,6 +50,10 @@ public:
 	{
 		return type == Type::Number ? static_cast<int>(numberValue) : def;
 	}
+	std::string AsString(const std::string& def = "") const
+	{
+		return type == Type::String ? stringValue : def;
+	}
 };
 
 class SimpleJson

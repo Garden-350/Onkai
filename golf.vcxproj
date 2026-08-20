@@ -164,6 +164,7 @@
     <ClCompile Include="ResultScene.cpp" />
     <ClCompile Include="RingQuad.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="SelectScene.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="SkyBox.cpp" />
     <ClCompile Include="sound.cpp" />
@@ -203,9 +204,11 @@
     <ClInclude Include="Player.h" />
     <ClInclude Include="PostFlashEffect.h" />
     <ClInclude Include="Renderer.h" />
+    <ClInclude Include="ResultData.h" />
     <ClInclude Include="ResultScene.h" />
     <ClInclude Include="RingQuad.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="SelectScene.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="SimpleJson.h" />
     <ClInclude Include="SkyBox.h" />

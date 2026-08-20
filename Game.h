@@ -3,16 +3,21 @@
 
 #include "Renderer.h"
 #include "TitleScene.h"
+#include "SelectScene.h"
 #include "Stage1Scene.h"
 #include "ResultScene.h"
 #include "Note.h"
 #include "PostFlashEffect.h"
+#include "ResultData.h"
 
 enum SceneName {
 	TITLE,
+	SELECT,
 	STAGE1,
 	RESULT
 };
+
+
 
 class Game
 {
@@ -27,10 +32,12 @@ private:
 	Note m_Note;
 	PostFlashEffect m_PostFlash;
 
-	
+	ResultData m_LastResult;
+
 	//オブジェクト配列
 	std::vector<std::unique_ptr<Object>>m_Objects;
 	std::vector<std::unique_ptr<Object>> m_AddBuffer;
+	std::string m_SelectedChart = "beam_2";
 
 public:
 	Game(); // コンストラクタ
@@ -40,6 +47,12 @@ public:
 	static void Update(); // 更新
 	static void Draw(); // 描画
 	static void Uninit(); // 終了処理
+
+	static void SetSelectedChart(const std::string& name) { m_Instance->m_SelectedChart = name; }
+	static const std::string& GetSelectedChart() { return m_Instance->m_SelectedChart; }
+
+	static void SetResultData(const ResultData& data) { m_Instance->m_LastResult = data; }
+	static const ResultData& GetResultData() { return m_Instance->m_LastResult; }
 
 	static Game* GetInstance();
 	Camera* GetCamera() { return &m_Camera; }

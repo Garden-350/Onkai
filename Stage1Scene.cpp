@@ -37,8 +37,9 @@ void Stage1Scene::Init()
 	//auto* skybox = Game::GetInstance()->AddObject<SkyBox>();
 	//m_MySceneObjects.emplace_back(skybox);
 	auto* chart = Game::GetInstance()->AddObject<ChartObject>();
-	chart->LoadChart("taptest");
+	chart->LoadChart(Game::GetInstance()->GetSelectedChart());
 	m_MySceneObjects.emplace_back(chart);
+	m_Chart = chart;
 	auto* enemy = Game::GetInstance()->AddObject<Enemy>();
 	m_MySceneObjects.emplace_back(enemy);
 	auto* player = Game::GetInstance()->AddObject<Player>();
@@ -55,7 +56,33 @@ void Stage1Scene::Update()
 	// エンターキーを押してタイトルへ
 	if (Input::GetKeyTrigger(VK_RETURN))
 	{
-		Game::GetInstance()->ChangeScene(RESULT);
+		SendResult();
+		return;
+	}
+
+	if (!m_Chart)return;
+
+	auto now = std::chrono::steady_clock::now();
+	if (!m_ClockInitialized)
+	{
+		m_LastUpdateClock = now;
+		m_ClockInitialized = true;
+	}
+	float dt = std::chrono::duration<float>(now - m_LastUpdateClock).count();
+	m_LastUpdateClock = now;
+
+	if (!m_AudioFinished && m_Chart->IsAudioFinish())
+	{
+		m_AudioFinished = true;
+		m_FinishWaitTimer = 0.0f;
+	}
+	if (m_AudioFinished)
+	{
+		m_FinishWaitTimer += dt;
+		if (m_FinishWaitTimer >= kResultDelaySeconds)
+		{
+			SendResult();
+		}
 	}
 }
 
@@ -67,5 +94,21 @@ void Stage1Scene::Uninit()
 		Game::GetInstance()->DeleteObject(o);
 	}
 	m_MySceneObjects.clear();
+}
+
+void Stage1Scene::SendResult()
+{
+	if (m_Chart)
+	{
+		ResultData result;
+		result.perfect = m_Chart->GetPerfectCount();
+		result.great = m_Chart->GetGreatCount();
+		result.good = m_Chart->GetGoodCount();
+		result.miss = m_Chart->GetMissCount();
+		result.maxCombo = m_Chart->GetMaxComboCount();
+		result.chartName = Game::GetInstance()->GetSelectedChart();
+		Game::SetResultData(result);
+	}
+	Game::GetInstance()->ChangeScene(RESULT);
 }
 

@@ -36,7 +36,7 @@ private:
 // 判定レーン(y=-55, z=-210)より手前・低い位置＝カメラに一番近い場所
 	DirectX::SimpleMath::Vector3 m_BasePosition = DirectX::SimpleMath::Vector3(0.0f, -60.0f, -380.0f);
 	DirectX::SimpleMath::Vector3 m_Position = DirectX::SimpleMath::Vector3(0.0f, -60.0f, -380.0f);
-	DirectX::SimpleMath::Vector3 m_Rotation = DirectX::SimpleMath::Vector3::Zero;
+	DirectX::SimpleMath::Vector3 m_Rotation = DirectX::SimpleMath::Vector3(1.57f, 0.0f, 0.0f);
 
 	// スケールは必ずVector3で持つ（float型だと等倍拡大しかできず桁を間違えやすい）
 	DirectX::SimpleMath::Vector3 m_Size = DirectX::SimpleMath::Vector3(0.25f, 0.25f, 0.25f);

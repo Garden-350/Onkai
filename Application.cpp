@@ -3,8 +3,8 @@
 #include "Application.h"
 #include "Game.h"
 
-const auto ClassName = TEXT("2025 framework ひな型");     //ウィンドウクラス名
-const auto WindowName = TEXT("2025 framework ひな型");    //ウィンドウ名
+const auto ClassName = TEXT("Sounder");     //ウィンドウクラス名
+const auto WindowName = TEXT("Sounder");    //ウィンドウ名
 
 HINSTANCE  Application::m_hInst;   // インスタンスハンドル
 HWND       Application::m_hWnd;    // ウィンドウハンドル
@@ -267,7 +267,7 @@ LRESULT CALLBACK Application::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
         break;
     case WM_CLOSE:  // 「x」ボタンが押されたら
     {
-        int res = MessageBoxA(NULL, "終了しますか？", "確認", MB_OKCANCEL);
+        int res = MessageBoxA(NULL, "Music End?", "YES", MB_OKCANCEL);
         if (res == IDOK) {
             DestroyWindow(hWnd);  // 「WM_DESTROY」メッセージを送る
         }

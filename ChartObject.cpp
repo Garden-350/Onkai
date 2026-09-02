@@ -20,6 +20,8 @@ using namespace DirectX::SimpleMath;
 // ============================================================
 namespace
 {
+	constexpr float kXScale = 1.7f;	//540にこの値を掛ける
+	constexpr float kEditorRawCenterX = -85.0f;
 	// 2つのVector3を線形補間する
 	Vector3 LerpVector3(const Vector3& a, const Vector3& b, float t)
 	{
@@ -174,6 +176,7 @@ static void DrawModel(MeshRenderer& renderer, Shader& shader,
 // ============================================================
 void ChartObject::Init()
 {
+	m_AutoMode = Game::GetInstance()->IsAutoMode();
 	// サウンドエンジン初期化 
 	sound.Init();
 
@@ -253,11 +256,11 @@ void ChartObject::Init()
 	for (int i = 0; i < 6; i++)
 	{
 		m_JudgeCircles[i].lane = i;
-		float laneX = -310.0f + (1660.0f / 6.0f) * i + (1660.0f / 12.0f);
+		float laneX = -50.0f + (1660.0f / 6.0f) * i + (1660.0f / 12.0f);
 		ChartCircleKeyframe key;
 		key.time = 0.0f;
 		key.x = -laneX;
-		key.y = -20.0f;     // -55→-20 (プレイヤーとのY差を少し詰める)
+		key.y = -50.0f;     // -55→-20 (プレイヤーとのY差を少し詰める)
 		key.z = 300.0f;     // 150→300 (カメラから適度に離す)
 		m_JudgeCircles[i].keyframe.push_back(key);
 	}
@@ -265,7 +268,7 @@ void ChartObject::Init()
 	// ── 接近リング・パーティクルの画像セット ──
 	m_ApproachRing.Init("assets/texture/ring.png");
 	m_ParticleQuad.Init("assets/texture/sakura2.png");
-	m_MagicCircleQuad.Init("assets/texture/magic-circle.png");
+	m_MagicCircleQuad.Init("assets/texture/magic-circle (1).png");
 
 	// ── レーンアイコン(S/D/F/J/K/L)のセットアップ ──
 	const char* iconPaths[6] = {
@@ -276,24 +279,24 @@ void ChartObject::Init()
 	{
 		m_LaneIcons[i].Init();
 		m_LaneIcons[i].SetTexture(iconPaths[i]);
-		m_LaneIcons[i].SetScale(70.0f, 70.0f, 1.0f);
+		m_LaneIcons[i].SetScale(120.0f, 120.0f, 1.0f);
 	}
 
-	// ── コンボ数字(3桁分)のセットアップ ──
-	for (int i = 0; i < 3; i++)
+	// ── コンボ数字(4桁分)のセットアップ ──
+	for (int i = 0; i < 4; i++)
 	{
 		m_ComboDigits[i].Init();
-		m_ComboDigits[i].SetTexture("assets/texture/number_2.png");
+		m_ComboDigits[i].SetTexture("assets/texture/allnumber_new.png");
 		m_ComboDigits[i].SetUV(1.0f, 1.0f, 10.0f, 1.0f); // 初期表示は "0"
 		m_ComboDigits[i].SetScale(m_NuberSplite_Size, m_NuberSplite_Size, 1.0f);
 	}
 
 	auto initDigitRow = [this](Texture2D* row)
 		{
-			for (int i = 0; i < 3; i++)
+			for (int i = 0; i < 4; i++)
 			{
 				row[i].Init();
-				row[i].SetTexture("assets/texture/number_2.png");
+				row[i].SetTexture("assets/texture/allnumber_new.png");
 				row[i].SetUV(1.0f, 1.0f, 10.0f, 1.0f);
 				row[i].SetScale(m_NuberSplite_Size * 0.6f, m_NuberSplite_Size * 0.6f, 1.0f); // コンボより小さめ
 			}
@@ -306,17 +309,30 @@ void ChartObject::Init()
 	// ── タイミングガイド：外枠と育つ四角のセットアップ ──
 	const char* guideTexturePath_out = "assets/texture/sotohako.png";
 	const char* guideTexturePath_in = "assets/texture/utihako.png";
-	float frameSize = 100.0f;
 	for (int i = 0; i < 6; i++)
 	{
 		m_LaneFrame[i].Init();
 		m_LaneFrame[i].SetTexture(guideTexturePath_out);
-		m_LaneFrame[i].SetScale(frameSize, frameSize, 1.0f);
+		m_LaneFrame[i].SetScale(m_FrameSize, m_FrameSize, 1.0f);
 
 		m_LaneFill[i].Init();
 		m_LaneFill[i].SetTexture(guideTexturePath_in);
-		m_LaneFill[i].SetScale(frameSize / 10, frameSize / 10, 1.0f);
+		m_LaneFill[i].SetScale(m_FrameSize / 10, m_FrameSize / 10, 1.0f);
 	}
+
+	m_JudgeRankPerfect.Init();
+	m_JudgeRankPerfect.SetTexture("assets/texture/PERFECT.png");
+	m_JudgeRankPerfect.SetScale(200.0f, 50.0f, 1.0f);
+
+	m_JudgeRankGreat.Init();
+	m_JudgeRankGreat.SetTexture("assets/texture/GREAT.png");
+	m_JudgeRankGreat.SetScale(200.0f, 50.0f, 1.0f);
+
+	m_JudgeRankGood.Init();
+	m_JudgeRankGood.SetTexture("assets/texture/GOOD.png");
+	m_JudgeRankGood.SetScale(200.0f, 50.0f, 1.0f);
+
+	m_BarrierQuad.Init();
 }
 
 // ============================================================
@@ -463,7 +479,10 @@ bool ChartObject::LoadChart(const std::string& name)
 				{
 					ChartCircleKeyframe key;
 					key.time = k["time"].AsFloat();
-					key.x = -k["x"].AsFloat();
+					float raw = k["x"].AsFloat();
+					float spread = raw - kEditorRawCenterX;              // 中心からのズレ量だけ取り出す
+					key.x = -(kEditorRawCenterX + spread * kXScale);     // 中心は固定、広がりだけ拡大
+
 					key.y = k["y"].AsFloat();
 					key.z = k["z"].AsFloat();
 					circle.keyframe.push_back(key);
@@ -575,6 +594,75 @@ void ChartObject::TriggerFlash(float duration)
 {
 	m_FlashDuration = duration;
 	m_FlashTimer = duration;
+}
+
+//オート用　到達時刻を過ぎたらパーフェクトに確定させる
+void ChartObject::UpdateAutoJudgge()
+{
+	for (auto& note : m_Notes)
+	{
+		if (note.judged) continue;
+
+		if (note.IsTap())
+		{
+			if (m_MusicTime >= note.time)
+			{
+				m_Perfect++;
+				sound.Play(SOUND_METAL_1);
+				OnJudge(note.lane, 0);
+				note.judged = true;
+			}
+		}
+		else if (note.IsFlick())
+		{
+			if (m_MusicTime >= note.time)
+			{
+				int laneFrom = note.lane;
+				int laneTo = (note.flickLaneTo >= 0) ? note.flickLaneTo : note.lane;
+				int lo = std::min(laneFrom, laneTo);
+				int hi = std::max(laneFrom, laneTo);
+
+				m_Perfect++;
+				for (int L = lo; L <= hi; L++)
+				{
+					if (L < 0 || L >= 6) continue;
+					OnJudge(L, 0);
+				}
+				note.judged = true;
+			}
+		}
+		else if (note.IsLong())
+		{
+			// 先端到達で自動的に押し始めが成立
+			if (!note.longStarted && m_MusicTime >= note.arrivalTime)
+			{
+				m_Perfect++;
+				sound.Play(SOUND_SUZU);
+				OnJudge(note.lane, 0);
+				note.longStarted = true;
+				note.nextTickTime = note.arrivalTime + kLongTickInterval;
+			}
+
+			// 押しっぱなし中の継続判定（オートなので常に成功）
+			if (note.longStarted)
+			{
+				while (note.nextTickTime <= m_MusicTime && note.nextTickTime < note.time)
+				{
+					m_Perfect++;
+					sound.Play(SOUND_SUZU);
+					note.nextTickTime += kLongTickInterval;
+				}
+			}
+
+			// 終了時刻に到達したら確定（longFailedには絶対にならない）
+			if (m_MusicTime >= note.time)
+			{
+				if (note.longStarted) m_Perfect++;
+				sound.Play(SOUND_LONG_END);
+				note.judged = true;
+			}
+		}
+	}
 }
 
 // ============================================================
@@ -709,6 +797,13 @@ void ChartObject::Update()
 		if (m_ComboPopTimer < 0.0f) m_ComboPopTimer = 0.0f;
 	}
 
+	//判定表示時間の減算
+	if (m_JudgeRankPopTimer > 0.0f)
+	{
+		m_JudgeRankPopTimer -= deltaTime;
+		if (m_JudgeRankPopTimer < 0.0f) m_JudgeRankPopTimer = 0.0f;
+	}
+
 	// 判定円の動きに合わせて、未判定ノーツのjudgePosを追従させる
 	// （フリックはjudgePosがenemy側固定なので対象外）
 	for (auto& note : m_Notes)
@@ -727,6 +822,15 @@ void ChartObject::Update()
 			it = m_Particle.erase(it);
 		else
 			++it;
+	}
+
+	//ボタン入力時に出る障壁
+	for (int i = 0; i < 6; i++)
+	{
+		if (!m_BarrierEffects[i].active) continue;
+		m_BarrierEffects[i].timer += deltaTime;
+		if (m_BarrierEffects[i].timer >= kBarrierDuration)
+			m_BarrierEffects[i].active = false;
 	}
 
 	// メトロノームのカウントイン音（1小節分、拍ごとにクリック音を鳴らす）
@@ -771,15 +875,35 @@ void ChartObject::Update()
 		}
 	}
 
-	// S/D/F/J/K/Lキーで、TAPノーツのトリガー判定を行う
-	for (int lane = 0; lane < 6; lane++)
+	if (m_AutoMode)
 	{
-		JudgeLane(kLaneKeys[lane], lane);
+		UpdateAutoJudgge();
 	}
+	else
+	{
+		// TAPノーツの自動ミス判定（判定圏外を過ぎたら強制ミス）
+		// LONG/FLICKは専用の判定関数(JudgeLongNoteHold/JudgeFlickNotes)側でミス処理する
+		for (auto& note : m_Notes)
+		{
+			if (note.judged) continue;
+			if (!note.IsTap()) continue;
+			if (m_MusicTime - note.time > kGud)
+			{
+				note.judged = true;
+				m_Miss++;
+			}
+		}
 
-	// フリック・ロングノーツの判定
-	JudgeFlickNotes();
-	JudgeLongNoteHold();
+		// S/D/F/J/K/Lキーで、TAPノーツのトリガー判定を行う
+		for (int lane = 0; lane < 6; lane++)
+		{
+			JudgeLane(kLaneKeys[lane], lane);
+		}
+
+		// フリック・ロングノーツの判定
+		JudgeFlickNotes();
+		JudgeLongNoteHold();
+	}
 
 	// 判定済み(judged=true)になったノーツをまとめて削除
 	// （TAPの判定はJudgeLaneで即座にjudged=trueにするが、実削除はここでまとめて行う）
@@ -818,9 +942,21 @@ void ChartObject::JudgeLane(int key, int laneIndex)
 
 	// 時間差に応じてランクを決定
 	int rank = (bestDiff < kPerfect) ? 0 : (bestDiff < kGreat) ? 1 : 2;
-	if (rank == 0) m_Perfect++;
-	else if (rank == 1) m_Great++;
-	else if (rank == 2) m_Good++;
+	if (rank == 0)
+	{
+		m_Perfect++;
+		sound.Play(SOUND_METAL_1);
+	}
+	else if (rank == 1) 
+	{
+		m_Great++; 
+		sound.Play(SOUND_METAL_1);
+	}
+	else if (rank == 2) 
+	{
+		m_Good++; 
+		sound.Play(SOUND_METAL_1);
+	}
 
 	m_Notes[bestIndex].judged = true;
 	OnJudge(laneIndex, rank);
@@ -1053,12 +1189,12 @@ void ChartObject::UpdateHomingBeams(float deltaTime)
 						bool dodged = (playerSide != beam.lockedSide);
 						if (dodged)
 						{
-							m_Perfect++;
+							//m_Perfect++;
 							TriggerScreenShake(0.1f, 4.0f);
 						}
 						else
 						{
-							m_Miss++;
+							//m_Miss++;
 							TriggerScreenShake(0.25f, 15.0f);
 							TriggerFlash(0.15f);
 						}
@@ -1081,8 +1217,18 @@ void ChartObject::UpdateHomingBeams(float deltaTime)
 void ChartObject::OnJudge(int laneIndex, int rank)
 {
 	m_Combo++;
+
+	if (laneIndex >= 0 && laneIndex < 6)
+	{
+		m_BarrierEffects[laneIndex].active = true;
+		m_BarrierEffects[laneIndex].timer = 0.0f;
+	}
+
 	if (m_Combo > m_MaxCombo) m_MaxCombo = m_Combo;
 	m_ComboPopTimer = 0.15f; // コンボ数字が一瞬拡大表示される演出用タイマー
+
+	m_JudgeRankCurrent = rank;              // 0=Perfect, 1=Great, 2=Good
+	m_JudgeRankPopTimer = kJudgeRankPopDuration;
 
 	if (laneIndex < 0 || laneIndex >= 6) return;
 	Vector3 pos = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
@@ -1602,14 +1748,21 @@ void ChartObject::Draw(Camera* cam)
 		Renderer::SetBlendState(BS_ALPHABLEND);
 		m_LaneFrame[i].SetPosition(screenPos);
 		m_LaneFrame[i].Draw(cam);
-
 		if (laneActive[i])
 		{
-			float fillSize = 10.0f + laneT[i] * 90.0f;
+			constexpr float kFillMinSize = 10.0f;
+			float fillSize = kFillMinSize + laneT[i] * (m_FrameSize - kFillMinSize);
 			m_LaneFill[i].SetScale(fillSize, fillSize, 1.0f);
 			m_LaneFill[i].SetPosition(screenPos);
 			m_LaneFill[i].Draw(cam);
 		}
+		//if (laneActive[i])
+		//{
+		//	float fillSize = 10.0f + laneT[i] * 90.0f;
+		//	m_LaneFill[i].SetScale(fillSize, fillSize, 1.0f);
+		//	m_LaneFill[i].SetPosition(screenPos);
+		//	m_LaneFill[i].Draw(cam);
+		//}
 	}
 	Renderer::SetBlendState(BS_NONE);
 
@@ -1621,6 +1774,30 @@ void ChartObject::Draw(Camera* cam)
 		m_ParticleQuad.Draw(cam, p.GetPosition(), p.GetScale(), p.GetColor());
 	}
 	Renderer::SetBlendState(BS_NONE);
+
+	// 判定ランク演出
+	if (m_JudgeRankPopTimer > 0.0f && m_JudgeRankCurrent >= 0)
+	{
+		// フェードアウト：残り時間の割合をアルファ的な演出に使ってもいい（今回はスケールで演出）
+		float t = m_JudgeRankPopTimer / kJudgeRankPopDuration; // 1.0→0.0
+		float popScale = 1.0f + (1.0f - t) * 0.0f;
+
+		Texture2D* target = nullptr;
+		switch (m_JudgeRankCurrent)
+		{
+		case 0: target = &m_JudgeRankPerfect; break;
+		case 1: target = &m_JudgeRankGreat;   break;
+		case 2: target = &m_JudgeRankGood;    break;
+		}
+
+		if (target)
+		{
+			Renderer::SetBlendState(BS_ALPHABLEND);
+			target->SetPosition(0.0f, 30.0f, 0.0f);
+			target->Draw(cam);
+			Renderer::SetBlendState(BS_NONE);
+		}
+	}
 
 	// ── コンボ数表示（3桁、ヒット直後は少し拡大する演出）──
 	{
@@ -1647,12 +1824,12 @@ void ChartObject::Draw(Camera* cam)
 	{
 		auto drawCountRow = [&](Texture2D* row, int value, float y)
 			{
-				if (value > 999) value = 999;
-				int digits[3] = { value / 100, (value / 10) % 10, value % 10 };
+				if (value > 9999) value = 9999;
+				int digits[4] = { value / 1000, value / 100, (value / 10) % 10, value % 10 };
 				float digitW = 26.0f;   // コンボより詰めて表示
 				float startX = 40.0f;
 
-				for (int i = 0; i < 3; i++)
+				for (int i = 0; i < 4; i++)
 				{
 					row[i].SetUV((float)(digits[i] + 1), 1.0f, 10.0f, 1.0f);
 					row[i].SetPosition(startX + digitW * i, y - 100.0f, 0.0f);
@@ -1660,7 +1837,7 @@ void ChartObject::Draw(Camera* cam)
 				}
 			};
 		float topY = 400.0f;	//一番上のY座標
-		float rowSpacing = 60.0f;	//行間
+		float rowSpacing = 80.0f;	//行間
 
 		Renderer::SetBlendState(BS_ALPHABLEND);
 		drawCountRow(m_PerfectDigits, m_Perfect, topY);
@@ -1669,6 +1846,16 @@ void ChartObject::Draw(Camera* cam)
 		drawCountRow(m_MissDigits, m_Miss, topY - rowSpacing * 3);
 		Renderer::SetBlendState(BS_NONE);
 	}
+
+	Renderer::SetBlendState(BS_ADDITIVE);
+	for (int i = 0; i < 6; i++)
+	{
+		if (!m_BarrierEffects[i].active) continue;
+		float progress = m_BarrierEffects[i].timer / kBarrierDuration;
+		Vector3 pos = m_JudgeCircles[i].GetPosition(m_MusicTime);
+		m_BarrierQuad.Draw(pos, 3000.0f, progress, GetLaneColor(i));
+	}
+	Renderer::SetBlendState(BS_NONE);
 
 	// ── ホーミングビームの描画（他要素の最後に描くことで前面に出す）──
 	DrawHomingBeams(cam);

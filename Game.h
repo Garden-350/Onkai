@@ -34,10 +34,14 @@ private:
 
 	ResultData m_LastResult;
 
+	float m_DeltaTime = 0.0f;
+
 	//オブジェクト配列
 	std::vector<std::unique_ptr<Object>>m_Objects;
 	std::vector<std::unique_ptr<Object>> m_AddBuffer;
 	std::string m_SelectedChart = "beam_2";
+
+	bool m_AutoMode = false;
 
 public:
 	Game(); // コンストラクタ
@@ -51,6 +55,9 @@ public:
 	static void SetSelectedChart(const std::string& name) { m_Instance->m_SelectedChart = name; }
 	static const std::string& GetSelectedChart() { return m_Instance->m_SelectedChart; }
 
+	static void SetAutoMode(bool enable) { m_Instance->m_AutoMode = enable; }
+	bool IsAutoMode() { return m_Instance->m_AutoMode; }
+
 	static void SetResultData(const ResultData& data) { m_Instance->m_LastResult = data; }
 	static const ResultData& GetResultData() { return m_Instance->m_LastResult; }
 
@@ -61,6 +68,8 @@ public:
 	void ChangeScene(SceneName sName);	//シーンを変更
 	void DeleteObject(Object* pt);		//オブジェクトを削除する
 	void DeleteAllObject();				//オブジェクトをすべて削除
+
+	float GetDeltaTime() const { return m_DeltaTime; }
 
 	//オブジェクトを追加する（テンプレート関数）
 	//template<typename T> T* AddObject()

@@ -118,8 +118,14 @@ bool Texture::LoadFromFemory(const unsigned char* Data,int len) {
 }
 
 // テクスチャをGPUにセット
-void Texture::SetGPU()
+//void Texture::SetGPU()
+//{
+//	ID3D11DeviceContext* devicecontext = Renderer::GetDeviceContext();
+//	devicecontext->PSSetShaderResources(0, 1, m_srv.GetAddressOf());
+//}
+
+void Texture::SetGPU(UINT slot)
 {
 	ID3D11DeviceContext* devicecontext = Renderer::GetDeviceContext();
-	devicecontext->PSSetShaderResources(0, 1, m_srv.GetAddressOf());
+	devicecontext->PSSetShaderResources(slot, 1, m_srv.GetAddressOf());
 }

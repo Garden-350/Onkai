@@ -12,8 +12,8 @@ void Ground::Init()
 {
 	g_DebugCollision.Init();
 	// 頂点データ
-	m_SizeX = 30;
-	m_SizeZ = 30;
+	m_SizeX = 330;
+	m_SizeZ = 330;
 	m_Vertices.resize(6 * m_SizeX * m_SizeZ);
 
 	for (int z = 0; z < m_SizeZ; z++)
@@ -164,7 +164,7 @@ void Ground::Init()
 	m_Shader.Create("shader/litTextureVS.hlsl", "shader/litTexturePS.hlsl");
 
 	//テクスチャロード
-	bool sts = m_Texture.Load("assets/texture/wood-texture_00008.jpg");
+	bool sts = m_Texture.Load("assets/texture/field.jpg");
 	//bool sts = m_Texture.Load("assets/texture/sea.jpg");
 	assert(sts == true);	//上手くいってなかったら強制終了
 
@@ -176,8 +176,8 @@ void Ground::Init()
 	m_Material->Create(mtrl);
 
 	m_Position.y = -100.0f;
-	m_Scale.x = 20.0f;
-	m_Scale.z = 20.0f;
+	m_Scale.x = 12.0f;
+	m_Scale.z = 12.0f;
 }
 
 //=======================================
@@ -195,7 +195,8 @@ void Ground::Draw(Camera* cam)
 {
 	//カメラを選択する
 	cam->SetCamera();
-
+	Renderer::SetCullMode(CULL_BACK);
+	Renderer::SetDepthEnable(true);
 	// SRT情報作成
 	Matrix r = Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
 	Matrix t = Matrix::CreateTranslation(m_Position.x, m_Position.y, m_Position.z);

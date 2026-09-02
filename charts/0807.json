@@ -1,5 +1,9 @@
 {
-"meta":{"bpm":120,"totalBeat":1000},
+  "meta": {
+    "bpm": 120,
+    "totalBeat": 1000,
+    "audioFile": "hisou.wav"
+  },
   "notes": [
     {
       "lane": 0,

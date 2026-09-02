@@ -13,9 +13,15 @@ typedef enum
 	SOUND_BEAM_FIRING,
 	SOUND_LABEL_METRO_TI,
 	SOUND_LABEL_METRO_KATI,
+	SOUND_REFLECTION,
+	SOUND_METAL_1,
+	SOUND_METAL_2,
+	SOUND_SUZU,
+	SOUND_LONG_END,
 
 	SOUND_LABEL_BGM001,
 	SOUND_LABEL_BGM002,
+	SOUND_RESULT_1,
 
 	SOUND_LABEL_MAX,
 } SOUND_LABEL;
@@ -42,9 +48,15 @@ private:
 		{"assets/se/beam_Go.wav",false},
 		{"assets/se/メトロノームのカチッ.wav",false},
 		{"assets/se/メトロノームのチーン.wav",false},
+		{"assets/se/reflection.mp3",false},
+		{"assets/se/metal1.mp3",false},
+		{"assets/se/metal2.mp3",false},
+		{"assets/se/suzu.mp3",false},
+		{"assets/se/Long_end.mp3",false},
 
 		{"assets/bgm/mirror.wav", true},
 		{"assets/bgm/maou_bgm_piano39.wav", true},
+		{"assets/bgm/Result_1.mp3",true}
 	};
 
 	IXAudio2* m_pXAudio2 = NULL;

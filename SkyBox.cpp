@@ -1,183 +1,63 @@
 #include "SkyBox.h"
 #include "Game.h"
+#include "Renderer.h"
+#include "Camera.h"
+#include "Application.h"
 
 using namespace DirectX::SimpleMath;
 
 void SkyBox::Init()
 {
-	// right, left, top, bottom, front(+Z), back(-Z)
-	const char* texturePaths[6] =
-	{
-		"assets/texture/skybox/py.jpg",
-		"assets/texture/skybox/py.jpg",
-		"assets/texture/skybox/py.jpg",
-		"assets/texture/skybox/ny.jpg",
-		"assets/texture/skybox/py.jpg",
-		"assets/texture/skybox/py.jpg",
-	};
+	m_SphereMesh.Load("assets/model/SkyBlock/skybox3.fbx", "assets/model/skybox");
+	m_MeshRenderer.Init(m_SphereMesh);
 
-	for (size_t i = 0; i < m_Textures.size(); ++i)
-	{
-		m_TextureLoaded[i] = m_Textures[i].Load(texturePaths[i]);
-	}
+	m_Shader.Create("shader/skyVS.hlsl", "shader/skyPS.hlsl");
+	m_Shader.CreatePSConstantBuffer(sizeof(SkyPSParms));
 
-	const float h = 0.5f;
+	if (!m_GradientTex.Load("assets/texture/skyboxTexture_3.png"))
+		OutputDebugStringA("[SkyboxObject] gradient texture load failed\n");
 
-	auto addFace = [this](
-		const Vector3& a,
-		const Vector3& b,
-		const Vector3& c,
-		const Vector3& d
-		)
-		{
-			const unsigned int base =
-				static_cast<unsigned int>(m_Vertices.size());
-
-			const Vector3 positions[4] = { a, b, c, d };
-			const Vector2 uv[4] =
-			{
-				{0,0},
-				{1,0},
-				{1,1},
-				{0,1}
-			};
-
-			for (int i = 0; i < 4; ++i)
-			{
-				VERTEX_3D vertex{};
-				vertex.position = positions[i];
-				vertex.color = Color(1, 1, 1, 1);
-				vertex.uv = uv[i];
-				m_Vertices.emplace_back(vertex);
-			}
-
-			m_Indices.insert(
-				m_Indices.end(),
-				{
-					base, base + 1, base + 2,
-					base, base + 2, base + 3
-				}
-			);
-		};
-
-	// right
-	addFace(
-		Vector3(h, h, -h),
-		Vector3(h, h, h),
-		Vector3(h, -h, h),
-		Vector3(h, -h, -h)
-	);
-	//left
-	addFace(
-		Vector3(-h, h, h),
-		Vector3(-h, h, -h),
-		Vector3(-h, -h, -h),
-		Vector3(-h, -h, h)
-	);
-	//top
-	addFace(
-		Vector3(-h, h, -h),
-		Vector3(-h, h, h),
-		Vector3(h, h, h),
-		Vector3(h, h, -h)
-	);
-	//bottom
-	addFace(
-		Vector3(-h, -h, h),
-		Vector3(-h, -h, -h),
-		Vector3(h, -h, -h),
-		Vector3(h, -h, h)
-	);
-	//front(+Z)
-	addFace(
-		Vector3(-h, h, h),
-		Vector3(-h, -h, h),
-		Vector3(h, -h, h),
-		Vector3(h, h, h)
-	);
-	//back
-	addFace(
-		Vector3(h, h, -h),
-		Vector3(h, -h, -h),
-		Vector3(-h, -h, -h),
-		Vector3(-h, h, -h)
-	);
-
-	m_VertexBuffer.Create(m_Vertices);
-	m_IndexBuffer.Create(m_Indices);
-
-	//空は照明の影響を受けない
-	m_Shader.Create(
-		"shader/unlitTextureVS.hlsl",
-		"shader/unlitTexturePS.hlsl"
-	);
-
-	//箱の内側だけ描画する
-	D3D11_RASTERIZER_DESC rasterizerDesc{};
-	rasterizerDesc.FillMode = D3D11_FILL_SOLID;
-	rasterizerDesc.CullMode = D3D11_CULL_FRONT;
-	rasterizerDesc.DepthClipEnable = TRUE;
-
-	Renderer::GetDevice()->CreateRasterizerState(
-		&rasterizerDesc,
-		m_InsideRasterizer.GetAddressOf()
-	);
+	if (!m_CloudTex.Load("assets/texture/skyboxKumo_2.png"))
+		OutputDebugStringA("[SkyboxObject] cloud texture load failed\n");
 }
 
 void SkyBox::Update()
 {
-	m_Position = Game::GetInstance()->GetCamera()->GetPosition();
+	m_SkyboxTime += 1.0f / 60.0f;
+	//m_Position = Game::GetInstance()->GetCamera()->GetPosition();
 }
 
 void SkyBox::Draw(Camera* cam)
 {
+	using namespace DirectX::SimpleMath;
+
 	cam->SetCamera(0);
 
-	Renderer::SetBlendState(BS_NONE);
+	Vector3 camPos = cam->GetPosition();
+	Matrix world = Matrix::CreateScale(m_Radius) * Matrix::CreateTranslation(camPos);
 
-	// 空が手前の物体を隠さないよう、深度を書き込まない
 	Renderer::SetDepthEnable(false);
-
-	Matrix world =
-		Matrix::CreateScale(m_Size) *
-		Matrix::CreateTranslation(m_Position);
+	Renderer::SetCullMode(CULL_FRONT);
 
 	Renderer::SetWorldMatrix(&world);
-
-	ID3D11DeviceContext* deviceContext =
-		Renderer::GetDeviceContext();
-
-	deviceContext->RSSetState(m_InsideRasterizer.Get());
-	deviceContext->IASetPrimitiveTopology(
-		D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST
-	);
-
 	m_Shader.SetGPU();
-	m_VertexBuffer.SetGPU();
-	m_IndexBuffer.SetGPU();
 
-	Renderer::SetUV(0, 0, 1, 1);
+	SkyPSParms parms{};
+	parms.time = m_SkyboxTime;
+	parms.timeOfDay = m_TimeOfDay;
+	m_Shader.UpdatePSConstantBuffer(&parms, sizeof(parms));
 
-	for (size_t i = 0; i < m_Textures.size(); ++i)
+	// ── 追加：テクスチャをレジスタt0, t1にセット ──
+	m_GradientTex.SetGPU(0); // t0
+	m_CloudTex.SetGPU(1);    // t1
+
+	m_MeshRenderer.BeforeDraw();
+	for (auto& subset : m_SphereMesh.GetSubsets())
 	{
-		if (!m_TextureLoaded[i])
-		{
-			continue;
-		}
-
-		m_Textures[i].SetGPU();
-
-		// 1面につきインデックス6個
-		deviceContext->DrawIndexed(
-			6,
-			static_cast<UINT>(i * 6),
-			0
-		);
+		m_MeshRenderer.DrawSubset(subset.IndexNum, subset.IndexBase, subset.VertexBase);
 	}
 
-	// 通常の背面カリングへ戻す
-	deviceContext->RSSetState(nullptr);
-
+	Renderer::SetCullMode(CULL_BACK);
 	Renderer::SetDepthEnable(true);
 }
 

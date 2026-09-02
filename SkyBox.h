@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Object.h"
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
@@ -7,8 +7,10 @@
 #include "Texture2D.h"
 #include "MeshRenderer.h"
 #include "Material.h"
+#include "Shader.h"
 #include <array>
 #include <vector>
+class Camera;
 class SkyBox : public Object
 {
 public:
@@ -17,27 +19,25 @@ public:
 	void Draw(Camera* cam) override;
 	void Uninit() override;
 
+	void SetTimeOfDay(float t01) { m_TimeOfDay = t01; }
+
 private:
-	// Camera �� farPlane = 1000 ��菬��������
-	static constexpr float m_Size = 900.0f;
-
+	StaticMesh   m_SphereMesh;   // 大きな逆向き球（内側から見る用）
 	MeshRenderer m_MeshRenderer;
+	Shader       m_Shader;
 
-	std::vector<VERTEX_3D> m_Vertices;
-	std::vector<unsigned int> m_Indices;
-	std::vector<SUBSET> m_Subsets;
-	std::vector<std::unique_ptr<Texture>> m_Texture;
-	std::vector<std::unique_ptr<Material>> m_Materials;
+	Texture m_GradientTex;
+	Texture m_CloudTex;
 
-	VertexBuffer<VERTEX_3D> m_VertexBuffer;
-	IndexBuffer m_IndexBuffer;
+	float m_SkyboxTime = 0.0f;   // 雲のスクロール等に使う経過時間
+	float m_TimeOfDay = 0.5f;    // 0=夜, 0.5=昼, 1=夕方 など好みで
+	float m_Radius = 99990.08f;     // カメラのFar Planeより十分内側〜外側に
 
-	std::array<Texture, 6> m_Textures;
-	std::array<bool, 6> m_TextureLoaded{};
-
-	Texture2D m_SkyBoxIndex[6];
-
-	//�X�J�C�{�b�N�X�̓�����`�悷�邽�߂̃��X�^���C�U�ݒ�
-	Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_InsideRasterizer;
+	struct SkyPSParms
+	{
+		float time;
+		float timeOfDay;
+		float padding[2]; // 16バイト境界に合わせるためのパディング
+	};
 };
 

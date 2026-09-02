@@ -35,6 +35,14 @@ enum EBlendState {
 	MAX_BLENDSTATE
 };
 
+enum ECullMode 
+{
+	CULL_BACK = 0,
+	CULL_FRONT,
+	CULL_NONE,
+	MAX_CULLMODE
+};
+
 struct Vertex
 {
 	// 頂点の位置座標
@@ -67,6 +75,14 @@ struct SUBSET {
 	unsigned int	MaterialIdx = 0;//マテリアルの番号
 };
 
+//定数バッファ用
+struct ConstBuffer
+{
+	//頂点カラー行列
+	DirectX::XMFLOAT4 color_alpha;
+
+};
+
 //マテリアル
 struct MATERIAL
 {
@@ -93,6 +109,7 @@ private:
 	static IDXGISwapChain*         m_pSwapChain;
 	static ID3D11RenderTargetView* m_pRenderTargetView;
 	static ID3D11DepthStencilView* m_pDepthStencilView;
+	static ID3D11DepthStencilState* m_pDepthStateTestOnly;
 
 	static ID3D11Buffer*			m_pWorldBuffer;
 	static ID3D11Buffer*			m_pViewBuffer;
@@ -107,6 +124,8 @@ private:
 
 	static ID3D11BlendState*		m_pBlendState[MAX_BLENDSTATE]; // ブレンド ステート;
 	static ID3D11BlendState*		m_pBlendStateATC;
+
+	static ID3D11RasterizerState* m_pRasterizerState[MAX_CULLMODE]; // ラスタライザ ステート;
 
 	static HRESULT CreateRenderAndDepthResources();
 
@@ -151,6 +170,8 @@ public:
 	static void SetLight(LIGHT Light);
 	static void SetMaterial(MATERIAL Material);
 	static void SetUV(float u, float v, float uw, float vh);
+
+	static void SetCullMode(int mode);
 	//=============================================================================
 	// ブレンド ステート設定
 	//=============================================================================

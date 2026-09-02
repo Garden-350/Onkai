@@ -14,6 +14,7 @@
 #include <chrono>
 #include "Particle.h"
 #include "MagicCircleQuad.h"
+#include "BarrierQuad.h"
 
 class Player;
 class Enemy;
@@ -135,6 +136,12 @@ struct BeamShaderParms
 	DirectX::SimpleMath::Vector4 baseColor;
 };	//sizeof == 32 (16の倍数ならOK)
 
+struct BarrierEffect
+{
+	bool active = false;
+	float timer = 0.0f;
+};
+
 // ============================================================
 // ChartObject : エディターが吐き出した .json 譜面を読み込んで
 //               実際にノーツ/ビームを流し、判定するプレイ専用オブジェクト。
@@ -189,21 +196,23 @@ private:
 	MagicCircleQuad m_MagicCircleQuad;
 	RingQuad m_ApproachRing;		// 接近リング（判定ラインに近づくほど大きく濃くなる）
 	ParticleQuad m_ParticleQuad;	// 判定ヒット時の花びらパーティクル
+	BarrierQuad m_BarrierQuad;
 	Texture2D m_LaneIcons[6];		// S/D/F/J/K/Lアイコン（画面固定2D）
-	Texture2D m_ComboDigits[3];	// コンボ数の3桁表示
-	Texture2D m_PerfectDigits[3];
-	Texture2D m_GreatDigits[3];
-	Texture2D m_GoodDigits[3];
-	Texture2D m_MissDigits[3];
+	Texture2D m_ComboDigits[4];	// コンボ数の3桁表示
+	Texture2D m_PerfectDigits[4];
+	Texture2D m_GreatDigits[4];
+	Texture2D m_GoodDigits[4];
+	Texture2D m_MissDigits[4];
 	Texture2D m_LaneFrame[6];		// 判定円の外枠
 	Texture2D m_LaneFill[6];		// 判定円の内側（接近度に応じて育つ）
+	BarrierEffect m_BarrierEffects[6];
 	std::vector<SUBSET> m_Subsets;
 	std::vector<Particle> m_Particle;
 	std::vector<std::unique_ptr<Material>> m_Materials;
 	std::vector<std::unique_ptr<Texture>> m_Textures;
 	std::chrono::steady_clock::time_point m_LastUpdateClock;
 	std::string m_AudioFile;
-	float m_NoteScale = 15.0f;	// TAPモデルの表示スケール
+	float m_NoteScale = 40.0f;	// TAPモデルの表示スケール
 
 	void DrawSpawnMagicCircle(Camera* cam, const ChartNote& note);
 
@@ -267,6 +276,9 @@ private:
 	void TriggerScreenShake(float duration, float strength);
 	void TriggerFlash(float duration);
 
+	bool m_AutoMode = false;
+	void UpdateAutoJudgge();	//autoモード
+
 
 	// ────────────────────────────────────────
 	// 譜面データ本体
@@ -306,12 +318,13 @@ private:
 
 	float m_ComboPopTimer = 0.0f;		// コンボ数字が拡大表示される残り時間
 	float m_NuberSplite_Size = 80.0f;	// コンボ数字1桁の表示サイズ
+	float m_FrameSize = 150.0f;			// 判定円の外枠の表示サイズ
 
 	// ── 判定タイミングの許容誤差（秒）。値が小さいほどシビア ──
-	static constexpr float kPerfect = 0.02f;
-	static constexpr float kGreat = 0.04f;
-	static constexpr float kGud = 0.06f;			// この範囲を過ぎたら自動ミス
-	static constexpr float kLongTickInterval = 0.2f;	// ロングノーツの継続判定(tick)間隔
+	static constexpr float kPerfect = 0.2f;
+	static constexpr float kGreat = 0.4f;
+	static constexpr float kGud = 0.6f;			// この範囲を過ぎたら自動ミス
+	static constexpr float kLongTickInterval = 0.05f;	// ロングノーツの継続判定(tick)間隔
 
 	bool m_PrevLaneKeyDown[6] = { false,false,false,false,false,false }; // （現状未使用。将来の押した瞬間検出用に予約）
 
@@ -351,6 +364,13 @@ private:
 	// ── 判定ヒット時のフック：コンボ加算＋パーティクル生成 ──
 	void OnJudge(int laneIndex, int rank); // rank: 0=PERFECT; 1=GREAT 2=GOOD
 
+	Texture2D m_JudgeRankPerfect;
+	Texture2D m_JudgeRankGreat;
+	Texture2D m_JudgeRankGood;
+	float m_JudgeRankPopTimer = 0.0f;   // 残り表示時間
+	int   m_JudgeRankCurrent = -1;      // 現在表示中のランク(0=Perfect,1=Great,2=Good, -1=非表示)
+	static constexpr float kJudgeRankPopDuration = 0.6f; // 表示継続時間（秒）
+
 	static DirectX::SimpleMath::Vector3 GetLaneColor(int lane)
 	{
 		switch (lane)
@@ -361,4 +381,7 @@ private:
 		default: return DirectX::SimpleMath::Vector3(1.0f, 1.0f, 1.0f);
 		}
 	}
+
+	//ボタンを押したときに出すエフェクトの一種
+	static constexpr float kBarrierDuration = 0.25f;
 };

@@ -22,6 +22,15 @@
     <FxCompile Include="shader\magicCireclePS.hlsl">
       <Filter>リソースファイル</Filter>
     </FxCompile>
+    <FxCompile Include="shader\BarrierBuffer.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\wireGridPS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\wireGridVS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChartObject.cpp">
@@ -117,14 +126,33 @@
     <ClCompile Include="ParticleQuad.cpp">
       <Filter>ソースファイル\Particle</Filter>
     </ClCompile>
-    <ClCompile Include="Enemy.cpp" />
     <ClCompile Include="sound.cpp">
       <Filter>ソースファイル\Sound</Filter>
     </ClCompile>
-    <ClCompile Include="PostFlashEffect.cpp" />
-    <ClCompile Include="Player.cpp" />
-    <ClCompile Include="MagicCircleQuad.cpp" />
-    <ClCompile Include="SelectScene.cpp" />
+    <ClCompile Include="WireShape.cpp">
+      <Filter>ソースファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="WireShapeSpawner.cpp">
+      <Filter>ソースファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="SelectScene.cpp">
+      <Filter>ソースファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Enemy.cpp">
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="BarrierQuad.cpp">
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="MagicCircleQuad.cpp">
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="PostFlashEffect.cpp">
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -238,16 +266,35 @@
     <ClInclude Include="ParticleQuad.h">
       <Filter>ヘッダーファイル\Particle</Filter>
     </ClInclude>
-    <ClInclude Include="Enemy.h" />
     <ClInclude Include="sound.h">
       <Filter>ヘッダーファイル\Sound</Filter>
     </ClInclude>
-    <ClInclude Include="PostFlashEffect.h" />
-    <ClInclude Include="Player.h" />
-    <ClInclude Include="MagicCircleQuad.h" />
-    <ClInclude Include="SelectScene.h" />
+    <ClInclude Include="WireShape.h">
+      <Filter>ソースファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="WireShapeSpawner.h">
+      <Filter>ソースファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="SelectScene.h">
+      <Filter>ヘッダーファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="PostFlashEffect.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="BarrierQuad.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Enemy.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="MagicCircleQuad.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
     <ClInclude Include="ResultData.h">
-      <Filter>ヘッダーファイル</Filter>
+      <Filter>ヘッダーファイル\Object</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -307,7 +354,10 @@
     <None Include="FullscreenVS.hlsl">
       <Filter>リソースファイル</Filter>
     </None>
-    <None Include="PostFlashPS.hlsl">
+    <None Include="skyPS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </None>
+    <None Include="skyVS.hlsl">
       <Filter>リソースファイル</Filter>
     </None>
   </ItemGroup>

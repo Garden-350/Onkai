@@ -19,10 +19,10 @@ public:
 
 	DirectX::SimpleMath::Vector3 GetPosition() const { return m_Position; }
 private:
-	float m_Size = 0.1f;
+	float m_Size = 1.0f;
 
-	DirectX::SimpleMath::Vector3 m_Position = DirectX::SimpleMath::Vector3(0.0f, 250.0f, 90.0f);
-	DirectX::SimpleMath::Vector3 m_Rotation = DirectX::SimpleMath::Vector3::Zero;
+	DirectX::SimpleMath::Vector3 m_Position = DirectX::SimpleMath::Vector3(0.0f, -100.0f, 200.0f);
+	DirectX::SimpleMath::Vector3 m_Rotation = DirectX::SimpleMath::Vector3(1.57f, 3.14f, 0.0f);
 	Shader m_Shader; // m_shaderのままだとPlayer同様タイポの温床になるので大文字に統一推奨
 	MeshRenderer m_MeshRenderer;
 	std::vector<SUBSET> m_Subsets;

@@ -27,9 +27,12 @@ private:
 	std::vector<Object*> m_MySceneObjects; // このシーンのオブジェクト
 	std::vector<std::string> m_SongNames;
 	std::vector<JacketSlot> m_JacketSlots;
+	std::string m_AudioFile;
 	int m_SelectedIndex = 0;
 
 	Texture2D* m_JacketTexture = nullptr;
+	Texture2D* m_AutoButton = nullptr;
+	bool m_AutoModeSelected = false;
 
 	void Init(); // 初期化
 	void Uninit(); // 終了処理
@@ -44,6 +47,8 @@ private:
 public:
 	SelectScene(); // コンストラクタ
 	~SelectScene(); // デストラクタ
+
+	bool LoadChart(const std::string& name);
 
 	void Update(); // 更新
 };

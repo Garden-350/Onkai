@@ -27,9 +27,9 @@ class Ground : public Object
 	int m_SizeX = 0;
 	int m_SizeZ = 0;
 
-	float m_Width = 500.0f;
+	float m_Width = 50.0f;
 	float m_Height = 10.0f;
-	float m_Depth = 500.0f;
+	float m_Depth = 50.0f;
 
 public:
 	void Init() override;

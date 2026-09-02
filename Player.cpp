@@ -36,7 +36,7 @@ void Player::Init()
 	m_Size = Vector3(0.05f, 0.05f, 0.05f);
 
 	// カメラに一番近い・一番低い位置＝スケッチの「じぶん」の位置に合わせる
-	m_BasePosition = Vector3(0.0f, -60.0f, -380.0f);
+	m_BasePosition = Vector3(0.0f, -60.0f, -450.0f);
 	m_Position = m_BasePosition;
 	m_VisualX = m_BasePosition.x;
 }
@@ -79,9 +79,11 @@ void Player::Draw(Camera* cam)
 	m_MeshRenderer.BeforeDraw();
 
 	Matrix s = Matrix::CreateScale(m_Size);
-	Matrix r = Matrix::CreateRotationY(m_Rotation.y);
+	Matrix x = Matrix::CreateRotationX(m_Rotation.x);
+	Matrix y = Matrix::CreateRotationY(m_Rotation.y);
+	Matrix z = Matrix::CreateRotationZ(m_Rotation.z);
 	Matrix t = Matrix::CreateTranslation(m_Position);
-	Matrix world = s * r * t;
+	Matrix world = s * x * y * z * t;
 	Renderer::SetWorldMatrix(&world);
 
 	for (size_t i = 0; i < m_Subsets.size(); i++)

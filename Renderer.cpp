@@ -34,7 +34,7 @@ ID3D11DepthStencilState* Renderer::m_pDepthStateDisable{};
 ID3D11BlendState* Renderer::m_pBlendState[MAX_BLENDSTATE]; // ブレンドステート配列
 ID3D11BlendState* Renderer::m_pBlendStateATC{}; // 特定のアルファテストとカバレッジ（ATC）用のブレンドステート
 
-
+ID3D11RasterizerState* Renderer::m_pRasterizerState[MAX_CULLMODE]; // カリングモード別のラスタライザステート配列
 
 //--------------------------------------------------------------------------------------
 //初期化処理
@@ -195,6 +195,16 @@ HRESULT Renderer::Init()
 	m_pDeviceContext->VSSetConstantBuffers(3, 1, &m_pLightBuffer);
 	if (FAILED(hr)) return hr;
 
+	D3D11_RASTERIZER_DESC rd{};
+	rd.FillMode = D3D11_FILL_SOLID;
+	rd.CullMode = D3D11_CULL_BACK;
+	m_pDevice->CreateRasterizerState(&rd, &m_pRasterizerState[CULL_BACK]);
+	rd.CullMode = D3D11_CULL_FRONT;
+	m_pDevice->CreateRasterizerState(&rd, &m_pRasterizerState[CULL_FRONT]);
+	rd.CullMode = D3D11_CULL_NONE;
+	m_pDevice->CreateRasterizerState(&rd, &m_pRasterizerState[CULL_NONE]);
+
+
 	///ライト初期化
 	LIGHT light{};
 	light.Enable = true;
@@ -292,6 +302,10 @@ void Renderer::Uninit()
 	SAFE_RELEASE(m_pSwapChain);
 	SAFE_RELEASE(m_pDeviceContext);
 	SAFE_RELEASE(m_pDevice);
+	for (int i = 0; i < MAX_CULLMODE; i++)
+	{
+		SAFE_RELEASE(m_pRasterizerState[i]);
+	}
 }
 
 //--------------------------------------------------------------------------------------
@@ -318,6 +332,7 @@ void Renderer::DrawEnd()
 	// ダブルバッファの切り替えを行い画面を更新する
 	m_pSwapChain->Present(1, 0);
 }
+
 
 //================================================================
 //ライトを設定 
@@ -349,6 +364,12 @@ void Renderer::SetUV(float u, float v, float uw, float vh)
 
 	m_pDeviceContext->UpdateSubresource(
 		m_pTextureBuffer, 0, NULL, &mat, 0, 0);
+}
+
+void Renderer::SetCullMode(int mode)
+{
+	if (mode >= 0 && mode < MAX_CULLMODE)
+		m_pDeviceContext->RSSetState(m_pRasterizerState[mode]);
 }
 
 //--------------------------------------------------------------------------------------

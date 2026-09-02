@@ -5,6 +5,8 @@
 #include "SkyBox.h"
 #include "Enemy.h"
 #include "Player.h"
+#include "sound.h"
+#include "SimpleJson.h"
 #include <filesystem>
 #undef min
 #undef max
@@ -28,12 +30,30 @@ SelectScene::~SelectScene()
 void SelectScene::Init()
 {
 	Renderer::SetDepthEnable(true);
+	sound.Init();
 	Texture2D* pt = Game::GetInstance()->AddObject<Texture2D>();
 	pt->SetTexture("assets/texture/park.jpg");
 	pt->SetPosition(0.0f, 0.0f, 485.0f);
 	pt->SetRotation(0.0f, 0.0f, 0.0f);
 	pt->SetScale(1280.0f, 720.0f, 0.0f);
 	m_MySceneObjects.emplace_back(pt);
+
+	//透過する（たぶんリザルトとかで使ってるのが必須）　エンター押したら難易度選択して行く感じ？横に曲名出すかどうかは要検討
+	Renderer::SetBlendState(BS_NONE);
+	Texture2D* left = Game::GetInstance()->AddObject<Texture2D>();
+	left->SetTexture("assets/texture/nanido.png");
+	left->SetPosition(0.0f, -300.0f, 0.0f);
+	left->SetRotation(0.0f, 0.0f, 0.0f);
+	left->SetScale(400.0f, 200.0f, 0.0f);
+	m_MySceneObjects.emplace_back(left);
+
+	// オートモード切替ボタン
+	m_AutoModeSelected = false;
+	m_AutoButton = Game::GetInstance()->AddObject<Texture2D>();
+	m_AutoButton->SetTexture("assets/texture/Auto_off.png");
+	m_AutoButton->SetPosition(500.0f, -280.0f, 0.0f);
+	m_AutoButton->SetScale(180.0f, 80.0f, 0.0f);
+	m_MySceneObjects.emplace_back(m_AutoButton);
 
 	RefreshSongList();
 	SetupJacketSlots();
@@ -46,6 +66,12 @@ void SelectScene::Update()
 {
 	if (m_SongNames.empty()) return;
 
+	//今選択してるジャケットによって曲を流そうと思ったんだけどうまくいかなかった残骸
+	//if (m_AudioFile.empty())
+	//{
+	//	sound.PlayDynamic();
+	//}
+
 	// Sキーで前の曲へ
 	if (Input::GetKeyTrigger(VK_S))
 	{
@@ -57,12 +83,22 @@ void SelectScene::Update()
 		ShiftJackets(1);
 	}
 
+	//TABでオート切替
+	if (Input::GetKeyTrigger(VK_TAB))
+	{
+		m_AutoModeSelected = !m_AutoModeSelected;
+		m_AutoButton->SetTexture(
+			m_AutoModeSelected ? "assets/texture/Auto_on.png" : "assets/texture/Auto_off.png"
+		);
+	}
+
 	UpdateJacketLayout(); // 毎フレーム補間を進める
 
 	// エンターキーで決定してステージへ
 	if (Input::GetKeyTrigger(VK_RETURN))
 	{
 		Game::SetSelectedChart(m_SongNames[m_SelectedIndex]);
+		Game::SetAutoMode(m_AutoModeSelected);
 		Game::GetInstance()->ChangeScene(STAGE1);
 	}
 }
@@ -248,6 +284,29 @@ void SelectScene::UpdateJacket()
 			m_JacketTexture->SetTexture(defaultPath.c_str());
 		}
 	}
+}
+
+bool SelectScene::LoadChart(const std::string& name)
+{
+	JsonValue root;
+	std::string err;
+
+	// ── 音声ファイル名の読み込み ──
+	if (root.Has("audioFile"))
+		m_AudioFile = root["audioFile"].AsString("");
+	else if (root.Has("meta") && root["meta"].Has("audioFile"))
+		m_AudioFile = root["meta"]["audioFile"].AsString("");
+	else
+		m_AudioFile = "";
+
+	if (!m_AudioFile.empty())
+	{
+		std::string fullPath = "assets/bgm/" + m_AudioFile; //曲を読み込んだ際は絶対にエディターで使ってる曲を入れること
+		HRESULT hr = sound.LoadDynamic(fullPath, true);
+		if (FAILED(hr))
+			OutputDebugStringA(("[ChartObject] Failed to load audio: " + fullPath + "\n").c_str());
+	}
+	return true;
 }
 
 

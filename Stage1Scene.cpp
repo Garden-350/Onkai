@@ -5,6 +5,9 @@
 #include "SkyBox.h"
 #include "Enemy.h"
 #include "Player.h"
+#include "Ground.h"
+#include "WireShape.h"
+#include "WireShapeSpawner.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -34,18 +37,24 @@ void Stage1Scene::Init()
 		Vector3(0.0f, 100.0f, -300.0f)      // 注視点：奥(敵方向)の少し高い位置
 	);
 
-	//auto* skybox = Game::GetInstance()->AddObject<SkyBox>();
-	//m_MySceneObjects.emplace_back(skybox);
-	auto* chart = Game::GetInstance()->AddObject<ChartObject>();
-	chart->LoadChart(Game::GetInstance()->GetSelectedChart());
-	m_MySceneObjects.emplace_back(chart);
-	m_Chart = chart;
+	auto* ground = Game::GetInstance()->AddObject<Ground>();
+	m_MySceneObjects.emplace_back(ground);
+	auto* skybox = Game::GetInstance()->AddObject<SkyBox>();
+	m_MySceneObjects.emplace_back(skybox);
 	auto* enemy = Game::GetInstance()->AddObject<Enemy>();
 	m_MySceneObjects.emplace_back(enemy);
 	auto* player = Game::GetInstance()->AddObject<Player>();
 	m_MySceneObjects.emplace_back(player);
+	auto* chart = Game::GetInstance()->AddObject<ChartObject>();
+	chart->LoadChart(Game::GetInstance()->GetSelectedChart());
+	m_MySceneObjects.emplace_back(chart);
+	m_Chart = chart;
 	chart->SetEnemyRef(enemy);
 	chart->SetPlayerRef(player);
+	//横方向の正方形グリッド表示
+	WireShapeSpawner* spaen = Game::GetInstance()->AddObject<WireShapeSpawner>();
+	spaen->SetSceneObjects(&m_MySceneObjects);
+	m_MySceneObjects.emplace_back(spaen);
 }
 
 

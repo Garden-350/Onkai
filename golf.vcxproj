@@ -143,6 +143,7 @@
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="AssimpPerse.cpp" />
+    <ClCompile Include="BarrierQuad.cpp" />
     <ClCompile Include="Baton.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="ChartObject.cpp" />
@@ -178,10 +179,13 @@
     <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="TitleScene.cpp" />
     <ClCompile Include="utility.cpp" />
+    <ClCompile Include="WireShape.cpp" />
+    <ClCompile Include="WireShapeSpawner.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="AssimpPerse.h" />
+    <ClInclude Include="BarrierQuad.h" />
     <ClInclude Include="Baton.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="ChartObject.h" />
@@ -224,8 +228,34 @@
     <ClInclude Include="TitleScene.h" />
     <ClInclude Include="utility.h" />
     <ClInclude Include="VertexBuffer.h" />
+    <ClInclude Include="WireShape.h" />
+    <ClInclude Include="WireShapeSpawner.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="shader\wireGridPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="shader\wireGridVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <None Include="skyPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <FileType>Document</FileType>
+    </None>
+    <None Include="skyVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <FileType>Document</FileType>
+    </None>
     <None Include="FullscreenVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
@@ -233,13 +263,10 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <FileType>Document</FileType>
     </None>
-    <None Include="PostFlashPS.hlsl">
+    <FxCompile Include="shader\BarrierBuffer.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <FileType>Document</FileType>
-    </None>
+    </FxCompile>
     <FxCompile Include="shader\magicCireclePS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>

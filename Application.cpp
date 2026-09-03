@@ -267,7 +267,7 @@ LRESULT CALLBACK Application::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
         break;
     case WM_CLOSE:  // 「x」ボタンが押されたら
     {
-        int res = MessageBoxA(NULL, "Music End?", "YES", MB_OKCANCEL);
+        int res = MessageBoxA(NULL, "Music End?", "終了メッセージ", MB_OKCANCEL);
         if (res == IDOK) {
             DestroyWindow(hWnd);  // 「WM_DESTROY」メッセージを送る
         }

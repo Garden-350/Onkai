@@ -1301,24 +1301,24 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 	//	Vector3(0, 0, 0), 0.0f
 	//);
 	//m_Particle.push_back(debugP);
-	Vector3 laneColorForSpark = GetLaneColor(laneIndex);
-	for (int i = 0; i < 20; i++)
-	{
-		float deg = (float)(rand() % 360);
-		Particle p(
-			le.origin,
-			0.4f,                                   // 寿命短め
-			20.0f,                                  // 重力弱め
-			Color(laneColorForSpark.x, laneColorForSpark.y, laneColorForSpark.z, 1.0f),
-			Color(laneColorForSpark.x, laneColorForSpark.y, laneColorForSpark.z, 0.0f),
-			0.5f,
-			40.0f,   // 開始サイズ
-			10.0f,   // 終了サイズ
-			Vector3(150, 60, 150), // 初速(横に大きく飛ばす)
-			deg
-		);
-		m_Particle.push_back(p);
-	}
+	//Vector3 laneColorForSpark = GetLaneColor(laneIndex);
+	//for (int i = 0; i < 20; i++)
+	//{
+	//	float deg = (float)(rand() % 360);
+	//	Particle p(
+	//		le.origin,
+	//		0.4f,                                   // 寿命短め
+	//		20.0f,                                  // 重力弱め
+	//		Color(laneColorForSpark.x, laneColorForSpark.y, laneColorForSpark.z, 1.0f),
+	//		Color(laneColorForSpark.x, laneColorForSpark.y, laneColorForSpark.z, 0.0f),
+	//		0.5f,
+	//		40.0f,   // 開始サイズ
+	//		10.0f,   // 終了サイズ
+	//		Vector3(150, 60, 150), // 初速(横に大きく飛ばす)
+	//		deg
+	//	);
+	//	m_Particle.push_back(p);
+	//}
 	(void)rank; // 現状rank別の演出差はまだ未実装。将来ランクごとに色や量を変える場合はここで分岐する
 }
 
@@ -1339,7 +1339,7 @@ void ChartObject::DrawLightEffects(Camera* cam)
 	Renderer::SetBlendState(BS_ADDITIVE);
 
 	constexpr int kSegments = 6;
-	constexpr float kMaxDistance = 2000.0f;	//物理的な長さ
+	constexpr float kMaxDistance = 500.0f;	//物理的な長さ
 
 	Matrix view = cam->GetViewMatrix();
 	Matrix invView = view.Invert();

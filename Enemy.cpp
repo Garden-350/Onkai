@@ -7,7 +7,7 @@ void Enemy::Init()
 
 	mesh.Load(
 		//‚±‚±‚É3Dƒ‚ƒfƒ‹‚ğ“Ç‚İ‚±‚İ ¡‰¼•\¦‚ ‚Æ‚ÅlŠp‚Ì‚â‚Âì‚Á‚Ä‚Ë
-		"assets/model/Enemy/enemy.fbx",
+		"assets/model/Enemy/teki.fbx",
 		"assets/model/Enemy"
 	);
 
@@ -33,7 +33,7 @@ void Enemy::Init()
 
 void Enemy::Update()
 {
-	//m_Rotation.y += 0.1f;
+	m_Rotation.y += 0.01f;
 }
 
 void Enemy::Draw(Camera* cam)

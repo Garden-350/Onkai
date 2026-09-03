@@ -7,6 +7,7 @@
 //-----------------------------------------------------------------------------
 class Camera {
 private:
+	DirectX::SimpleMath::Matrix m_ProjMatrix{};
 	DirectX::SimpleMath::Vector3	m_Position = DirectX::SimpleMath::Vector3(0.0f, 0.0f, 0.0f);
 	DirectX::SimpleMath::Vector3	m_Rotation = DirectX::SimpleMath::Vector3(0.0f, 0.0f, 0.0f);
 	DirectX::SimpleMath::Vector3	m_Scale = DirectX::SimpleMath::Vector3(1.0f, 1.0f, 1.0f);
@@ -46,7 +47,7 @@ public:
 	float GetDirection() const { return m_CameraDirection; }
 
 	const DirectX::SimpleMath::Matrix& GetViewMatrix();
-
+	const DirectX::SimpleMath::Matrix& GetProjectionMatrix() const { return m_ProjMatrix; }
 	DirectX::SimpleMath::Vector3 GetPosition() const
 	{
 		return m_Position;

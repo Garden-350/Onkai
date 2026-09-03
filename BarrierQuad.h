@@ -18,10 +18,12 @@ private:
 	Shader m_Shader;
 	VertexBuffer<VERTEX_3D> m_VertexBuffer;
 	IndexBuffer m_IndexBuffer;
+	unsigned int m_IndexCount = 0;
 
 public:
 	void Init();
 	void Draw(const DirectX::SimpleMath::Vector3& center, float scale,
-		float progress, const DirectX::SimpleMath::Vector3& baseColor);
+		float progress, const DirectX::SimpleMath::Vector3& baseColor,
+		const DirectX::SimpleMath::Matrix& view);
 };
 

@@ -1,43 +1,63 @@
 #include "BarrierQuad.h"
+
 using namespace DirectX::SimpleMath;
 
 void BarrierQuad::Init()
 {
-	std::vector<VERTEX_3D> verts(4);
-	verts[0].position = Vector3(-0.5f, 0.5f, 0.0f);
-	verts[1].position = Vector3(0.5f, 0.5f, 0.0f);
-	verts[2].position = Vector3(-0.5f, -0.5f, 0.0f);
-	verts[3].position = Vector3(0.5f, -0.5f, 0.0f);
-	for (int i = 0; i < 4; i++)
-	{
-		verts[i].normal = Vector3(0.0f, 0.0f, -1.0f);
-		verts[i].color = Color(1.0f, 1.0f, 1.0f, 1.0f);
-	}
-	verts[0].uv = Vector2(0.0f, 0.0f);
-	verts[1].uv = Vector2(1.0f, 0.0f);
-	verts[2].uv = Vector2(0.0f, 1.0f);
-	verts[3].uv = Vector2(1.0f, 1.0f);
-	m_VertexBuffer.Create(verts);
-	std::vector<unsigned int> idx = { 0,1,2,3 };
-	m_IndexBuffer.Create(idx);
+    // ── 板ポリ頂点（中心原点、XY平面）──
+    std::vector<VERTEX_3D> vertices =
+    {
+        { {-0.5f,  0.5f, 0.0f}, {0,0,1}, {1,1,1,1}, {0.0f, 0.0f} },
+        { { 0.5f,  0.5f, 0.0f}, {0,0,1}, {1,1,1,1}, {1.0f, 0.0f} },
+        { {-0.5f, -0.5f, 0.0f}, {0,0,1}, {1,1,1,1}, {0.0f, 1.0f} },
+        { { 0.5f, -0.5f, 0.0f}, {0,0,1}, {1,1,1,1}, {1.0f, 1.0f} },
+    };
+    std::vector<unsigned int> indices = { 0,1,2, 2,1,3 };
+    m_IndexCount = (unsigned int)indices.size();
 
-	m_Shader.Create("shader/unlitTextureVS.hlsl", "shader/BarrierBuffer.hlsl");
-	m_Shader.CreatePSConstantBuffer(sizeof(BarrierParms));
+    m_VertexBuffer.Create(vertices);
+    m_IndexBuffer.Create(indices);
+
+    // ── シェーダー作成（既存Shaderクラスと同じ使い方）──
+    m_Shader.Create("shader/barrierVS.hlsl", "shader/barrierPS.hlsl");
+    m_Shader.CreatePSConstantBuffer(sizeof(BarrierParms));
 }
 
-void BarrierQuad::Draw(const DirectX::SimpleMath::Vector3& center, float scale, float progress, const DirectX::SimpleMath::Vector3& baseColor)
+void BarrierQuad::Draw(const Vector3& center, float scale,
+    float progress, const Vector3& baseColor, const Matrix& view)
 {
-	Matrix world = Matrix::CreateScale(scale) * Matrix::CreateTranslation(center);
-	Renderer::SetWorldMatrix(&world);
-	m_Shader.SetGPU();
+	Renderer::SetCullMode(CULL_NONE);
 
-	BarrierParms parms = {};
-	parms.progress = progress;
-	parms.baseColor = Vector4(baseColor.x, baseColor.y, baseColor.z, 1.0f);
-	m_Shader.UpdatePSConstantBuffer(&parms, sizeof(parms));
+    // ── ビルボード化：View行列からright/upベクトルを取り出す ──
+    Vector3 right(view._11, view._21, view._31);
+    Vector3 up(view._12, view._22, view._32);
 
-	m_VertexBuffer.SetGPU();
-	m_IndexBuffer.SetGPU();
-	Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	Renderer::GetDeviceContext()->DrawIndexed(4, 0, 0);
+    Matrix world =
+        Matrix::CreateScale(scale, scale, 1.0f) *
+        Matrix(
+            right.x, right.y, right.z, 0,
+            up.x, up.y, up.z, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        ) *
+        Matrix::CreateTranslation(center);
+
+    Matrix worldCopy = world;
+    Renderer::SetWorldMatrix(&worldCopy);
+
+    // ── シェーダーセット＋定数バッファ更新 ──
+    m_Shader.SetGPU();
+
+    BarrierParms parms = {};
+    parms.progress = progress;
+    parms.baseColor = Vector4(baseColor.x, baseColor.y, baseColor.z, 1.0f);
+    m_Shader.UpdatePSConstantBuffer(&parms, sizeof(parms));
+
+    // ── 頂点/インデックスバインド ──
+    m_VertexBuffer.SetGPU();
+    m_IndexBuffer.SetGPU();
+
+    Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    Renderer::GetDeviceContext()->DrawIndexed(m_IndexCount, 0, 0);
+	Renderer::SetCullMode(CULL_BACK);
 }

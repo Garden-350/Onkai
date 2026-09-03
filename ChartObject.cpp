@@ -8,6 +8,7 @@
 #include "Application.h"
 #include "sound.h"
 #include "Enemy.h"
+#include "LightShaft.h"
 #include <algorithm>
 #include <cmath>
 #undef min
@@ -22,6 +23,16 @@ namespace
 {
 	constexpr float kXScale = 1.7f;	//540にこの値を掛ける
 	constexpr float kEditorRawCenterX = -85.0f;
+	// レーンごとの左右補正量（S,D,F,J,K,L の順）
+// S/L ペア、D/K ペア、F/J ペアで同じ値
+	constexpr float kLaneOffsetFix[6] = {
+		180.0f,  // S (lane0)
+		110.0f,  // D (lane1)
+		40.0f,  // F (lane2)
+		40.0f,  // J (lane3)
+		110.0f,  // K (lane4)
+		180.0f,  // L (lane5)
+	};
 	// 2つのVector3を線形補間する
 	Vector3 LerpVector3(const Vector3& a, const Vector3& b, float t)
 	{
@@ -797,12 +808,6 @@ void ChartObject::Update()
 		if (m_ComboPopTimer < 0.0f) m_ComboPopTimer = 0.0f;
 	}
 
-	//判定表示時間の減算
-	if (m_JudgeRankPopTimer > 0.0f)
-	{
-		m_JudgeRankPopTimer -= deltaTime;
-		if (m_JudgeRankPopTimer < 0.0f) m_JudgeRankPopTimer = 0.0f;
-	}
 
 	// 判定円の動きに合わせて、未判定ノーツのjudgePosを追従させる
 	// （フリックはjudgePosがenemy側固定なので対象外）
@@ -825,12 +830,23 @@ void ChartObject::Update()
 	}
 
 	//ボタン入力時に出る障壁
+	//for (int i = 0; i < 6; i++)
+	//{
+	//	if (!m_BarrierEffects[i].active) continue;
+	//	m_BarrierEffects[i].timer += deltaTime;
+	//	if (m_BarrierEffects[i].timer >= kBarrierDuration)
+	//		m_BarrierEffects[i].active = false;
+	//}
+
 	for (int i = 0; i < 6; i++)
 	{
-		if (!m_BarrierEffects[i].active) continue;
-		m_BarrierEffects[i].timer += deltaTime;
-		if (m_BarrierEffects[i].timer >= kBarrierDuration)
-			m_BarrierEffects[i].active = false;
+		if (!m_JudgeRankEffects[i].active) continue;
+		m_JudgeRankEffects[i].timer -= deltaTime;
+		if (m_JudgeRankEffects[i].timer <= 0.0f)
+		{
+			m_JudgeRankEffects[i].timer = 0.0f;
+			m_JudgeRankEffects[i].active = false;
+		}
 	}
 
 	// メトロノームのカウントイン音（1小節分、拍ごとにクリック音を鳴らす）
@@ -912,6 +928,7 @@ void ChartObject::Update()
 			[](const ChartNote& n) { return n.judged; }),
 		m_Notes.end());
 
+	UpdateLightEffects(deltaTime);
 	// ホーミングビームの状態遷移とプレイヤー移動の更新
 	UpdateHomingBeams(deltaTime);
 }
@@ -936,6 +953,20 @@ void ChartObject::JudgeLane(int key, int laneIndex)
 
 		float diff = std::fabs(m_Notes[i].time - m_MusicTime);
 		if (diff < bestDiff) { bestDiff = diff; bestIndex = i; }
+	}
+	if (bestIndex == -1)
+	{
+		ChartKeyLightEffect le;
+		le.lane = laneIndex;
+		le.startTime = m_MusicTime;
+		le.duration = 0.6f;
+		le.intensity = 2.2f;
+		le.origin = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
+
+		le.origin.x += (laneIndex < 3) ? -kLaneOffsetFix[laneIndex] : kLaneOffsetFix[laneIndex];
+
+		m_LightEffects.push_back(le);
+		return;
 	}
 	if (bestIndex == -1) return;
 	if (bestDiff > kGud) return; // 判定圏外なら何もしない
@@ -1222,13 +1253,14 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 	{
 		m_BarrierEffects[laneIndex].active = true;
 		m_BarrierEffects[laneIndex].timer = 0.0f;
+
+		m_JudgeRankEffects[laneIndex].active = true;
+		m_JudgeRankEffects[laneIndex].rank = rank;
+		m_JudgeRankEffects[laneIndex].timer = kJudgeRankPopDuration;
 	}
 
 	if (m_Combo > m_MaxCombo) m_MaxCombo = m_Combo;
 	m_ComboPopTimer = 0.15f; // コンボ数字が一瞬拡大表示される演出用タイマー
-
-	m_JudgeRankCurrent = rank;              // 0=Perfect, 1=Great, 2=Good
-	m_JudgeRankPopTimer = kJudgeRankPopDuration;
 
 	if (laneIndex < 0 || laneIndex >= 6) return;
 	Vector3 pos = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
@@ -1250,7 +1282,117 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 		);
 		m_Particle.push_back(p);
 	}
+	ChartKeyLightEffect le;
+	le.lane = laneIndex;
+	le.startTime = m_MusicTime;
+	le.duration = 0.4f;
+	le.intensity = 2.5f;
+	le.origin = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
+
+	le.origin.x += (laneIndex < 3) ? -kLaneOffsetFix[laneIndex] : kLaneOffsetFix[laneIndex];
+
+	m_LightEffects.push_back(le);
+	// OnJudge内、le.push_backの直後に一時的に追加
+	//Particle debugP(
+	//	le.origin,
+	//	1.0f, 0.0f,
+	//	Color(1, 0, 0, 1), Color(1, 0, 0, 1),
+	//	1.0f, 30.0f, 30.0f,
+	//	Vector3(0, 0, 0), 0.0f
+	//);
+	//m_Particle.push_back(debugP);
+	Vector3 laneColorForSpark = GetLaneColor(laneIndex);
+	for (int i = 0; i < 20; i++)
+	{
+		float deg = (float)(rand() % 360);
+		Particle p(
+			le.origin,
+			0.4f,                                   // 寿命短め
+			20.0f,                                  // 重力弱め
+			Color(laneColorForSpark.x, laneColorForSpark.y, laneColorForSpark.z, 1.0f),
+			Color(laneColorForSpark.x, laneColorForSpark.y, laneColorForSpark.z, 0.0f),
+			0.5f,
+			40.0f,   // 開始サイズ
+			10.0f,   // 終了サイズ
+			Vector3(150, 60, 150), // 初速(横に大きく飛ばす)
+			deg
+		);
+		m_Particle.push_back(p);
+	}
 	(void)rank; // 現状rank別の演出差はまだ未実装。将来ランクごとに色や量を変える場合はここで分岐する
+}
+
+void ChartObject::UpdateLightEffects(float deltaTime)
+{
+	m_LightEffects.erase(
+		std::remove_if(m_LightEffects.begin(), m_LightEffects.end(),
+			[this](const ChartKeyLightEffect& le) {
+				return (m_MusicTime - le.startTime) >= le.duration;
+			}),
+		m_LightEffects.end());
+}
+
+void ChartObject::DrawLightEffects(Camera* cam)
+{
+	if (!m_BeamModelLoaded) return;
+
+	Renderer::SetBlendState(BS_ADDITIVE);
+
+	constexpr int kSegments = 6;
+	constexpr float kMaxDistance = 2000.0f;	//物理的な長さ
+
+	Matrix view = cam->GetViewMatrix();
+	Matrix invView = view.Invert();
+	Vector3 screenUpInWorld(invView._21, invView._22, invView._23);
+	screenUpInWorld.Normalize();
+
+	for (auto& le : m_LightEffects)
+	{
+		float age = m_MusicTime - le.startTime;
+		float t = std::clamp(age / le.duration, 0.0f, 1.0f);
+
+		// ── アニメーションカーブ ──
+		// 立ち上がりは一瞬(0〜0.15)でMAXに達し、そこから減衰していく
+		float growT = std::clamp(t / 0.15f, 0.0f, 1.0f);
+		float riseEase = 1.0f - (1.0f - growT) * (1.0f - growT); // ease-out
+		float decay = 1.0f - t;                                  // 線形フェード
+		decay = decay * decay;                                    // 後半を急速に消す(ease-in)
+
+		float envelope = riseEase * decay; // 全体の強さ(0〜1)
+		if (envelope <= 0.001f) continue;
+
+		Vector3 from = le.origin;
+		Vector3 dir = screenUpInWorld;
+		Vector3 color = GetLaneColor(le.lane);
+
+		float rootScale = 120.0f * envelope;
+		m_ParticleQuad.Draw(cam, from, rootScale,
+			Color(color.x, color.y, color.z, envelope));
+
+		// 根本→先端で幅が広がる台形。envelopeで全体の伸び具合も変える
+		float reach = kMaxDistance * (0.3f + 0.7f * riseEase); // 出た瞬間ニュッと伸びる
+
+		for (int s = 0; s < kSegments; s++)
+		{
+			float p0 = (float)s / kSegments;
+			float p1 = (float)(s + 1) / kSegments;
+
+			Vector3 segFrom = from + dir * (reach * p0);
+			Vector3 segTo = from + dir * (reach * p1);
+
+			float baseWidth = 200.0f + 20.0f * p1; // 先端に向けて広がる
+
+			// ── 芯(コア)：細く強い ──
+			DrawBeamSegmentWithColor(cam, segFrom, segTo,
+				baseWidth * 0.35f, 4.0f, color, le.intensity * 1.6f * envelope);
+
+			// ── グロー：太く柔らかい ──
+			DrawBeamSegmentWithColor(cam, segFrom, segTo,
+				baseWidth, 10.0f, color, le.intensity * 0.5f * envelope);
+		}
+	}
+
+	Renderer::SetBlendState(BS_NONE);
 }
 
 // ============================================================
@@ -1590,6 +1732,7 @@ void ChartObject::Draw(Camera* cam)
 	cam->SetShakeOffset(m_ShakeOffset);
 	// 3Dカメラを再アサート（他オブジェクトがTexture2Dで2Dに切り替えている場合があるため）
 	cam->SetCamera(0);
+	const Matrix view = cam->GetViewMatrix();
 
 	Renderer::SetBlendState(BS_ALPHABLEND);
 	for (auto& note : m_Notes)
@@ -1735,7 +1878,7 @@ void ChartObject::Draw(Camera* cam)
 	}
 
 	// ── 判定円アイコン：judgeCirclesの3D座標を画面に投影して表示 ──
-	const Matrix view = cam->GetViewMatrix();
+
 	Renderer::SetBlendState(BS_ALPHABLEND);
 	for (int i = 0; i < 6; i++)
 	{
@@ -1775,28 +1918,30 @@ void ChartObject::Draw(Camera* cam)
 	}
 	Renderer::SetBlendState(BS_NONE);
 
-	// 判定ランク演出
-	if (m_JudgeRankPopTimer > 0.0f && m_JudgeRankCurrent >= 0)
+	//判定ランク演出
 	{
-		// フェードアウト：残り時間の割合をアルファ的な演出に使ってもいい（今回はスケールで演出）
-		float t = m_JudgeRankPopTimer / kJudgeRankPopDuration; // 1.0→0.0
-		float popScale = 1.0f + (1.0f - t) * 0.0f;
-
-		Texture2D* target = nullptr;
-		switch (m_JudgeRankCurrent)
+		Renderer::SetBlendState(BS_ALPHABLEND);
+		for (int i = 0; i < 6; i++)
 		{
-		case 0: target = &m_JudgeRankPerfect; break;
-		case 1: target = &m_JudgeRankGreat;   break;
-		case 2: target = &m_JudgeRankGood;    break;
-		}
+			if (!m_JudgeRankEffects[i].active) continue;
 
-		if (target)
-		{
-			Renderer::SetBlendState(BS_ALPHABLEND);
-			target->SetPosition(0.0f, 30.0f, 0.0f);
+			Texture2D* target = nullptr;
+			switch (m_JudgeRankEffects[i].rank)
+			{
+			case 0: target = &m_JudgeRankPerfect; break;
+			case 1: target = &m_JudgeRankGreat;   break;
+			case 2: target = &m_JudgeRankGood;    break;
+			}
+			if (!target) continue;
+
+			Vector3 circlePos3D = m_JudgeCircles[i].GetPosition(m_MusicTime);
+			Vector3 screenPos = WorldToTexture2DPos(circlePos3D, view);
+			screenPos.y += 150.0f;
+
+			target->SetPosition(screenPos);
 			target->Draw(cam);
-			Renderer::SetBlendState(BS_NONE);
 		}
+		Renderer::SetBlendState(BS_NONE);
 	}
 
 	// ── コンボ数表示（3桁、ヒット直後は少し拡大する演出）──
@@ -1851,12 +1996,15 @@ void ChartObject::Draw(Camera* cam)
 	for (int i = 0; i < 6; i++)
 	{
 		if (!m_BarrierEffects[i].active) continue;
+		//Renderer::SetDepthEnable(false);
 		float progress = m_BarrierEffects[i].timer / kBarrierDuration;
 		Vector3 pos = m_JudgeCircles[i].GetPosition(m_MusicTime);
-		m_BarrierQuad.Draw(pos, 3000.0f, progress, GetLaneColor(i));
+		//Vector3 pos = Vector3(0.0f, 0.0f, 1.0f);
+		m_BarrierQuad.Draw(pos, 300.0f, progress, GetLaneColor(i), view);
 	}
 	Renderer::SetBlendState(BS_NONE);
 
+	DrawLightEffects(cam);
 	// ── ホーミングビームの描画（他要素の最後に描くことで前面に出す）──
 	DrawHomingBeams(cam);
 

@@ -31,6 +31,18 @@
     <FxCompile Include="shader\wireGridVS.hlsl">
       <Filter>リソースファイル</Filter>
     </FxCompile>
+    <FxCompile Include="shader\barrierVS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\barrierPS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="lightShaftVS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="lightShaftPS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChartObject.cpp">
@@ -153,6 +165,7 @@
     <ClCompile Include="PostFlashEffect.cpp">
       <Filter>ソースファイル\Object</Filter>
     </ClCompile>
+    <ClCompile Include="LightShaft.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -296,6 +309,7 @@
     <ClInclude Include="ResultData.h">
       <Filter>ヘッダーファイル\Object</Filter>
     </ClInclude>
+    <ClInclude Include="LightShaft.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">

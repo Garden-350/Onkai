@@ -38,6 +38,7 @@ void Particle::InitParam(const DirectX::SimpleMath::Vector3& pos, float lifeTime
     m_mode = MoveMode::Oblique;
 }
 
+
 void Particle::Update(float tick)
 {
     if (m_mode == MoveMode::Stop) return;

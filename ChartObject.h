@@ -142,6 +142,15 @@ struct BarrierEffect
 	float timer = 0.0f;
 };
 
+struct ChartKeyLightEffect
+{
+	int lane = 0;
+	float startTime = 0.0f;
+	float duration = 0.0f;
+	float intensity = 2.2f;	// 1.0f=通常 2.0f=2倍明るい 3.0f=3倍明るい
+	DirectX::SimpleMath::Vector3 origin;
+};
+
 // ============================================================
 // ChartObject : エディターが吐き出した .json 譜面を読み込んで
 //               実際にノーツ/ビームを流し、判定するプレイ専用オブジェクト。
@@ -210,6 +219,7 @@ private:
 	std::vector<Particle> m_Particle;
 	std::vector<std::unique_ptr<Material>> m_Materials;
 	std::vector<std::unique_ptr<Texture>> m_Textures;
+	std::vector<ChartKeyLightEffect> m_LightEffects;	// 判定時のキーライト点滅エフェクト
 	std::chrono::steady_clock::time_point m_LastUpdateClock;
 	std::string m_AudioFile;
 	float m_NoteScale = 40.0f;	// TAPモデルの表示スケール
@@ -363,12 +373,20 @@ private:
 
 	// ── 判定ヒット時のフック：コンボ加算＋パーティクル生成 ──
 	void OnJudge(int laneIndex, int rank); // rank: 0=PERFECT; 1=GREAT 2=GOOD
+	void UpdateLightEffects(float deltaTime);
+	void DrawLightEffects(Camera* cam);
+
+	struct JudgeRankEffect
+	{
+		bool active = false;
+		float timer = 0.0f;
+		int rank = 0; // 0=PERFECT, 1=GREAT, 2=GOOD
+	};
 
 	Texture2D m_JudgeRankPerfect;
 	Texture2D m_JudgeRankGreat;
 	Texture2D m_JudgeRankGood;
-	float m_JudgeRankPopTimer = 0.0f;   // 残り表示時間
-	int   m_JudgeRankCurrent = -1;      // 現在表示中のランク(0=Perfect,1=Great,2=Good, -1=非表示)
+	JudgeRankEffect m_JudgeRankEffects[6];
 	static constexpr float kJudgeRankPopDuration = 0.6f; // 表示継続時間（秒）
 
 	static DirectX::SimpleMath::Vector3 GetLaneColor(int lane)
@@ -383,5 +401,5 @@ private:
 	}
 
 	//ボタンを押したときに出すエフェクトの一種
-	static constexpr float kBarrierDuration = 0.25f;
+	static constexpr float kBarrierDuration = 10.25f;
 };

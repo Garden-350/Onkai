@@ -48,6 +48,21 @@
     <ClCompile Include="ChartObject.cpp">
       <Filter>ソースファイル\Chart</Filter>
     </ClCompile>
+    <ClCompile Include="NotePath.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="ChartLoader.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelUtil.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="ScreenEffects.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="HomingBeamSystem.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
     <ClCompile Include="SkyBox.cpp">
       <Filter>ソースファイル\Sky</Filter>
     </ClCompile>
@@ -166,9 +181,29 @@
       <Filter>ソースファイル\Object</Filter>
     </ClCompile>
     <ClCompile Include="LightShaft.cpp" />
+    <ClCompile Include="JudgeSystem.cpp" />
+    <ClCompile Include="ComboHud.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="NotePath.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="ChartLoader.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="ChartHomingBeam.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelUtil.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="ScreenEffects.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="HomingBeamSystem.h">
       <Filter>ヘッダーファイル\Chart</Filter>
     </ClInclude>
     <ClInclude Include="SimpleJson.h">
@@ -310,6 +345,8 @@
       <Filter>ヘッダーファイル\Object</Filter>
     </ClInclude>
     <ClInclude Include="LightShaft.h" />
+    <ClInclude Include="JudgeSystem.h" />
+    <ClInclude Include="ComboHud.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">

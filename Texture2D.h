@@ -67,5 +67,8 @@ public:
 
 	// UV座標を指定
 	void SetUV(const float& nu, const float& nv, const float& sx, const float& sy);
+
+	// アルファ値を指定（0.0～1.0）。フェードイン/アウト用
+	void SetAlpha(const float& a);
 };
 

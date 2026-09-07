@@ -15,6 +15,11 @@
 #include "Particle.h"
 #include "MagicCircleQuad.h"
 #include "BarrierQuad.h"
+#include "ChartHomingBeam.h"
+#include "ScreenEffects.h"
+#include "HomingBeamSystem.h"
+#include "JudgeSystem.h"
+#include "ComboHud.h"
 
 class Player;
 class Enemy;
@@ -49,6 +54,10 @@ struct ChartNote
 	DirectX::SimpleMath::Vector3 spawnPos{};	// 出現位置（ワールド座標）
 	DirectX::SimpleMath::Vector3 judgePos{};	// 判定位置（ワールド座標）
 	std::vector<DirectX::SimpleMath::Vector3> controlPoints;	// ベジェ曲線の制御点。0個=直線 1個=2次ベジェ 2個=3次ベジェ
+
+	// ── フィナーレ演出用：ロングノーツを螺旋状に描画するオプション（無指定なら従来通り直線）──
+	float spiralTurns = 0.0f;		// 螺旋の回転数（例:2.0で2回転）。0なら螺旋なし
+	float spiralRadius = 0.0f;		// 螺旋の半径(spawn時が最大、判定時刻に向けて0へ収束)
 
 	// ── 判定の進行状態 ──
 	bool judged = false;			// true になったら以後描画・判定の対象から外す（Update末尾で一括削除される）
@@ -95,52 +104,7 @@ struct ChartJudgeCircle
 	DirectX::SimpleMath::Vector3 GetPosition(float now) const;
 };
 
-// ============================================================
-// ホーミングビーム1発分のデータと実行時状態
-// ============================================================
-struct ChartHomingBeam
-{
-	float chargeTime = 0.0f;	// 探索(タンタンタン)を開始する時刻
-	float lockTime = 0.0f;		// 発射する時刻
-	float hitTime = 0.0f;		// 命中判定(ダメージ/ドッジ確定)を打ち切る時刻
-
-	// ビームの進行段階
-	enum class State
-	{
-		Homing,		// 探索中〜発射待ち。プレイヤーを追いかけながらバラけた線を表示
-		Fired,		// 発射済み。命中/回避を一定間隔でチェック中
-		Resolved	// 判定終了。以後何もしない
-	};
-	State state = State::Homing;
-
-	bool judgmentLocked = false;			// ロック位置が確定したか
-	int  lockedSide = 0;					// ロック時のプレイヤー位置(-1/0/1)
-	DirectX::SimpleMath::Vector3 lockedPos{};	// ロックされた着弾座標
-
-	bool lockSoundPlayed = false;	// ロック音を鳴らしたか
-	bool fireSoundPlayed = false;	// 発射音を鳴らしたか
-	int  searchBeatsPlayed = 0;	// 「タン」を何回鳴らしたか
-	float nextCountTime = 0.0f;	// 次に命中判定を行う時刻
-
-	static constexpr int   kSearchBeatCount = 3;	// 「タン」を鳴らす回数
-	static constexpr float kCountInterval = 0.5f;	// 発射後、何秒おきに命中判定するか
-	static constexpr int   kScatterCount = 6;		// 探索中に表示するバラけた線の本数
-	DirectX::SimpleMath::Vector3 scatterOffsets[kScatterCount]; // 各線のランダムな初期オフセット
-};
-
-struct BeamShaderParms
-{
-	float time;
-	float intensity;
-	float padding0[2];
-	DirectX::SimpleMath::Vector4 baseColor;
-};	//sizeof == 32 (16の倍数ならOK)
-
-struct BarrierEffect
-{
-	bool active = false;
-	float timer = 0.0f;
-};
+// ChartHomingBeam / BeamShaderParms は ChartHomingBeam.h に切り出し済み
 
 struct ChartKeyLightEffect
 {
@@ -160,6 +124,7 @@ struct ChartKeyLightEffect
 class ChartObject : public Object
 {
 public:
+
 	void Init() override;
 	void Update() override;
 	void Draw(Camera* cam) override;
@@ -174,15 +139,14 @@ public:
 	void SetPlayerRef(Player* player) { m_PlayerRef = player; }
 
 	// 判定結果の参照用
-	int GetPerfectCount() const { return m_Perfect; }
-	int GetGreatCount()   const { return m_Great; }
-	int GetGoodCount()    const { return m_Good; }
-	int GetMissCount()    const { return m_Miss; }
-	int GetMaxComboCount() const { return m_MaxCombo; }
-
+	int GetPerfectCount() const { return m_JudgeSystem.GetPerfectCount(); }
+	int GetGreatCount()   const { return m_JudgeSystem.GetGreatCount(); }
+	int GetGoodCount()    const { return m_JudgeSystem.GetGoodCount(); }
+	int GetMissCount()    const { return m_JudgeSystem.GetMissCount(); }
+	int GetMaxComboCount() const { return m_JudgeSystem.GetMaxComboCount(); }
 	float GetFlashAlpha()
 	{
-		return (m_FlashDuration > 0.0001f) ? (m_FlashTimer / m_FlashDuration) : 0.0f;
+		return m_ScreenEffects.GetFlashAlpha();
 	}
 	//曲が最後まで再生したか
 	bool IsAudioFinish() const
@@ -199,22 +163,19 @@ private:
 	// ────────────────────────────────────────
 	// TAPノーツ本体の3Dモデル・エフェクト一式
 	// ────────────────────────────────────────
+
+	JudgeSystem m_JudgeSystem;	// 判定結果の集計・参照用
 	Sound sound;
 	Shader m_Shader;
 	MeshRenderer m_MeshRenderer;
 	MagicCircleQuad m_MagicCircleQuad;
 	RingQuad m_ApproachRing;		// 接近リング（判定ラインに近づくほど大きく濃くなる）
 	ParticleQuad m_ParticleQuad;	// 判定ヒット時の花びらパーティクル
-	BarrierQuad m_BarrierQuad;
 	Texture2D m_LaneIcons[6];		// S/D/F/J/K/Lアイコン（画面固定2D）
-	Texture2D m_ComboDigits[4];	// コンボ数の3桁表示
-	Texture2D m_PerfectDigits[4];
-	Texture2D m_GreatDigits[4];
-	Texture2D m_GoodDigits[4];
-	Texture2D m_MissDigits[4];
+	bool m_ShowLaneKeyIcons = false;	// レーンキーアイコン(S/D/F/J/K/L)を表示するか。視認性改善のためデフォルトOFF
 	Texture2D m_LaneFrame[6];		// 判定円の外枠
-	Texture2D m_LaneFill[6];		// 判定円の内側（接近度に応じて育つ）
-	BarrierEffect m_BarrierEffects[6];
+	bool m_ShowLaneFrame = false;		// 判定円の外枠(sotohako)を表示するか。デフォルトOFF
+	Texture2D m_LaneFill[6];		// 判定円の内側（接近度に応じて育つ・フェードイン）
 	std::vector<SUBSET> m_Subsets;
 	std::vector<Particle> m_Particle;
 	std::vector<std::unique_ptr<Material>> m_Materials;
@@ -262,32 +223,11 @@ private:
 	std::vector<std::unique_ptr<Material>> m_FlickMaterials;
 	std::vector<std::unique_ptr<Texture>> m_FlickTextures;
 
-	// ────────────────────────────────────────
-	// ホーミングビーム用モデル（棒状FBXを引き伸ばして使う想定）
-	// ────────────────────────────────────────
-	bool m_BeamModelLoaded = false;
-	MeshRenderer m_BeamMeshRenderer;
-	Texture m_BeamNoiseTexture;
-	Shader m_BeamShader;
-	std::vector<SUBSET> m_BeamSubsets;
-	std::vector<std::unique_ptr<Material>> m_BeamMaterials;
-	std::vector<std::unique_ptr<Texture>> m_BeamTextures;
-	float m_BeamModelLength = 1.0f;	// モデルのローカルZ方向の長さ（アセットの実寸に合わせて調整）
 	DirectX::SimpleMath::Vector3 GetPlayerSideAnchor(int side)const;
-	DirectX::SimpleMath::Vector3 m_ShakeOffset = DirectX::SimpleMath::Vector3::Zero;
-
-	float m_ShakeTimer = 0.0f;
-	float m_ShakeDuration = 0.0f;
-	float m_ShakeStrength = 0.0f;
-	float m_FlashTimer = 0.0f;
-	float m_FlashDuration = 0.0f;
-	float m_BeamShaderTime = 0.0f;
-	
-	void TriggerScreenShake(float duration, float strength);
-	void TriggerFlash(float duration);
+	ScreenEffects m_ScreenEffects;
+	HomingBeamSystem m_BeamSystem;
 
 	bool m_AutoMode = false;
-	void UpdateAutoJudgge();	//autoモード
 
 
 	// ────────────────────────────────────────
@@ -295,7 +235,6 @@ private:
 	// ────────────────────────────────────────
 	std::vector<ChartNote> m_Notes;
 	std::vector<ChartJudgeCircle> m_JudgeCircles;	// レーン0〜5に対応
-	std::vector<ChartHomingBeam> m_HomingBeams;
 
 	Enemy* m_EnemyRef = nullptr;	// ビームの発射元座標を取得するための参照
 
@@ -317,54 +256,16 @@ private:
 	int m_CountInNextBeat = 0;		// 次に鳴らすべきカウントインの拍番号
 
 	int m_BeatsPerBar = 4;	// 拍子（メタデータから読み込み）
-	int m_Combo = 0;		// 現在のコンボ数
-
-	// ── 判定カウント ──
-	int m_Perfect = 0;
-	int m_Great = 0;
-	int m_Good = 0;
-	int m_Miss = 0;
-	int m_MaxCombo = 0;
-
-	float m_ComboPopTimer = 0.0f;		// コンボ数字が拡大表示される残り時間
-	float m_NuberSplite_Size = 80.0f;	// コンボ数字1桁の表示サイズ
 	float m_FrameSize = 150.0f;			// 判定円の外枠の表示サイズ
-
-	// ── 判定タイミングの許容誤差（秒）。値が小さいほどシビア ──
-	static constexpr float kPerfect = 0.2f;
-	static constexpr float kGreat = 0.4f;
-	static constexpr float kGud = 0.6f;			// この範囲を過ぎたら自動ミス
-	static constexpr float kLongTickInterval = 0.05f;	// ロングノーツの継続判定(tick)間隔
 
 	bool m_PrevLaneKeyDown[6] = { false,false,false,false,false,false }; // （現状未使用。将来の押した瞬間検出用に予約）
 
-	// ── ノーツの位置補間 ──
-	// TAP/FLICK用：spawnPos〜judgePosを [0,1] にクランプして補間（ベジェ対応）
-	DirectX::SimpleMath::Vector3 EvaluateNotePosition(const ChartNote& note, float now) const;
-	// LONGNOTE用：spawnPos〜judgePosを「クランプせず」直線補間（先端が判定ラインを越えても進み続けられるように）
-	DirectX::SimpleMath::Vector3 EvaluateLongNotePosition(const ChartNote& note, float now) const;
+	// ── ノーツの位置補間（NotePath.h/.cpp の自由関数に切り出し済み）──
 
-	// ── 判定処理 ──
-	void JudgeLane(int key, int laneIndex);	// TAPノーツ：キーを押した瞬間の判定
-	void JudgeFlickNotes();					// FLICKノーツ：時間ウィンドウ内でサイド一致を判定
-	void JudgeLongNoteHold();					// LONGNOTE：押し始め〜押しっぱなし〜離すを判定
+	// ── 判定処理切り出し済み
 
 	// ── ホーミングビーム ──
-	void UpdateHomingBeams(float deltaTime);	// 状態遷移（探索→ロック→発射→解決）とプレイヤー移動更新
-	void InitBeamScatter(ChartHomingBeam& beam);	// 探索中に表示するバラけた線の初期位置を決める
-	void DrawBeamSegment(Camera* cam,				// from→to の間にビームモデルを引き伸ばして1本描画
-		const DirectX::SimpleMath::Vector3& from,
-		const DirectX::SimpleMath::Vector3& to,
-		float thicknessX, float thicknessY);
-	void DrawBeamSegmentWithColor(Camera* cam, const DirectX::SimpleMath::Vector3& from,
-		const DirectX::SimpleMath::Vector3& to, float thicknessX, float thicknessY,
-		const DirectX::SimpleMath::Vector3& baseColor, float intensity);
-	void DrawJudggedBeam(Camera* cam, const DirectX::SimpleMath::Vector3& from,
-		const DirectX::SimpleMath::Vector3& to, float thickness,
-		const DirectX::SimpleMath::Vector3& color, float intensity,
-		int segments = 6, float jitter = 15.0f);
-
-	void DrawHomingBeams(Camera* cam);				// 全ビームの描画をまとめて行う
+// UpdateHomingBeams / DrawBeamSegment* / DrawHomingBeams は HomingBeamSystem に切り出し済み
 
 	// ── ロングノーツ描画（sentan/dou/oの3パーツ） ──
 	void DrawLongNotes(Camera* cam);
@@ -373,21 +274,9 @@ private:
 
 	// ── 判定ヒット時のフック：コンボ加算＋パーティクル生成 ──
 	void OnJudge(int laneIndex, int rank); // rank: 0=PERFECT; 1=GREAT 2=GOOD
+	void OnEmptyLanePress(int laneIndex);  // 空押し時のライトエフェクト（元JudgeLane内の処理）
 	void UpdateLightEffects(float deltaTime);
 	void DrawLightEffects(Camera* cam);
-
-	struct JudgeRankEffect
-	{
-		bool active = false;
-		float timer = 0.0f;
-		int rank = 0; // 0=PERFECT, 1=GREAT, 2=GOOD
-	};
-
-	Texture2D m_JudgeRankPerfect;
-	Texture2D m_JudgeRankGreat;
-	Texture2D m_JudgeRankGood;
-	JudgeRankEffect m_JudgeRankEffects[6];
-	static constexpr float kJudgeRankPopDuration = 0.6f; // 表示継続時間（秒）
 
 	static DirectX::SimpleMath::Vector3 GetLaneColor(int lane)
 	{
@@ -399,7 +288,5 @@ private:
 		default: return DirectX::SimpleMath::Vector3(1.0f, 1.0f, 1.0f);
 		}
 	}
-
-	//ボタンを押したときに出すエフェクトの一種
-	static constexpr float kBarrierDuration = 10.25f;
+	ComboHud m_ComboHud;
 };

@@ -162,3 +162,13 @@ void Texture2D::SetUV(const float& nu, const float& nv, const float& sx, const f
 	m_SplitX = sx;
 	m_SplitY = sy;
 }
+
+// アルファ値を指定
+void Texture2D::SetAlpha(const float& a)
+{
+	for (int i = 0; i < 4; i++)
+	{
+		m_Vertices[i].color = Color(1.0f, 1.0f, 1.0f, a);
+	}
+	m_VertexBuffer.Modify(m_Vertices);
+}

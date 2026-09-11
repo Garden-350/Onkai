@@ -106,6 +106,15 @@ void ResultScene::Update()
 		mis->SetScale(200.0f, 60.0f, 0.0f);
 		m_MySceneObjects.emplace_back(mis);
 
+		if (m_Result.isFullCombo)
+		{
+			Texture2D* full = Game::GetInstance()->AddObject<Texture2D>();
+			full->SetTexture("assets/texture/FullCpmbo.png");
+			full->SetPosition(0.0f, 0.0f, 0.0f);
+			full->SetRotation(0.0f, 0.0f, 0.0f);
+			full->SetScale(360.0f, 260.0f, 0.0f);
+			m_MySceneObjects.emplace_back(full);
+		}
 
 		m_Initialized = true;
 	}

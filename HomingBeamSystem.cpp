@@ -239,7 +239,7 @@ void HomingBeamSystem::DrawBeamSegmentWithColor(Camera* cam, const Vector3& from
 	Matrix world =
 		Matrix::CreateScale(thicknessX, thicknessY, len / m_BeamModelLength) *
 		basis *
-		Matrix::CreateTranslation(mid);
+		Matrix::CreateTranslation(from);
 
 	Matrix worldCopy = world;
 	Renderer::SetWorldMatrix(&worldCopy);

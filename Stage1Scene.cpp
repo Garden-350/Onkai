@@ -34,7 +34,7 @@ void Stage1Scene::Init()
 	// プレイヤーの斜め後方・少し上から、奥の敵方向を見下ろす
 	Game::GetInstance()->GetCamera()->SetFixedPose(
 		Vector3(0.0f, 300.0f, -850.0f),   // カメラ位置：プレイヤーのやや上・後方
-		Vector3(0.0f, 100.0f, -300.0f)      // 注視点：奥(敵方向)の少し高い位置
+		Vector3(0.0f, 0.0f, -300.0f)      // 注視点：奥(敵方向)の少し高い位置
 	);
 
 	auto* ground = Game::GetInstance()->AddObject<Ground>();
@@ -115,6 +115,8 @@ void Stage1Scene::SendResult()
 		result.good = m_Chart->GetGoodCount();
 		result.miss = m_Chart->GetMissCount();
 		result.maxCombo = m_Chart->GetMaxComboCount();
+		result.totalNotes = m_Chart->GetTotalNoteCount();
+		result.isFullCombo = m_Chart->IsFullCombo();
 		result.chartName = Game::GetInstance()->GetSelectedChart();
 		Game::SetResultData(result);
 	}

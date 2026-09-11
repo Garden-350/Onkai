@@ -149,8 +149,7 @@ namespace ChartLoader
 				// 状態フラグの初期化
 				note.judged = false;
 				note.approcachPlayed = false;
-				note.longStarted = false;
-				note.longFailed = false;
+				note.nextTickTime = note.arrivalTime;	//最初のチェックポイントをarrivalTimeに設定
 
 				result.notes.push_back(note);
 			}

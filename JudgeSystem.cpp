@@ -2,6 +2,7 @@
 #include "ChartObject.h"
 #include "Sound.h"
 #include "Input.h"
+#include "ResultData.h"
 #include <algorithm>
 #include <cmath>
 #undef min
@@ -69,7 +70,7 @@ void JudgeSystem::JudgeFlickNotes(std::vector<ChartNote>& notes, float musicTime
 		if (!n.IsFlick())continue;
 
 		float diff = n.time - musicTime;	//正：まだ来ていない　負：過ぎた
-		int requiredSide = n.IsFlickRight() ? 1 : -1;	//右フリックなら1、左フリックなら-1
+		int requiredSide = n.IsFlickRight() ? -1 : 1;	//右フリックなら1、左フリックなら-1
 
 		if(fabsf(diff) <= kGud && playerSide == requiredSide)
 		{
@@ -97,6 +98,7 @@ void JudgeSystem::JudgeFlickNotes(std::vector<ChartNote>& notes, float musicTime
 
 void JudgeSystem::JudgeLongNoteHold(std::vector<ChartNote>& notes, float musicTime)
 {
+	constexpr float kEps = 0.0001f;
 	for (auto& n : notes)
 	{
 		if (!n.IsLong()) continue;
@@ -105,53 +107,37 @@ void JudgeSystem::JudgeLongNoteHold(std::vector<ChartNote>& notes, float musicTi
 		if (n.lane < 0 || n.lane >= 6) continue;
 		bool isDown = Input::GetKeyPress(kLaneKeys[n.lane]);
 
-		// ── まだ開始していない場合 ──
-		if (!n.longStarted && !n.longFailed)
+		while (musicTime >= n.nextTickTime - kEps)
 		{
-			float diff = n.arrivalTime - musicTime;
-			if (isDown && fabsf(diff) <= kGud)
-			{
-				float absDiff = fabsf(diff);
-				int rank = (absDiff < kPerfect) ? 0 : (absDiff < kGreat) ? 1 : 2;
-				if (rank == 0) m_Perfect++;
-				else if (rank == 1) m_Great++;
-				else m_Good++;
-				RegisterHit(n.lane, rank);
+			bool isFinalTick = (n.nextTickTime >= n.time - kEps);
 
-				n.longStarted = true;
-				n.nextTickTime = n.arrivalTime + kLongTickInterval;
-			}
-			else if (diff < -kGud)
-			{
-				// 開始を逃した → Failed扱いにするだけ。ノーツはendTimeまで残す
-				n.longFailed = true;
-				m_Miss++;
-			}
-		}
-		// ── 開始済み・まだ成功継続中 ──
-		else if (n.longStarted && !n.longFailed)
-		{
 			if (isDown)
 			{
-				while (n.nextTickTime <= musicTime && n.nextTickTime < n.time)
-				{
-					m_Perfect++;
-					n.nextTickTime += kLongTickInterval;
-				}
+				m_Perfect++;
+				RegisterHit(n.lane, 0);
 			}
 			else
 			{
-				// 離した瞬間 → Failedにするが、ノーツはendTimeまで残す
-				n.longFailed = true;
 				m_Miss++;
+				RegisterMiss();
+			}
+
+			if (isFinalTick)
+			{
+				n.judged = true;
+				break;
+			}
+
+			n.nextTickTime += kLongTickInterval;
+			if(n.nextTickTime > n.time - kEps)
+			{
+				n.nextTickTime = n.time;	//最後は必ず終点
 			}
 		}
 
-		// ── 終了時刻に到達したら、ここで初めて judged=true にする ──
-		if (musicTime >= n.time)
+		if (!n.judged && musicTime >= n.time - kEps)
 		{
-			if (!n.longFailed) m_Perfect++; // 最後まで成功していればクリア扱い
-			n.judged = true;
+			n.judged = true;	//保険　最後までチェックポイントが尽きないまま終了時刻を過ぎた場合
 		}
 	}
 }
@@ -192,33 +178,26 @@ void JudgeSystem::UpdateAutoJudgge(std::vector<ChartNote>& notes, float musicTim
 		}
 		else if (note.IsLong())
 		{
-			// 先端到達で自動的に押し始めが成立
-			if (!note.longStarted && musicTime >= note.arrivalTime)
+			if (note.lane < 0 || note.lane >= 6) continue;
+			constexpr float kEps = 0.0001f;
+			// オートモードなので全チェックポイントを常に成功扱いで消化する
+			while (musicTime >= note.nextTickTime - kEps)
 			{
+				bool isFinalTick = (note.nextTickTime >= note.time - kEps);
+
 				m_Perfect++;
-				sound.Play(SOUND_SUZU);
 				RegisterHit(note.lane, 0);
-				note.longStarted = true;
-				note.nextTickTime = note.arrivalTime + kLongTickInterval;
-			}
+				sound.Play(isFinalTick ? SOUND_LONG_END : SOUND_SUZU);
 
-			// 押しっぱなし中の継続判定（オートなので常に成功）
-			if (note.longStarted)
-			{
-				while (note.nextTickTime <= musicTime && note.nextTickTime < note.time)
+				if (isFinalTick)
 				{
-					m_Perfect++;
-					sound.Play(SOUND_SUZU);
-					note.nextTickTime += kLongTickInterval;
+					note.judged = true;
+					break;
 				}
-			}
 
-			// 終了時刻に到達したら確定（longFailedには絶対にならない）
-			if (musicTime >= note.time)
-			{
-				if (note.longStarted) m_Perfect++;
-				sound.Play(SOUND_LONG_END);
-				note.judged = true;
+				note.nextTickTime += kLongTickInterval;
+				if (note.nextTickTime > note.time - kEps)
+					note.nextTickTime = note.time;
 			}
 		}
 	}
@@ -234,6 +213,22 @@ void JudgeSystem::MarkTapAutoMiss(std::vector<ChartNote>& notes, float musicTime
 		{
 			note.judged = true;
 			m_Miss++;
+			RegisterMiss();	//コンボを切る
+		}
+	}
+}
+
+void JudgeSystem::MarkFlickAutoMiss(std::vector<ChartNote>& notes, float musicTime)
+{
+	for (auto& note : notes)
+	{
+		if (note.judged) continue;
+		if (!note.IsFlick()) continue;
+		if (musicTime - note.time > kGud)
+		{
+			note.judged = true;
+			m_Miss++;
+			RegisterMiss();	//コンボを切る
 		}
 	}
 }
@@ -244,6 +239,8 @@ void JudgeSystem::ResetJudgeCounts()
 	m_Great = 0;
 	m_Good = 0;
 	m_Miss = 0;
+	m_Combo = 0;
+	m_MaxCombo = 0;
 }
 
 void JudgeSystem::RegisterHit(int laneIndex, int rank)
@@ -251,4 +248,9 @@ void JudgeSystem::RegisterHit(int laneIndex, int rank)
 	m_Combo++;
 	if (m_Combo > m_MaxCombo) m_MaxCombo = m_Combo;
 	if (m_OnJudge) m_OnJudge(laneIndex, rank);
+}
+
+void JudgeSystem::RegisterMiss()
+{
+	m_Combo = 0;
 }

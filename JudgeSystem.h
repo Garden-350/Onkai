@@ -32,7 +32,8 @@ public:
 	void UpdateAutoJudgge(std::vector<ChartNote>& notes, float musicTime, Sound& sound);
 	// TAPノーツの自動ミス判定（判定圏外を過ぎたら強制ミス）
 	void MarkTapAutoMiss(std::vector<ChartNote>& notes, float musicTime);
-
+	//FLICKノーツの自動ミス判定（判定圏外を過ぎたら強制ミス）
+	void MarkFlickAutoMiss(std::vector<ChartNote>& notes, float musicTime);
 	// LoadChart時に呼ぶ：Perfect/Great/Good/Missのみリセット（Combo/MaxComboは元の仕様通りリセットしない）
 	void ResetJudgeCounts();
 
@@ -42,9 +43,11 @@ public:
 	int GetMissCount()    const { return m_Miss; }
 	int GetMaxComboCount() const { return m_MaxCombo; }
 	int GetComboCount()   const { return m_Combo; } // Draw()でのコンボ数字表示用
+	static constexpr float kLongTickInterval = 0.2f;	// ロングノーツの継続判定(tick)間隔
 
 private:
 	void RegisterHit(int laneIndex, int rank); // m_Combo++ / m_MaxCombo更新 + m_OnJudgeコールバック呼び出し
+	void RegisterMiss();	//コンボリセット
 
 	int m_Perfect = 0;
 	int m_Great = 0;
@@ -57,8 +60,7 @@ private:
 	OnEmptyPressFn m_OnEmptyPress;
 
 	// ── 判定タイミングの許容誤差（秒）。値が小さいほどシビア ──
-	static constexpr float kPerfect = 0.2f;
-	static constexpr float kGreat = 0.4f;
-	static constexpr float kGud = 0.6f;			// この範囲を過ぎたら自動ミス
-	static constexpr float kLongTickInterval = 0.05f;	// ロングノーツの継続判定(tick)間隔
+	static constexpr float kPerfect = 0.06f;
+	static constexpr float kGreat = 0.08f;
+	static constexpr float kGud = 0.1f;			// この範囲を過ぎたら自動ミス
 };

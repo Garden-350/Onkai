@@ -121,6 +121,7 @@ private:
 
 	static ID3D11DepthStencilState* m_pDepthStateEnable;
 	static ID3D11DepthStencilState* m_pDepthStateDisable;
+	static ID3D11DepthStencilState* m_pDepthStateOverlay;
 
 	static ID3D11BlendState*		m_pBlendState[MAX_BLENDSTATE]; // ブレンド ステート;
 	static ID3D11BlendState*		m_pBlendStateATC;
@@ -139,6 +140,7 @@ public:
 	static HRESULT ResizeWindow(int width, int height);
 		
 	static void SetDepthEnable(bool Enable);
+	static void SetDepthOverlayEnable(bool Enable);	// trueで常に最前面、falseで通常の深度有効に戻す
 
 	static void SetATCEnable(bool Enable);
 

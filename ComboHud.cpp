@@ -30,6 +30,22 @@ void ComboHud::Init()
 	initDigitRow(m_GoodDigits);
 	initDigitRow(m_MissDigits);
 
+	m_BreakdownLabelPerfect.Init();
+	m_BreakdownLabelPerfect.SetTexture("assets/texture/PERFECT.png");
+	m_BreakdownLabelPerfect.SetScale(70.0f, 18.0f, 1.0f);
+
+	m_BreakdownLabelGreat.Init();
+	m_BreakdownLabelGreat.SetTexture("assets/texture/GREAT.png");
+	m_BreakdownLabelGreat.SetScale(70.0f, 18.0f, 1.0f);
+
+	m_BreakdownLabelGood.Init();
+	m_BreakdownLabelGood.SetTexture("assets/texture/GOOD.png");
+	m_BreakdownLabelGood.SetScale(70.0f, 18.0f, 1.0f);
+
+	m_BreakdownLabelMiss.Init();
+	m_BreakdownLabelMiss.SetTexture("assets/texture/MISS.png");
+	m_BreakdownLabelMiss.SetScale(70.0f, 18.0f, 1.0f);
+
 	m_JudgeRankPerfect.Init();
 	m_JudgeRankPerfect.SetTexture("assets/texture/PERFECT.png");
 	m_JudgeRankPerfect.SetScale(200.0f, 50.0f, 1.0f);
@@ -43,6 +59,11 @@ void ComboHud::Init()
 	m_JudgeRankGood.SetScale(200.0f, 50.0f, 1.0f);
 
 	m_BarrierQuad.Init();
+
+	m_FullComboTex.Init();
+	m_FullComboTex.SetTexture("assets/texture/FullCpmbo.png");
+	m_FullComboTex.SetRotation(0.0f, 0.0f, 0.0f);
+	m_FullComboTex.SetScale(360.0f, 260.0f, 0.0f);
 }
 
 void ComboHud::TriggerRankPop(int laneIndex, int rank)
@@ -63,6 +84,11 @@ void ComboHud::TriggerBarrier(int laneIndex)
 void ComboHud::TriggerComboPop()
 {
 	m_ComboPopTimer = 0.15f; // コンボ数字が一瞬拡大表示される演出用タイマー
+}
+
+void ComboHud::TriggerFullCombo()
+{
+	m_FullComboActive = true;
 }
 
 void ComboHud::Update(float deltaTime)
@@ -124,6 +150,14 @@ void ComboHud::Draw(Camera* cam, const Matrix& view,
 			target->Draw(cam);
 		}
 		Renderer::SetBlendState(BS_NONE);
+
+		if (m_FullComboActive)
+		{
+			Renderer::SetBlendState(BS_ALPHABLEND);
+			m_FullComboTex.SetPosition(0.0f, 0.0f, 0.0f);
+			m_FullComboTex.Draw(cam);
+			Renderer::SetBlendState(BS_NONE);
+		}
 	}
 
 	// ── コンボ数表示（3桁、ヒット直後は少し拡大する演出）──
@@ -153,24 +187,39 @@ void ComboHud::Draw(Camera* cam, const Matrix& view,
 			{
 				if (value > 9999) value = 9999;
 				int digits[4] = { value / 1000, value / 100, (value / 10) % 10, value % 10 };
-				float digitW = 26.0f;   // コンボより詰めて表示
-				float startX = 40.0f;
+				float digitW = 42.0f;    // 数字同士の間隔（左上コーナーに収まるよう詰める）
+				float startX = -545.0f;  // ラベルの右側から数字を並べる
 
 				for (int i = 0; i < 4; i++)
 				{
 					row[i].SetUV((float)(digits[i] + 1), 1.0f, 10.0f, 1.0f);
-					row[i].SetPosition(startX + digitW * i, y - 100.0f, 0.0f);
+					row[i].SetPosition(startX + digitW * i, y, 0.0f);
 					row[i].Draw(cam);
 				}
 			};
-		float topY = 400.0f;	//一番上のY座標
-		float rowSpacing = 80.0f;	//行間
+
+		constexpr float kLabelX = -590.0f;		// ラベルのX座標（画面左端に寄せる）
+		constexpr float kTopY = 320.0f;		// 一番上の行のY座標（画面上端に寄せる）
+		constexpr float kRowSpacing = 40.0f;	// 行間（詰めてまとめる）
 
 		Renderer::SetBlendState(BS_ALPHABLEND);
-		drawCountRow(m_PerfectDigits, perfect, topY);
-		drawCountRow(m_GreatDigits, great, topY - rowSpacing);
-		drawCountRow(m_GoodDigits, good, topY - rowSpacing * 2);
-		drawCountRow(m_MissDigits, miss, topY - rowSpacing * 3);
+
+		m_BreakdownLabelPerfect.SetPosition(kLabelX, kTopY, 0.0f);
+		m_BreakdownLabelPerfect.Draw(cam);
+		drawCountRow(m_PerfectDigits, perfect, kTopY);
+
+		m_BreakdownLabelGreat.SetPosition(kLabelX, kTopY - kRowSpacing, 0.0f);
+		m_BreakdownLabelGreat.Draw(cam);
+		drawCountRow(m_GreatDigits, great, kTopY - kRowSpacing);
+
+		m_BreakdownLabelGood.SetPosition(kLabelX, kTopY - kRowSpacing * 2, 0.0f);
+		m_BreakdownLabelGood.Draw(cam);
+		drawCountRow(m_GoodDigits, good, kTopY - kRowSpacing * 2);
+
+		m_BreakdownLabelMiss.SetPosition(kLabelX, kTopY - kRowSpacing * 3, 0.0f);
+		m_BreakdownLabelMiss.Draw(cam);
+		drawCountRow(m_MissDigits, miss, kTopY - kRowSpacing * 3);
+
 		Renderer::SetBlendState(BS_NONE);
 	}
 

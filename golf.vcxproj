@@ -143,10 +143,12 @@
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="AssimpPerse.cpp" />
+    <ClCompile Include="BarrierPlate.cpp" />
     <ClCompile Include="BarrierQuad.cpp" />
     <ClCompile Include="Baton.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="ChartObject.cpp" />
+    <ClCompile Include="ClosingRingGuide.cpp" />
     <ClCompile Include="ComboHud.cpp" />
     <ClCompile Include="JudgeSystem.cpp" />
     <ClCompile Include="NotePath.cpp" />
@@ -193,10 +195,12 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="AssimpPerse.h" />
+    <ClInclude Include="BarrierPlate.h" />
     <ClInclude Include="BarrierQuad.h" />
     <ClInclude Include="Baton.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="ChartObject.h" />
+    <ClInclude Include="ClosingRingGuide.h" />
     <ClInclude Include="ComboHud.h" />
     <ClInclude Include="JudgeSystem.h" />
     <ClInclude Include="NotePath.h" />
@@ -263,11 +267,19 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
     </FxCompile>
+    <FxCompile Include="shader\barrierPlatePS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+    </FxCompile>
     <FxCompile Include="shader\barrierPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
     </FxCompile>
     <FxCompile Include="shader\barrierVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="shader\closingRingPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="shader\wireGridPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>

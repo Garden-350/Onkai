@@ -43,6 +43,12 @@
     <FxCompile Include="lightShaftPS.hlsl">
       <Filter>リソースファイル</Filter>
     </FxCompile>
+    <FxCompile Include="shader\closingRingPS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\barrierPlatePS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChartObject.cpp">
@@ -156,12 +162,6 @@
     <ClCompile Include="sound.cpp">
       <Filter>ソースファイル\Sound</Filter>
     </ClCompile>
-    <ClCompile Include="WireShape.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="WireShapeSpawner.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
     <ClCompile Include="SelectScene.cpp">
       <Filter>ソースファイル\Scene</Filter>
     </ClCompile>
@@ -180,9 +180,27 @@
     <ClCompile Include="PostFlashEffect.cpp">
       <Filter>ソースファイル\Object</Filter>
     </ClCompile>
-    <ClCompile Include="LightShaft.cpp" />
-    <ClCompile Include="JudgeSystem.cpp" />
-    <ClCompile Include="ComboHud.cpp" />
+    <ClCompile Include="WireShape.cpp">
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="WireShapeSpawner.cpp">
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="BarrierPlate.cpp">
+      <Filter>ソースファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="ClosingRingGuide.cpp">
+      <Filter>ソースファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="ComboHud.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="JudgeSystem.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="LightShaft.cpp">
+      <Filter>ソースファイル\Particle</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -317,12 +335,6 @@
     <ClInclude Include="sound.h">
       <Filter>ヘッダーファイル\Sound</Filter>
     </ClInclude>
-    <ClInclude Include="WireShape.h">
-      <Filter>ソースファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="WireShapeSpawner.h">
-      <Filter>ソースファイル</Filter>
-    </ClInclude>
     <ClInclude Include="SelectScene.h">
       <Filter>ヘッダーファイル\Scene</Filter>
     </ClInclude>
@@ -344,9 +356,27 @@
     <ClInclude Include="ResultData.h">
       <Filter>ヘッダーファイル\Object</Filter>
     </ClInclude>
-    <ClInclude Include="LightShaft.h" />
-    <ClInclude Include="JudgeSystem.h" />
-    <ClInclude Include="ComboHud.h" />
+    <ClInclude Include="WireShapeSpawner.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="WireShape.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="BarrierPlate.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="ClosingRingGuide.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="ComboHud.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="JudgeSystem.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="LightShaft.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">

@@ -30,6 +30,7 @@ ID3D11Buffer* Renderer::m_pTextureBuffer{};	//UV設定
 // デプスステンシルステート
 ID3D11DepthStencilState* Renderer::m_pDepthStateEnable{};
 ID3D11DepthStencilState* Renderer::m_pDepthStateDisable{};
+ID3D11DepthStencilState* Renderer::m_pDepthStateOverlay{};
 
 ID3D11BlendState* Renderer::m_pBlendState[MAX_BLENDSTATE]; // ブレンドステート配列
 ID3D11BlendState* Renderer::m_pBlendStateATC{}; // 特定のアルファテストとカバレッジ（ATC）用のブレンドステート
@@ -150,6 +151,10 @@ HRESULT Renderer::Init()
 
 	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
 	hr = m_pDevice->CreateDepthStencilState(&depthStencilDesc, &m_pDepthStateDisable); //深度無効ステート
+	if (FAILED(hr)) return hr;
+
+	depthStencilDesc.DepthEnable = FALSE;
+	hr = m_pDevice->CreateDepthStencilState(&depthStencilDesc, &m_pDepthStateOverlay); //深度テストも完全無効（常に最前面）
 	if (FAILED(hr)) return hr;
 
 	m_pDeviceContext->OMSetDepthStencilState(m_pDepthStateEnable, NULL);
@@ -386,6 +391,20 @@ void Renderer::SetDepthEnable(bool Enable)
 	{
 		// 深度テストを無効にするステンシルステートをセット
 		m_pDeviceContext->OMSetDepthStencilState(m_pDepthStateDisable, NULL);
+	}
+}
+
+void Renderer::SetDepthOverlayEnable(bool Enable)
+{
+	if (Enable)
+	{
+		// 深度テスト・書き込みとも無効にして、常に最前面に描画する
+		m_pDeviceContext->OMSetDepthStencilState(m_pDepthStateOverlay, NULL);
+	}
+	else
+	{
+		// 通常の深度有効ステートに戻す
+		m_pDeviceContext->OMSetDepthStencilState(m_pDepthStateEnable, NULL);
 	}
 }
 

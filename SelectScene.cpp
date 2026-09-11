@@ -106,6 +106,7 @@ void SelectScene::Update()
 // 終了処理
 void SelectScene::Uninit()
 {
+	sound.Uninit();
 	// このシーンのオブジェクトを削除する
 	for (auto& o : m_MySceneObjects) {
 		Game::GetInstance()->DeleteObject(o);

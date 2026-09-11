@@ -20,6 +20,8 @@
 #include "HomingBeamSystem.h"
 #include "JudgeSystem.h"
 #include "ComboHud.h"
+#include "ClosingRingGuide.h"
+#include "BarrierPlate.h"
 
 class Player;
 class Enemy;
@@ -64,9 +66,6 @@ struct ChartNote
 	bool approcachPlayed = false;	// 接近時の効果音を一度だけ鳴らすためのフラグ
 
 	// ── LONGNOTE専用の状態 ──
-	int m_LongTick = 0;
-	bool  longStarted = false;	// 判定ラインに先端が到達し、押し始めが成立したか
-	bool  longFailed = false;	// 押しっぱなしを離してしまい失敗が確定したか
 	float nextTickTime = 0.0f;	// 次に「継続判定(tick)」を加算すべき時刻
 
 	// 出現時刻を取得。未設定なら「判定時刻の1秒前」をデフォルトとする
@@ -144,6 +143,9 @@ public:
 	int GetGoodCount()    const { return m_JudgeSystem.GetGoodCount(); }
 	int GetMissCount()    const { return m_JudgeSystem.GetMissCount(); }
 	int GetMaxComboCount() const { return m_JudgeSystem.GetMaxComboCount(); }
+	int GetTotalNoteCount() const { return m_TotalNote; }
+	// フルコンボ判定：ミスなく最後まで叩けていれば MaxCombo == 総ノーツ数 になる
+	bool IsFullCombo() const { return m_TotalNote > 0 && m_JudgeSystem.GetMaxComboCount() == m_TotalNote; }
 	float GetFlashAlpha()
 	{
 		return m_ScreenEffects.GetFlashAlpha();
@@ -164,6 +166,8 @@ private:
 	// TAPノーツ本体の3Dモデル・エフェクト一式
 	// ────────────────────────────────────────
 
+	ClosingRingGuide m_ClosingRingGuide;	// 判定円の外枠が閉じるやつ
+	BarrierPlate m_BarrierPlate;
 	JudgeSystem m_JudgeSystem;	// 判定結果の集計・参照用
 	Sound sound;
 	Shader m_Shader;
@@ -184,6 +188,7 @@ private:
 	std::chrono::steady_clock::time_point m_LastUpdateClock;
 	std::string m_AudioFile;
 	float m_NoteScale = 40.0f;	// TAPモデルの表示スケール
+	float m_BarrierSparkleTimer[6] = { 0,0,0,0,0,0 };	//レーンごとのキラキラパーティクル生成タイマー
 
 	void DrawSpawnMagicCircle(Camera* cam, const ChartNote& note);
 
@@ -257,15 +262,10 @@ private:
 
 	int m_BeatsPerBar = 4;	// 拍子（メタデータから読み込み）
 	float m_FrameSize = 150.0f;			// 判定円の外枠の表示サイズ
+	int m_TotalNote = 0;	//譜面のノーツ数
+	bool m_FullCombo = false;	//フルコンボ達成したかどうか
 
-	bool m_PrevLaneKeyDown[6] = { false,false,false,false,false,false }; // （現状未使用。将来の押した瞬間検出用に予約）
-
-	// ── ノーツの位置補間（NotePath.h/.cpp の自由関数に切り出し済み）──
-
-	// ── 判定処理切り出し済み
-
-	// ── ホーミングビーム ──
-// UpdateHomingBeams / DrawBeamSegment* / DrawHomingBeams は HomingBeamSystem に切り出し済み
+	bool m_PrevLaneKeyDown[6] = { false,false,false,false,false,false };
 
 	// ── ロングノーツ描画（sentan/dou/oの3パーツ） ──
 	void DrawLongNotes(Camera* cam);
@@ -283,8 +283,8 @@ private:
 		switch (lane)
 		{
 		case 0: case 3: return DirectX::SimpleMath::Vector3(1.0f, 0.15f, 0.15f); // S, J = 赤
-		case 1: case 4: return DirectX::SimpleMath::Vector3(0.2f, 0.4f, 1.0f);   // D, K = 青
-		case 2: case 5: return DirectX::SimpleMath::Vector3(0.2f, 1.0f, 0.3f);   // F, L = 緑
+		case 1: case 4: return DirectX::SimpleMath::Vector3(0.2f, 1.0f, 0.3f);   // F, L = 緑
+		case 2: case 5: return DirectX::SimpleMath::Vector3(0.2f, 0.4f, 1.0f);  // D, K = 青
 		default: return DirectX::SimpleMath::Vector3(1.0f, 1.0f, 1.0f);
 		}
 	}

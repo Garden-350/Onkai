@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "Texture2D.h"
 #include "BarrierQuad.h"
 #include <SimpleMath.h>
@@ -12,10 +12,10 @@ struct BarrierEffect
 };
 
 // ============================================================
-// ComboHud : ƒRƒ“ƒ{”šE”»’è“à–ó(PERFECT/GREAT/GOOD/MISS)E
-//   ”»’èƒ‰ƒ“ƒN‚Ìƒ|ƒbƒv‰‰oEá•Ç‰‰o(ƒoƒŠƒA)‚ğ‚Ü‚Æ‚ß‚Ä’S“–‚·‚éƒNƒ‰ƒXB
-//   ƒgƒŠƒK[(TriggerXxx)‚ÍChartObject::OnJudge‚©‚çA
-//   Œ¸Š(Update)‚Í–ˆƒtƒŒ[ƒ€A•`‰æ(Draw)‚ÍChartObject::Draw‚ÌŒã”¼‚©‚çŒÄ‚ÔB
+// ComboHud : ã‚³ãƒ³ãƒœæ•°å­—ãƒ»åˆ¤å®šå†…è¨³(PERFECT/GREAT/GOOD/MISS)ãƒ»
+//   åˆ¤å®šãƒ©ãƒ³ã‚¯ã®ãƒãƒƒãƒ—æ¼”å‡ºãƒ»éšœå£æ¼”å‡º(ãƒãƒªã‚¢)ã‚’ã¾ã¨ã‚ã¦æ‹…å½“ã™ã‚‹ã‚¯ãƒ©ã‚¹ã€‚
+//   ãƒˆãƒªã‚¬ãƒ¼(TriggerXxx)ã¯ChartObject::OnJudgeã‹ã‚‰ã€
+//   æ¸›è¡°(Update)ã¯æ¯ãƒ•ãƒ¬ãƒ¼ãƒ ã€æç”»(Draw)ã¯ChartObject::Drawã®å¾ŒåŠã‹ã‚‰å‘¼ã¶ã€‚
 // ============================================================
 class ComboHud
 {
@@ -25,11 +25,12 @@ public:
 	void TriggerRankPop(int laneIndex, int rank); // rank: 0=PERFECT,1=GREAT,2=GOOD
 	void TriggerBarrier(int laneIndex);
 	void TriggerComboPop();
+	void TriggerFullCombo();
 
 	void Update(float deltaTime);
 
-	// judgeCircleScreenPos/judgeCirclePos3D/laneColors ‚Í‚¢‚¸‚ê‚à
-	// ChartObject::Draw‘¤‚Å”»’è‰~ƒ‹[ƒv‚Ì’†‚ÅŒvZÏ‚İ‚Ì’l‚ğ“n‚µ‚Ä‚à‚ç‚¤i6ƒŒ[ƒ“•ªj
+	// judgeCircleScreenPos/judgeCirclePos3D/laneColors ã¯ã„ãšã‚Œã‚‚
+	// ChartObject::Drawå´ã§åˆ¤å®šå††ãƒ«ãƒ¼ãƒ—ã®ä¸­ã§è¨ˆç®—æ¸ˆã¿ã®å€¤ã‚’æ¸¡ã—ã¦ã‚‚ã‚‰ã†ï¼ˆ6ãƒ¬ãƒ¼ãƒ³åˆ†ï¼‰
 	void Draw(Camera* cam, const DirectX::SimpleMath::Matrix& view,
 		int combo, int perfect, int great, int good, int miss,
 		const DirectX::SimpleMath::Vector3 judgeCircleScreenPos[6],
@@ -44,22 +45,30 @@ private:
 		int rank = 0; // 0=PERFECT, 1=GREAT, 2=GOOD
 	};
 
-	Texture2D m_ComboDigits[4];	// ƒRƒ“ƒ{”‚Ì3Œ…•\¦
+	Texture2D m_ComboDigits[4];	// ã‚³ãƒ³ãƒœæ•°ã®3æ¡è¡¨ç¤º
 	Texture2D m_PerfectDigits[4];
 	Texture2D m_GreatDigits[4];
 	Texture2D m_GoodDigits[4];
 	Texture2D m_MissDigits[4];
 
+	Texture2D m_BreakdownLabelPerfect;
+	Texture2D m_BreakdownLabelGreat;
+	Texture2D m_BreakdownLabelGood;
+	Texture2D m_BreakdownLabelMiss;
+
 	Texture2D m_JudgeRankPerfect;
 	Texture2D m_JudgeRankGreat;
 	Texture2D m_JudgeRankGood;
 	JudgeRankEffect m_JudgeRankEffects[6];
-	static constexpr float kJudgeRankPopDuration = 0.6f; // •\¦Œp‘±ŠÔi•bj
+	static constexpr float kJudgeRankPopDuration = 0.6f; // è¡¨ç¤ºç¶™ç¶šæ™‚é–“ï¼ˆç§’ï¼‰
 
 	BarrierEffect m_BarrierEffects[6];
 	BarrierQuad m_BarrierQuad;
 	static constexpr float kBarrierDuration = 10.25f;
 
-	float m_ComboPopTimer = 0.0f;		// ƒRƒ“ƒ{”š‚ªŠg‘å•\¦‚³‚ê‚éc‚èŠÔ
-	float m_NuberSplite_Size = 80.0f;	// ƒRƒ“ƒ{”š1Œ…‚Ì•\¦ƒTƒCƒY
+	float m_ComboPopTimer = 0.0f;		// ã‚³ãƒ³ãƒœæ•°å­—ã‚’ãƒãƒƒãƒ—ã•ã›ã‚‹æ®‹ã‚Šæ™‚é–“
+	float m_NuberSplite_Size = 80.0f;	// ã‚³ãƒ³ãƒœæ•°å­—1æ¡ã®è¡¨ç¤ºã‚µã‚¤ã‚º
+
+	Texture2D m_FullComboTex;	// ã€ŒFULL COMBOã€ãƒãƒŠãƒ¼
+	bool m_FullComboActive = false;	// æ›²çµ‚äº†ã€œã‚·ãƒ¼ãƒ³åˆ‡ã‚Šæ›¿ãˆã¾ã§è¡¨ç¤ºã—ç¶šã‘ã‚‹
 };

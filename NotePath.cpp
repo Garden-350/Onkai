@@ -1,5 +1,6 @@
-﻿#include "NotePath.h"
-#include "ChartObject.h" // ChartNoteの完全な定義を得るため
+﻿#include "Game.h"
+#include "NotePath.h"
+#include "ChartObject.h" // ChartNoteの定義を得るため
 #include <algorithm>
 #include <cmath>
 #undef min
@@ -25,8 +26,10 @@ namespace NotePath
 		if (t < 0.0f) t = 0.0f;
 		if (t > 1.0f) t = 1.0f;
 
-		const auto& p0 = note.spawnPos;
+		float highSpeed = Game::GetInstance()->GetHighSpeed();
+		//const auto& p0 = note.spawnPos;
 		const auto& p3 = note.judgePos;
+		const auto& p0 = p3 + (note.spawnPos - p3) * highSpeed;	//出現距離を変更
 
 		// 制御点なし → 直線補間
 		if (note.controlPoints.empty())
@@ -63,12 +66,16 @@ namespace NotePath
 		float duration = arriveTime - startTime;
 		if (duration < 0.0001f) duration = 0.0001f;
 
+		float highSpeed = Game::GetInstance()->GetHighSpeed();
+		const Vector3& judgePos = note.judgePos;
+		Vector3 spawnPos = judgePos + (note.spawnPos - judgePos) * highSpeed;
+
 		float t = (now - startTime) / duration; // クランプしない
-		Vector3 basePos = Vector3::Lerp(note.spawnPos, note.judgePos, t);
+		Vector3 basePos = Vector3::Lerp(spawnPos, judgePos, t);
 
 		if (note.spiralRadius > 0.0001f)
 		{
-			Vector3 axis = note.judgePos - note.spawnPos;
+			Vector3 axis = judgePos - spawnPos;
 			if (axis.LengthSquared() > 0.0001f)
 			{
 				axis.Normalize();

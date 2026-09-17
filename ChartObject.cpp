@@ -166,7 +166,7 @@ void ChartObject::Init()
 	// エディター側の kusari_sentan_2.fbx に相当するアセットを想定。
 	// 無ければ m_LongSentanLoaded=false のままとなり、描画側でTAPモデルにフォールバックする。
 	m_LongSentanLoaded = ModelUtil::LoadOptionalModel(
-		"assets/model/kusari/kusari_sentan_2.fbx", "assets/model/long_sentan",
+		"assets/model/long/sentan_4.fbx", "assets/model/sentan",
 		m_LongSentanRenderer, m_LongSentanShader, m_LongSentanSubsets, m_LongSentanMaterials, m_LongSentanTextures);
 	if (!m_LongSentanLoaded)
 		OutputDebugStringA("[ChartObject] Long sentan model not found. Fallback to TAP model.\n");
@@ -174,15 +174,18 @@ void ChartObject::Init()
 	// ── ロングノーツ：本体(dou/鎖)モデルのロード ──
 	// エディター側の kusari_dou.fbx に相当。押している間、先端〜終端の間に繰り返し並べる。
 	m_LongDouLoaded = ModelUtil::LoadOptionalModel(
-		"assets/model/kusari/kusari_dou.fbx", "assets/model/long_dou",
+		"assets/model/long/dou_4.fbx", "assets/model/dou_2",
 		m_LongDouRenderer, m_LongDouShader, m_LongDouSubsets, m_LongDouMaterials, m_LongDouTextures);
 	if (!m_LongDouLoaded)
 		OutputDebugStringA("[ChartObject] Long dou model not found. Fallback to TAP model.\n");
+	if(!m_LongDouGlowTexture.Load("assets/texture/dou_glow.png"))
+		OutputDebugStringA("[ChartObject] dou glow texture not found.\n");
+	m_LongDouGlowShader.Create("shader/unlitTextureVS.hlsl", "shader/unlitTexturePS.hlsl");
 
 	// ── ロングノーツ：終端(o/輪)モデルのロード ──
 	// エディター側の kusari_o_2.fbx に相当。先端よりholdDuration秒遅れて追従する。
 	m_LongOLoaded = ModelUtil::LoadOptionalModel(
-		"assets/model/kusari/kusari_o_2.fbx", "assets/model/long_o",
+		"assets/model/long/syuutan_4.fbx", "assets/model/syuutan_3",
 		m_LongORenderer, m_LongOShader, m_LongOSubsets, m_LongOMaterials, m_LongOTextures);
 	if (!m_LongOLoaded)
 		OutputDebugStringA("[ChartObject] Long o model not found. Fallback to TAP model.\n");
@@ -208,7 +211,7 @@ void ChartObject::Init()
 		ChartCircleKeyframe key;
 		key.time = 0.0f;
 		key.x = -laneX;
-		key.y = -50.0f;     // -55→-20 (プレイヤーとのY差を少し詰める)
+		key.y = 1050.0f;     // -55→-20 (プレイヤーとのY差を少し詰める)
 		key.z = 300.0f;     // 150→300 (カメラから適度に離す)
 		m_JudgeCircles[i].keyframe.push_back(key);
 	}
@@ -216,7 +219,9 @@ void ChartObject::Init()
 	// ── 接近リング・パーティクルの画像セット ──
 	m_ApproachRing.Init("assets/texture/ring.png");
 	m_ParticleQuad.Init("assets/texture/sakura2.png");
+	m_LongParticleQuad.Init("assets/texture/beamP.png.png");
 	m_MagicCircleQuad.Init("assets/texture/magic-circle (1).png");
+	m_TapAuraParticleQuad.Init("assets/texture/oura.png");
 
 	// ── レーンアイコン(S/D/F/J/K/L)のセットアップ ──
 	const char* iconPaths[6] = {
@@ -331,6 +336,12 @@ void ChartObject::DrawLaneGuideLines(Camera* cam)
 	}
 }
 
+void ChartObject::AddPauseOffset(std::chrono::steady_clock::duration offset)
+{
+	m_StartClock += offset;
+	m_LastUpdateClock += offset;
+}
+
 void ChartObject::DrawSpawnMagicCircle(Camera* cam, const ChartNote& note)
 {
 	float st = note.GetSpawnTime();
@@ -422,7 +433,7 @@ void ChartObject::Update()
 			++it;
 	}
 
-	//ロングノーツ成功中のレーンパーティクル
+
 	// ── ロングノーツを保持成功中のレーンに、キラキラした粉パーティクルを継続的に出す ──
 	{
 		constexpr float kSparkleInterval = 0.04f;	// 何秒おきに1粒出すか。小さいほど密になる（重くなる）
@@ -468,6 +479,66 @@ void ChartObject::Update()
 			}
 		}
 	}
+	//ロングノーツ成功中のレーンパーティクル
+	{
+		// ふよふよ浮くアンビエントパーティクル（ロングノーツの周り、常時）
+		constexpr float kGraceTime = 0.5f;
+		constexpr float kAmbientInterval = 0.12f;
+
+		for (int lane = 0; lane < 6; lane++)
+		{
+			bool spawnedThisLane = false;
+			for (auto& note : m_Notes)
+			{
+				if (!note.IsLong()) continue;
+				if (note.lane != lane) continue;
+				if (note.judged) continue;
+
+				float displayStart = note.GetSpawnTime();
+				float extendedEnd = note.time + kGraceTime;
+				if (m_MusicTime < displayStart || m_MusicTime > extendedEnd) continue;
+
+				spawnedThisLane = true;
+
+				m_LongAmbientParticleTimer[lane] += deltaTime;
+				if (m_LongAmbientParticleTimer[lane] >= kAmbientInterval)
+				{
+					m_LongAmbientParticleTimer[lane] = 0.0f;
+
+					// ノーツの経路上のランダムな地点を選ぶ
+					float sampleT = (float)rand() / RAND_MAX;
+					float sampleTime = displayStart + (m_MusicTime - displayStart) * sampleT;
+
+					Vector3 spawnPos = NotePath::EvaluateLongNotePosition(note, sampleTime);
+					Vector3 laneColor = GetLaneColor(lane);
+					float deg = (float)(rand() % 360);
+
+					Particle p(
+						spawnPos,
+						1.2f,                                              // lifeTime
+						8.0f,                                              // gravity
+						Color(laneColor.x, laneColor.y, laneColor.z, 0.8f),// 開始色
+						Color(laneColor.x, laneColor.y, laneColor.z, 0.0f),// 終了色（透明にフェード）
+						0.5f,                                              // フェード開始位置
+						18.0f, 6.0f,                                       // 開始/終了サイズ
+						Vector3(20.0f, 15.0f, 20.0f),                      // 初速
+						deg
+					);
+					m_LongAmbientParticles.push_back(p);
+				}
+				break; // このレーンは1本のロングだけ処理すれば十分
+			}
+			if (!spawnedThisLane) m_LongAmbientParticleTimer[lane] = 0.0f;
+		}
+
+		// 経過したアンビエントパーティクルを削除・更新
+		for (auto& p : m_LongAmbientParticles) { p.Update(deltaTime); }
+		m_LongAmbientParticles.erase(
+			std::remove_if(m_LongAmbientParticles.begin(), m_LongAmbientParticles.end(),
+				[](Particle& p) { return p.IsStop(); }),
+			m_LongAmbientParticles.end()
+		);
+	}
 	m_ComboHud.Update(deltaTime);
 
 	if(!m_FullCombo && IsAudioFinish() && IsFullCombo())
@@ -508,6 +579,45 @@ void ChartObject::Update()
 			note.approcachPlayed = true;
 		}
 	}
+
+	constexpr float kTapAuraInterval = 0.08f;
+	for (auto& note : m_Notes)
+	{
+		if (!note.IsTap()) continue;
+		if (note.judged) continue;
+
+		float st = note.GetSpawnTime();
+		if (m_MusicTime < st || m_MusicTime > note.time) continue;
+
+		m_TapAuraTimer[note.lane] += deltaTime;
+		if (m_TapAuraTimer[note.lane] >= kTapAuraInterval)
+		{
+			m_TapAuraTimer[note.lane] = 0.0f;
+
+			Vector3 pos = NotePath::EvaluateNotePosition(note, m_MusicTime);
+			Vector3 laneColor = GetLaneColor(note.lane);
+			float deg = (float)(rand() % 360);
+			float radius = 20.0f + (float)(rand() % 20); // 球の周囲にランダムなオフセット
+			Vector3 spawnPos = pos + Vector3(cosf(deg) * radius, ((float)(rand() % 100) / 100.0f - 0.5f) * 20.0f, sinf(deg) * radius);
+
+			Particle p(
+				spawnPos,
+				0.5f,                                              // lifeTime
+				5.0f,                                              // gravity(軽くふわっと)
+				Color(laneColor.x, laneColor.y, laneColor.z, 0.7f),
+				Color(laneColor.x, laneColor.y, laneColor.z, 0.0f),
+				0.3f,
+				3.0f, 1.0f,											//スケール調整　左から始まって消えるときの大きさ右
+				Vector3(10.0f, 8.0f, 10.0f),
+				deg
+			);
+			m_TapAuraParticles.push_back(p);
+		}
+	}
+	for (auto& p : m_TapAuraParticles) p.Update(deltaTime);
+	m_TapAuraParticles.erase(
+		std::remove_if(m_TapAuraParticles.begin(), m_TapAuraParticles.end(), [](Particle& p) { return p.IsStop(); }),
+		m_TapAuraParticles.end());
 
 	if (m_AutoMode)
 	{
@@ -567,13 +677,13 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 		float deg = (float)(rand() % 360);
 		Particle p(
 			pos,
-			1.5f,                          // 寿命
+			0.5f,                          // 寿命
 			50.0f,                         // 重力
 			Color(1, 1, 1, 1),				// 開始色
 			Color(1, 1, 1, 0),				// 終了色（透明にフェード）
 			0.7f,                          // フェード開始位置（終盤30%だけフェード）
-			80.0f,                         // 開始サイズ
-			40.0f,                         // 終了サイズ
+			60.0f,                         // 開始サイズ
+			20.0f,                         // 終了サイズ
 			Vector3(80, 120, 80),          // 初速
 			deg
 		);
@@ -683,43 +793,25 @@ void ChartObject::DrawLightEffects(Camera* cam)
 	Renderer::SetBlendState(BS_NONE);
 }
 
-// DrawBeamSegment / DrawBeamSegmentWithColor / DrawJudggedBeam / DrawHomingBeams は HomingBeamSystem に切り出し済み
 
 // ============================================================
-// DrawLongNotes : ロングノーツを sentan(先端) / dou(本体・鎖) / o(終端の輪) の
-//                 3パーツで描画する。
+// DrawLongNotes : ロングノーツを、判定キーへ撃ち込まれる「ビーム」として描画する。
+//   以前はsentan(先端)/dou(本体・鎖)/o(終端の輪)の3パーツのFBXモデルを
+//   並べて描画していたが、視認性向上のためHomingBeamSystemの
+//   DrawBeamSegmentWithColorを流用したビーム表現に変更した。
 //
 //   時間の流れ：
 //     displayStart(出現) → arrivalTime(先端が判定ラインに到達) → endTime(終端が到達し消える)
-//
-//   sentanは arrivalTime を過ぎても kGraceTime 秒だけ進み続け、
-//   oはholdDuration秒だけ遅れてsentanを追いかける。
-//   douはその間を一定間隔でサンプリングして敷き詰める（鎖のように見せる）。
 // ============================================================
 //void ChartObject::DrawLongNotes(Camera* cam)
 //{
-//	constexpr float kGraceTime = 0.5f;		// 判定ラインを越えても先端が進み続ける猶予秒数
-//	constexpr float kBodySpacing = 0.02f;	// dou（本体）を敷き詰める間隔（秒）。小さいほど密になるが重くなる
-//	constexpr int   kMaxBodySegments = 60;	// dou描画数の安全上限（負荷対策）
+//	constexpr float kGraceTime = 0.5f;			// 判定ラインを越えても先端が進み続ける猶予秒数
+//	constexpr float kCoreThicknessX = 16.0f;	// ビームの芯（明るい部分）の太さ。見た目調整用
+//	constexpr float kCoreThicknessY = 16.0f;
+//	constexpr float kGlowThicknessX = 55.0f;	// ビームのグロー（柔らかく広がる部分）の太さ。見た目調整用
+//	constexpr float kGlowThicknessY = 55.0f;
 //
-//	// 各パーツごとに「専用モデルがあればそれを、無ければTAPモデルを」使う
-//	auto& sentanRenderer = m_LongSentanLoaded ? m_LongSentanRenderer : m_MeshRenderer;
-//	auto& sentanShader = m_LongSentanLoaded ? m_LongSentanShader : m_Shader;
-//	auto& sentanSubsets = m_LongSentanLoaded ? m_LongSentanSubsets : m_Subsets;
-//	auto& sentanMaterials = m_LongSentanLoaded ? m_LongSentanMaterials : m_Materials;
-//	auto& sentanTextures = m_LongSentanLoaded ? m_LongSentanTextures : m_Textures;
-//
-//	auto& douRenderer = m_LongDouLoaded ? m_LongDouRenderer : m_MeshRenderer;
-//	auto& douShader = m_LongDouLoaded ? m_LongDouShader : m_Shader;
-//	auto& douSubsets = m_LongDouLoaded ? m_LongDouSubsets : m_Subsets;
-//	auto& douMaterials = m_LongDouLoaded ? m_LongDouMaterials : m_Materials;
-//	auto& douTextures = m_LongDouLoaded ? m_LongDouTextures : m_Textures;
-//
-//	auto& oRenderer = m_LongOLoaded ? m_LongORenderer : m_MeshRenderer;
-//	auto& oShader = m_LongOLoaded ? m_LongOShader : m_Shader;
-//	auto& oSubsets = m_LongOLoaded ? m_LongOSubsets : m_Subsets;
-//	auto& oMaterials = m_LongOLoaded ? m_LongOMaterials : m_Materials;
-//	auto& oTextures = m_LongOLoaded ? m_LongOTextures : m_Textures;
+//	Renderer::SetBlendState(BS_ADDITIVE);
 //
 //	for (auto& note : m_Notes)
 //	{
@@ -739,70 +831,74 @@ void ChartObject::DrawLightEffects(Camera* cam)
 //		float extendedEnd = endTime + kGraceTime;
 //		if (m_MusicTime < displayStart || m_MusicTime > extendedEnd) continue;
 //
-//		// ── 1) sentan（先端）の現在位置 ──
-//		// arrivalTimeを過ぎてもkGraceTime秒だけ進み続ける（急に消えないようにするため）
-//		float headTime = std::min(m_MusicTime, endTime);
-//		Vector3 headPos = NotePath::EvaluateLongNotePosition(note, headTime);
-//		{
-//			Matrix world = Matrix::CreateScale(20.0f) * Matrix::CreateTranslation(headPos);
-//			ModelUtil::DrawModel(sentanRenderer, sentanShader, sentanSubsets, sentanMaterials, sentanTextures, world);
-//		}
+//		// ── ビームの先端（head）── arrivalTimeを過ぎてもkGraceTime秒だけ進み続ける
+//		// ただし「判定に成功して保持中」の間は、魔法障壁でせき止められて見えるように
+//		// 先端をarrivalTime（＝判定キー/障壁の位置）で止める。保持に失敗した瞬間、
+//		// 堰き止めが外れて判定ラインの先まで突き抜ける
+//		bool pestArrival = m_MusicTime >= arrivalTime;
+//		bool isHeldNow = pestArrival && note.lane >= 0 && note.lane < 6 && Input::GetKeyPress(kLaneKeys[note.lane]);
 //
-//		// ── 3) o（終端の輪）の現在位置 ──
-//		// sentanよりholdDuration秒だけ遅れて追従する（まだ出現範囲に入っていなければ非表示）
+//		float headTime = std::min(m_MusicTime, endTime);
+//		bool blockedByBarrier = isHeldNow && headTime > arrivalTime;
+//		if (blockedByBarrier)
+//		{
+//			headTime = arrivalTime;
+//		}
+//		Vector3 headPos = NotePath::EvaluateLongNotePosition(note, headTime);
+//
+//		// ── ビームの後端（tail）── holdDuration秒だけheadより遅れて追従する
 //		float tailTime = headTime - holdDuration;
 //		bool tailVisible = (tailTime >= displayStart);
-//		if (tailVisible)
-//		{
-//			Vector3 tailPos = NotePath::EvaluateLongNotePosition(note, tailTime);
-//			Matrix world = Matrix::CreateScale(20.0f) * Matrix::CreateTranslation(tailPos);
-//			ModelUtil::DrawModel(oRenderer, oShader, oSubsets, oMaterials, oTextures, world);
-//		}
+//		float bodyStart = tailVisible ? tailTime : displayStart;
+//		Vector3 tailPos = NotePath::EvaluateLongNotePosition(note, bodyStart);
 //
-//		// ── 2) dou（本体・鎖）の描画 ──
-//		// tailTime〜headTimeの区間を一定間隔でサンプリングし、間を鎖状に敷き詰める
-//		{
-//			float bodyStart = tailVisible ? tailTime : displayStart;
-//			float bodyEnd = headTime;
-//			float bodyDuration = bodyEnd - bodyStart;
-//			if (bodyDuration > 0.0001f)
-//			{
-//				int segments = std::max(2, (int)std::ceil(bodyDuration / kBodySpacing));
-//				segments = std::min(segments, kMaxBodySegments); // 描画数に上限をかけて負荷を抑える
+//		// 到達済みなのに今は押されていない間は、暗く・色を落として「今は取れていない感」を出す
+//		bool showAsMissedLook = pestArrival && !isHeldNow;
+//		Vector3 laneColor = GetLaneColor(note.lane);
+//		Vector3 beamColor = showAsMissedLook ? Vector3(0.4f, 0.4f, 0.4f) : laneColor;
+//		//Vector3 beamColor = laneColor;
+//		float coreIntensity = showAsMissedLook ? 0.3f : 2.0f;
+//		float glowIntensity = showAsMissedLook ? 0.15f : 0.7f;
+//		float a = 0.3f;
+//		float b = 0.15f;
 //
-//				for (int s = 1; s < segments; s++) // 両端(sentan/o)は上ですでに描画済みなので中間だけ
-//				{
-//					float p = (float)s / (float)segments;
-//					float sampleTime = bodyStart + bodyDuration * p;
-//					Vector3 pos = NotePath::EvaluateLongNotePosition(note, sampleTime);
-//					Matrix world = Matrix::CreateScale(10.0f) * Matrix::CreateTranslation(pos);
-//					ModelUtil::DrawModel(douRenderer, douShader, douSubsets, douMaterials, douTextures, world);
-//				}
-//			}
-//		}
+//		// 芯（細く明るい）
+//		m_BeamSystem.DrawBeamSegmentWithColor(cam, tailPos, headPos,
+//			kCoreThicknessX, kCoreThicknessY, beamColor, coreIntensity);
+//		// グロー（太く柔らかい）
+//		m_BeamSystem.DrawBeamSegmentWithColor(cam, tailPos, headPos,
+//			kGlowThicknessX, kGlowThicknessY, beamColor, glowIntensity);
 //	}
+//
+//	Renderer::SetBlendState(BS_NONE);
 //}
 
-// ============================================================
-// DrawLongNotes : ロングノーツを、判定キーへ撃ち込まれる「ビーム」として描画する。
-//   以前はsentan(先端)/dou(本体・鎖)/o(終端の輪)の3パーツのFBXモデルを
-//   並べて描画していたが、視認性向上のためHomingBeamSystemの
-//   DrawBeamSegmentWithColorを流用したビーム表現に変更した。
-//   （sentan/dou/o用のモデルロード自体はInit()に残っているが、
-//     この関数ではもう使わない。消しても動作に影響はない）
-//
-//   時間の流れ：
-//     displayStart(出現) → arrivalTime(先端が判定ラインに到達) → endTime(終端が到達し消える)
-// ============================================================
+//3つ並べる系ロングノーツの方
 void ChartObject::DrawLongNotes(Camera* cam)
 {
 	constexpr float kGraceTime = 0.5f;			// 判定ラインを越えても先端が進み続ける猶予秒数
-	constexpr float kCoreThicknessX = 16.0f;	// ビームの芯（明るい部分）の太さ。見た目調整用
-	constexpr float kCoreThicknessY = 16.0f;
-	constexpr float kGlowThicknessX = 55.0f;	// ビームのグロー（柔らかく広がる部分）の太さ。見た目調整用
-	constexpr float kGlowThicknessY = 55.0f;
+	constexpr float kBodySpacing = 0.01f;		// dou（本体）を敷き詰める間隔（秒）。小さいほど密になるが重くなる
+	constexpr int   kMaxBodySegments = 60;		// dou描画数の安全上限（負荷対策）
+	constexpr float kBodyWindowSeconds = kBodySpacing * kMaxBodySegments;
 
-	Renderer::SetBlendState(BS_ADDITIVE);
+	// 各パーツごとに「専用モデルがあればそれを、無ければTAPモデルを」使う
+	auto& sentanRenderer = m_LongSentanLoaded ? m_LongSentanRenderer : m_MeshRenderer;
+	auto& sentanShader = m_LongSentanLoaded ? m_LongSentanShader : m_Shader;
+	auto& sentanSubsets = m_LongSentanLoaded ? m_LongSentanSubsets : m_Subsets;
+	auto& sentanMaterials = m_LongSentanLoaded ? m_LongSentanMaterials : m_Materials;
+	auto& sentanTextures = m_LongSentanLoaded ? m_LongSentanTextures : m_Textures;
+
+	auto& douRenderer = m_LongDouLoaded ? m_LongDouRenderer : m_MeshRenderer;
+	auto& douShader = m_LongDouLoaded ? m_LongDouShader : m_Shader;
+	auto& douSubsets = m_LongDouLoaded ? m_LongDouSubsets : m_Subsets;
+	auto& douMaterials = m_LongDouLoaded ? m_LongDouMaterials : m_Materials;
+	auto& douTextures = m_LongDouLoaded ? m_LongDouTextures : m_Textures;
+
+	auto& oRenderer = m_LongOLoaded ? m_LongORenderer : m_MeshRenderer;
+	auto& oShader = m_LongOLoaded ? m_LongOShader : m_Shader;
+	auto& oSubsets = m_LongOLoaded ? m_LongOSubsets : m_Subsets;
+	auto& oMaterials = m_LongOLoaded ? m_LongOMaterials : m_Materials;
+	auto& oTextures = m_LongOLoaded ? m_LongOTextures : m_Textures;
 
 	for (auto& note : m_Notes)
 	{
@@ -814,18 +910,34 @@ void ChartObject::DrawLongNotes(Camera* cam)
 		float endTime = note.time;					// 終端が判定ラインに着く時刻（消滅予定）
 		float holdDuration = endTime - arrivalTime;	// ノーツの長さ（先端と終端の時間差）
 
-		// 出現〜到達が短すぎる（≒0秒）場合は0除算やワープ表示を避けるためスキップ
 		if (arrivalTime - displayStart <= 0.0001f) continue;
 		if (holdDuration <= 0.0001f) holdDuration = 0.0001f;
 
-		// 終端が消えるまで（猶予込み）の間だけ表示対象とする
 		float extendedEnd = endTime + kGraceTime;
 		if (m_MusicTime < displayStart || m_MusicTime > extendedEnd) continue;
 
-		// ── ビームの先端（head）── arrivalTimeを過ぎてもkGraceTime秒だけ進み続ける
-		// ただし「判定に成功して保持中」の間は、魔法障壁でせき止められて見えるように
-		// 先端をarrivalTime（＝判定キー/障壁の位置）で止める。保持に失敗した瞬間、
-		// 堰き止めが外れて判定ラインの先まで突き抜ける
+		//進行方向に沿った回転行列
+		//向きがおかしい場合はright/up/noteDirの並び順を入れ替えてね
+		Vector3 noteDir = note.judgePos - note.spawnPos;
+		Matrix noteBasis = Matrix::Identity;
+		if (noteDir.LengthSquared() > 0.0001f)
+		{
+			noteDir.Normalize();
+			Vector3 upHint = Vector3::Up;
+			if (fabsf(noteDir.Dot(upHint)) > 0.98f) upHint = Vector3::Right;
+			Vector3 right = upHint.Cross(noteDir);
+			right.Normalize();
+			Vector3 up = noteDir.Cross(right);
+			up.Normalize();
+
+			noteBasis = Matrix(
+				right.x, right.y, right.z, 0.0f,
+				up.x, up.y, up.z, 0.0f,
+				noteDir.x, noteDir.y, noteDir.z, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f
+			);
+		}
+
 		bool pestArrival = m_MusicTime >= arrivalTime;
 		bool isHeldNow = pestArrival && note.lane >= 0 && note.lane < 6 && Input::GetKeyPress(kLaneKeys[note.lane]);
 
@@ -837,28 +949,70 @@ void ChartObject::DrawLongNotes(Camera* cam)
 		}
 		Vector3 headPos = NotePath::EvaluateLongNotePosition(note, headTime);
 
-		// ── ビームの後端（tail）── holdDuration秒だけheadより遅れて追従する
+		if (blockedByBarrier)
+		{
+			Vector3 travelDir = note.judgePos - note.spawnPos;
+			if (travelDir.LengthSquared() > 0.0001f)
+			{
+				travelDir.Normalize();
+				constexpr float kBarrierPushBack = 30.0f;
+				headPos -= travelDir * kBarrierPushBack;
+			}
+		}
+
 		float tailTime = headTime - holdDuration;
 		bool tailVisible = (tailTime >= displayStart);
 		float bodyStart = tailVisible ? tailTime : displayStart;
-		Vector3 tailPos = NotePath::EvaluateLongNotePosition(note, bodyStart);
+		float chainBodyStart = std::max(bodyStart, headTime - kBodyWindowSeconds);
 
-		// 到達済みなのに今は押されていない間は、暗く・色を落として「今は取れていない感」を出す
-		bool showAsMissedLook = pestArrival && !isHeldNow;
-		Vector3 laneColor = GetLaneColor(note.lane);
-		Vector3 beamColor = showAsMissedLook ? Vector3(0.4f, 0.4f, 0.4f) : laneColor;
-		float coreIntensity = showAsMissedLook ? 0.3f : 2.0f;
-		float glowIntensity = showAsMissedLook ? 0.15f : 0.7f;
+		// ── 1) sentan（先端）を描画 ──
+		{
+			Matrix world = Matrix::CreateScale(40.0f) * Matrix::CreateRotationX(3.14f) * noteBasis * Matrix::CreateTranslation(headPos);
+			ModelUtil::DrawModel(sentanRenderer, sentanShader, sentanSubsets, sentanMaterials, sentanTextures, world);
+		}
 
-		// 芯（細く明るい）
-		m_BeamSystem.DrawBeamSegmentWithColor(cam, tailPos, headPos,
-			kCoreThicknessX, kCoreThicknessY, beamColor, coreIntensity);
-		// グロー（太く柔らかい）
-		m_BeamSystem.DrawBeamSegmentWithColor(cam, tailPos, headPos,
-			kGlowThicknessX, kGlowThicknessY, beamColor, glowIntensity);
+		// ── 2) o（終端）を描画 ──
+		if (tailVisible)
+		{
+			Vector3 tailPos = NotePath::EvaluateLongNotePosition(note, bodyStart);
+			Matrix world = Matrix::CreateScale(20.0f) * noteBasis * Matrix::CreateTranslation(tailPos);
+			ModelUtil::DrawModel(oRenderer, oShader, oSubsets, oMaterials, oTextures, world);
+		}
+
+		// ── 3) sentanでもoでもない部分は、douを一定間隔で並べて補間する ──
+		{
+			float bodyDuration = headTime - chainBodyStart;
+			if (bodyDuration > 0.0001f)
+			{
+				int segments = std::max(2, (int)std::ceil(bodyDuration / kBodySpacing));
+				segments = std::min(segments, kMaxBodySegments); // 描画数に上限をかけて負荷を抑える
+
+				std::vector<Vector3> douPositions;
+				douPositions.reserve(segments);
+
+				for (int s = 1; s < segments; s++) // 両端(sentan/o)は上ですでに描画済みなので中間だけ
+				{
+					float p = (float)s / (float)segments;
+					float sampleTime = bodyStart + bodyDuration * p;
+					Vector3 pos = NotePath::EvaluateLongNotePosition(note, sampleTime);
+					douPositions.push_back(pos);
+					
+					Matrix world = Matrix::CreateScale(30.0f) * noteBasis * Matrix::CreateTranslation(pos);
+					ModelUtil::DrawModel(douRenderer, douShader, douSubsets, douMaterials, douTextures, world);
+				}
+
+				//魔力の残滓っぽいのを追加する
+				Renderer::SetBlendState(BS_ADDITIVE);
+				Renderer::SetUV(0.0f, 0.0f, 1.0f, 1.0f);
+				for (const Vector3& glowPos : douPositions)
+				{
+					Matrix glowWorld = Matrix::CreateScale(31.0f) * noteBasis * Matrix::CreateTranslation(glowPos);
+					ModelUtil::DrawModelWithOverrideTexture(douRenderer, m_LongDouGlowShader, douSubsets, douMaterials, m_LongDouGlowTexture, glowWorld);
+				}
+				Renderer::SetBlendState(BS_NONE);
+			}
+		}
 	}
-
-	Renderer::SetBlendState(BS_NONE);
 }
 
 // ============================================================
@@ -1026,7 +1180,15 @@ void ChartObject::Draw(Camera* cam)
 				);
 			}
 		}
-
+		// もやもやしたオーラ(ビルボード)
+		//{
+		//	Renderer::SetBlendState(BS_ADDITIVE);
+		//	float pulse = 0.85f + 0.15f * sinf(m_MusicTime * 1.0f + pos.x * 0.001f);
+		//	float auraScale = m_NoteScale * 5.5f * pulse; // 球本体よりだいぶ大きめに
+		//	Color auraColor(laneColor.x, laneColor.y, laneColor.z, 0.6f * pulse);
+		//	m_TapOrbAuraQuad.Draw(cam, pos, auraScale, auraColor);
+		//	Renderer::SetBlendState(BS_NONE);
+		//}
 
 
 		//グロー処理
@@ -1052,6 +1214,11 @@ void ChartObject::Draw(Camera* cam)
 			Renderer::SetBlendState(BS_NONE);
 		}
 	}
+
+	Renderer::SetBlendState(BS_ADDITIVE);
+	for (auto& p : m_TapAuraParticles)
+		m_TapAuraParticleQuad.Draw(cam, p.GetPosition(), p.GetScale(), p.GetColor());
+	Renderer::SetBlendState(BS_NONE);
 
 
 	// ── ロングノーツ・フリックノーツの描画 ──
@@ -1130,6 +1297,11 @@ void ChartObject::Draw(Camera* cam)
 		m_ParticleQuad.Draw(cam, p.GetPosition(), p.GetScale(), p.GetColor());
 	}
 	Renderer::SetBlendState(BS_NONE);
+	Renderer::SetBlendState(BS_ADDITIVE);
+	for (auto& p : m_LongAmbientParticles)
+	{
+		m_LongParticleQuad.Draw(cam, p.GetPosition(), p.GetScale(), p.GetColor());
+	}
 
 	// ── コンボ表示・判定ランク演出・判定内訳・障壁演出は ComboHud にまとめて委譲 ──
 	Vector3 laneColors[6];

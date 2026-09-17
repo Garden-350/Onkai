@@ -49,6 +49,9 @@
     <FxCompile Include="shader\barrierPlatePS.hlsl">
       <Filter>リソースファイル</Filter>
     </FxCompile>
+    <FxCompile Include="shader\magicCircleTransitionPS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChartObject.cpp">
@@ -201,6 +204,8 @@
     <ClCompile Include="LightShaft.cpp">
       <Filter>ソースファイル\Particle</Filter>
     </ClCompile>
+    <ClCompile Include="CityBuildings.cpp" />
+    <ClCompile Include="MagicCircleTransitionEffect.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -377,6 +382,8 @@
     <ClInclude Include="LightShaft.h">
       <Filter>ヘッダーファイル\Particle</Filter>
     </ClInclude>
+    <ClInclude Include="CityBuildings.h" />
+    <ClInclude Include="MagicCircleTransitionEffect.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">

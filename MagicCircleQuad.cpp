@@ -2,7 +2,7 @@
 
 using namespace DirectX::SimpleMath;
 
-void MagicCircleQuad::Init(const char* texturePath)
+void MagicCircleQuad::Init(const char* texturePath, const char* psPath)
 {
 	std::vector<VERTEX_3D> verts(4);
 	verts[0].position = Vector3(-0.5f, 0.5f, 0.0f);
@@ -24,7 +24,7 @@ void MagicCircleQuad::Init(const char* texturePath)
 	m_IndexBuffer.Create(idx);
 
 	//ライティングは不要  unlitTextureVS + 専用PS
-	m_Shader.Create("shader/unlitTextureVS.hlsl", "shader/magicCireclePS.hlsl");
+	m_Shader.Create("shader/unlitTextureVS.hlsl", psPath);
 	m_Shader.CreatePSConstantBuffer(sizeof(MagicCircleParms));
 
 	m_Texture.Load(texturePath);

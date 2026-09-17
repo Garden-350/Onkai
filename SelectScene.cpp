@@ -7,7 +7,10 @@
 #include "Player.h"
 #include "sound.h"
 #include "SimpleJson.h"
+#include "MagicCircleTransitionEffect.h"
 #include <filesystem>
+#include <algorithm>
+#include <cmath>
 #undef min
 #undef max
 
@@ -55,8 +58,23 @@ void SelectScene::Init()
 	m_AutoButton->SetScale(180.0f, 80.0f, 0.0f);
 	m_MySceneObjects.emplace_back(m_AutoButton);
 
+	// ハイスピ表示（コンボと同じ数字画像を流用。小数点の絵は無いので2桁を隙間を空けて並べる）
+	for (int i = 0; i < 2; i++)
+	{
+		m_HighSpeedDigits[i] = Game::GetInstance()->AddObject<Texture2D>();
+		m_HighSpeedDigits[i]->SetTexture("assets/texture/allnumber_new.png");
+		m_HighSpeedDigits[i]->SetUV(1.0f, 1.0f, 10.0f, 1.0f); // 初期表示"0"
+		m_HighSpeedDigits[i]->SetScale(60.0f, 60.0f, 0.0f);
+		m_MySceneObjects.emplace_back(m_HighSpeedDigits[i]);
+	}
+	m_HighSpeedDigits[0]->SetPosition(480.0f, -180.0f, 0.0f);
+	m_HighSpeedDigits[1]->SetPosition(530.0f, -180.0f, 0.0f); // 少し離して小数点っぽく見せる
+
 	RefreshSongList();
 	SetupJacketSlots();
+
+	m_TransitionEffect = Game::GetInstance()->AddObject<MagicCircleTransitionEffect>();
+	m_MySceneObjects.emplace_back(m_TransitionEffect);
 }
 
 
@@ -65,6 +83,30 @@ void SelectScene::Init()
 void SelectScene::Update()
 {
 	if (m_SongNames.empty()) return;
+
+	// フレーム時間を計測
+	auto now = std::chrono::steady_clock::now();
+	if (!m_ClockInitialized)
+	{
+		m_LastUpdateClock = now;
+		m_ClockInitialized = true;
+	}
+	float dt = std::chrono::duration<float>(now - m_LastUpdateClock).count();
+	m_LastUpdateClock = now;
+
+	// ── 遷移演出中：魔法陣を描き進めるだけで、他の操作は受け付けない ──
+	if (m_Transitioning)
+	{
+		m_TransitionTimer += dt;
+		float progress = std::clamp(m_TransitionTimer / kTransitionDuration, 0.0f, 1.0f);
+		if (m_TransitionEffect) m_TransitionEffect->SetProgress(progress);
+
+		if (m_TransitionTimer >= kTransitionDuration)
+		{
+			Game::GetInstance()->ChangeScene(STAGE1);
+		}
+		return;
+	}
 
 	//今選択してるジャケットによって曲を流そうと思ったんだけどうまくいかなかった残骸
 	//if (m_AudioFile.empty())
@@ -83,6 +125,28 @@ void SelectScene::Update()
 		ShiftJackets(1);
 	}
 
+	//ハイスピの設定
+	if (Input::GetKeyTrigger(VK_L))
+	{
+		speed = std::clamp(Game::GetInstance()->GetHighSpeed() + 0.1f, 0.1f, 9.9f);
+		Game::SetHightSpeed(speed);
+	}
+	if (Input::GetKeyTrigger(VK_K))
+	{
+		speed = std::clamp(Game::GetInstance()->GetHighSpeed() - 0.1f, 0.1f, 9.9f);
+		Game::SetHightSpeed(speed);
+	}
+	//ハイスピ数字表示の更新
+	{
+		float hs = Game::GetInstance()->GetHighSpeed();
+		int hsInt10 = (int)std::round(hs * 10.0f); // 浮動小数の誤差対策でまとめて丸める
+		int intPart = (hsInt10 / 10) % 10;
+		int decPart = hsInt10 % 10;
+
+		m_HighSpeedDigits[0]->SetUV((float)(intPart + 1), 1.0f, 10.0f, 1.0f);
+		m_HighSpeedDigits[1]->SetUV((float)(decPart + 1), 1.0f, 10.0f, 1.0f);
+	}
+
 	//TABでオート切替
 	if (Input::GetKeyTrigger(VK_TAB))
 	{
@@ -97,6 +161,19 @@ void SelectScene::Update()
 	// エンターキーで決定してステージへ
 	if (Input::GetKeyTrigger(VK_RETURN))
 	{
+		//遷移アニメーションのところ。
+		//Game::SetSelectedChart(m_SongNames[m_SelectedIndex]);
+		//Game::SetAutoMode(m_AutoModeSelected);
+
+		//m_Transitioning = true;
+		//m_TransitionTimer = 0.0f;
+		//if (m_TransitionEffect)
+		//{
+		//	m_TransitionEffect->SetVisible(true);
+		//	m_TransitionEffect->SetProgress(0.0f);
+		//}
+
+
 		Game::SetSelectedChart(m_SongNames[m_SelectedIndex]);
 		Game::SetAutoMode(m_AutoModeSelected);
 		Game::GetInstance()->ChangeScene(STAGE1);

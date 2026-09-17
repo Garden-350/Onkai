@@ -42,6 +42,9 @@ private:
 	std::string m_SelectedChart = "beam_2";
 
 	bool m_AutoMode = false;
+	bool m_Paused = false;
+	std::chrono::steady_clock::time_point m_PauseStartClock{};
+	float m_HighSpeed = 1.0f;
 
 public:
 	Game(); // コンストラクタ
@@ -70,6 +73,11 @@ public:
 	void DeleteAllObject();				//オブジェクトをすべて削除
 
 	float GetDeltaTime() const { return m_DeltaTime; }
+
+	bool IsPaused() const { return m_Instance->m_Paused; }
+
+	float GetHighSpeed() const { return m_Instance->m_HighSpeed; }
+	static void SetHightSpeed(float speed) { m_Instance->m_HighSpeed = speed; }
 
 	//オブジェクトを追加する（テンプレート関数）
 	//template<typename T> T* AddObject()

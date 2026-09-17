@@ -4,9 +4,11 @@
 #include "sound.h"
 #include <vector>
 #include <string>
+#include <chrono>
 
 class Texture2D;
 class Sound;
+class MagicCircleTransitionEffect;
 class SelectScene : public Scene
 {
 private:
@@ -32,7 +34,17 @@ private:
 
 	Texture2D* m_JacketTexture = nullptr;
 	Texture2D* m_AutoButton = nullptr;
+	Texture2D* m_HighSpeedDigits[2] = { nullptr, nullptr }; // [0]=整数部, [1]=小数第一位
 	bool m_AutoModeSelected = false;
+
+	//遷移アニメーション
+	MagicCircleTransitionEffect* m_TransitionEffect = nullptr;
+	bool m_Transitioning = false;
+	float m_TransitionTimer = 0.0f;
+	static constexpr float kTransitionDuration = 1.2f;	//遷移の長さ(s)
+
+	std::chrono::steady_clock::time_point m_LastUpdateClock;
+	bool m_ClockInitialized = false;
 
 	void Init(); // 初期化
 	void Uninit(); // 終了処理
@@ -49,6 +61,8 @@ public:
 	~SelectScene(); // デストラクタ
 
 	bool LoadChart(const std::string& name);
+
+	float speed = 0.0f;
 
 	void Update(); // 更新
 };

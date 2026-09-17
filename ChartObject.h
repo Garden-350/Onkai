@@ -110,7 +110,7 @@ struct ChartKeyLightEffect
 	int lane = 0;
 	float startTime = 0.0f;
 	float duration = 0.0f;
-	float intensity = 2.2f;	// 1.0f=通常 2.0f=2倍明るい 3.0f=3倍明るい
+	float intensity = 1.2f;	// 1.0f=通常 2.0f=2倍明るい 3.0f=3倍明るい
 	DirectX::SimpleMath::Vector3 origin;
 };
 
@@ -160,6 +160,7 @@ public:
 	}
 
 	void DrawLaneGuideLines(Camera* cam);
+	void AddPauseOffset(std::chrono::steady_clock::duration offset);
 
 private:
 	// ────────────────────────────────────────
@@ -182,13 +183,20 @@ private:
 	Texture2D m_LaneFill[6];		// 判定円の内側（接近度に応じて育つ・フェードイン）
 	std::vector<SUBSET> m_Subsets;
 	std::vector<Particle> m_Particle;
+	std::vector<Particle> m_LongAmbientParticles;
+	std::vector<Particle> m_TapAuraParticles;
+	ParticleQuad m_TapAuraParticleQuad;
+	float m_TapAuraTimer[6] = { 0,0,0,0,0,0 };
+	ParticleQuad m_LongParticleQuad;
+	ParticleQuad m_TapOrbAuraQuad;
 	std::vector<std::unique_ptr<Material>> m_Materials;
 	std::vector<std::unique_ptr<Texture>> m_Textures;
 	std::vector<ChartKeyLightEffect> m_LightEffects;	// 判定時のキーライト点滅エフェクト
 	std::chrono::steady_clock::time_point m_LastUpdateClock;
 	std::string m_AudioFile;
-	float m_NoteScale = 40.0f;	// TAPモデルの表示スケール
+	float m_NoteScale = 30.0f;	// TAPモデルの表示スケール
 	float m_BarrierSparkleTimer[6] = { 0,0,0,0,0,0 };	//レーンごとのキラキラパーティクル生成タイマー
+	float m_LongAmbientParticleTimer[6] = { 0,0,0,0,0,0 };
 
 	void DrawSpawnMagicCircle(Camera* cam, const ChartNote& note);
 
@@ -210,6 +218,8 @@ private:
 	std::vector<SUBSET> m_LongDouSubsets;
 	std::vector<std::unique_ptr<Material>> m_LongDouMaterials;
 	std::vector<std::unique_ptr<Texture>> m_LongDouTextures;
+	Texture m_LongDouGlowTexture;	//Douの発光テクスチャ
+	Shader m_LongDouGlowShader;
 
 	bool m_LongOLoaded = false;
 	MeshRenderer m_LongORenderer;

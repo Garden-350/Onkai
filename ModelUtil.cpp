@@ -62,4 +62,24 @@ namespace ModelUtil
 			);
 		}
 	}
+	void DrawModelWithOverrideTexture(MeshRenderer& renderer, Shader& shader, std::vector<SUBSET>& subsets, std::vector<std::unique_ptr<Material>>& materials, Texture& overrideTexture, const DirectX::SimpleMath::Matrix& worldConst)
+	{
+		Matrix world = worldConst;
+		Renderer::SetWorldMatrix(&world);
+		shader.SetGPU();
+		renderer.BeforeDraw();
+
+		for (size_t i = 0; i < subsets.size(); i++)
+		{
+			materials[subsets[i].MaterialIdx]->SetGPU();
+			overrideTexture.SetGPU();
+
+			renderer.DrawSubset
+			(
+				subsets[i].IndexNum,
+				subsets[i].IndexBase,
+				subsets[i].VertexBase
+			);
+		}
+	}
 }

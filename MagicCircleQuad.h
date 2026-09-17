@@ -23,7 +23,9 @@ private:
 	IndexBuffer m_IndexBuffer;
 
 public:
-	void Init(const char* texturePath);
+public:
+	// psPathを省略した場合は今まで通りノーツ出現演出と同じシェーダーを使う
+	void Init(const char* texturePath, const char* psPath = "shader/magicCireclePS.hlsl");
 
 	// center   : ワールド座標（クワッドの中心）
 	// scale    : クワッドの一辺の大きさ

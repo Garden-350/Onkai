@@ -3,8 +3,8 @@
 #include "Application.h"
 #include "Game.h"
 
-const auto ClassName = TEXT("Sounder");     //ウィンドウクラス名
-const auto WindowName = TEXT("Sounder");    //ウィンドウ名
+const auto ClassName = TEXT("音廻");     //ウィンドウクラス名
+const auto WindowName = TEXT("音廻");    //ウィンドウ名
 
 HINSTANCE  Application::m_hInst;   // インスタンスハンドル
 HWND       Application::m_hWnd;    // ウィンドウハンドル

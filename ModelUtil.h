@@ -37,4 +37,12 @@ namespace ModelUtil
 		std::vector<std::unique_ptr<Material>>& materials,
 		std::vector<std::unique_ptr<Texture>>& textures,
 		const DirectX::SimpleMath::Matrix& worldConst);
+
+	//指定した一枚のテクスチャを常に貼って描画する
+	//同じ形のまま見た目だけ変えたい時に使う
+	void DrawModelWithOverrideTexture(MeshRenderer& renderer, Shader& shader,
+		std::vector<SUBSET>& subsets,
+		std::vector<std::unique_ptr<Material>>& materials,
+		Texture& overrideTexture,
+		const DirectX::SimpleMath::Matrix& worldConst);
 }

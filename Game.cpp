@@ -47,14 +47,40 @@ void Game::Update()
 	//入力処理更新
 	Input::Update();
 
+	//ポーズ切替
+	if (Input::GetKeyTrigger(VK_SPACE))
+	{
+		m_Instance->m_Paused = !m_Instance->m_Paused;
+
+		if (m_Instance->m_Paused)
+		{
+			//ポーズ開始時刻を記録
+			m_Instance->m_PauseStartClock = std::chrono::steady_clock::now();
+		}
+		else
+		{
+			//ポーズしていた分譜面の内部時計を進めてずれ解消
+			auto pauseDuration = std::chrono::steady_clock::now() - m_Instance->m_PauseStartClock;
+			for (auto& o : m_Instance->m_Objects)
+			{
+				if (auto chart = dynamic_cast<ChartObject*>(o.get()))
+				{
+					chart->AddPauseOffset(pauseDuration);
+				}
+			}
+		}
+	}
+	//カメラ更新
+	m_Instance->m_Camera.Update();
+
+	if (m_Instance->m_Paused)
+	{
+		return;
+	}
 	//シーン更新
 	m_Instance->m_Scene->Update();
 
-	// カメラ更新
-	m_Instance->m_Camera.Update();
-
-	
-	for (auto& o : m_Instance -> m_Objects)
+	for (auto& o : m_Instance->m_Objects)
 	{
 		o->Update();
 	}

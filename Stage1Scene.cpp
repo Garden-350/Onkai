@@ -33,12 +33,12 @@ void Stage1Scene::Init()
 	// 横からの斜め見下ろし視点：
 	// プレイヤーの斜め後方・少し上から、奥の敵方向を見下ろす
 	Game::GetInstance()->GetCamera()->SetFixedPose(
-		Vector3(0.0f, 300.0f, -850.0f),   // カメラ位置：プレイヤーのやや上・後方
+		Vector3(25.0f, 667.0f, -850.0f),   // カメラ位置：プレイヤーのやや上・後方
 		Vector3(0.0f, 0.0f, -300.0f)      // 注視点：奥(敵方向)の少し高い位置
 	);
 
-	auto* ground = Game::GetInstance()->AddObject<Ground>();
-	m_MySceneObjects.emplace_back(ground);
+	//auto* ground = Game::GetInstance()->AddObject<Ground>();
+	//m_MySceneObjects.emplace_back(ground);
 	auto* skybox = Game::GetInstance()->AddObject<SkyBox>();
 	m_MySceneObjects.emplace_back(skybox);
 	auto* enemy = Game::GetInstance()->AddObject<Enemy>();

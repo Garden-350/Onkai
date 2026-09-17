@@ -148,9 +148,11 @@
     <ClCompile Include="Baton.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="ChartObject.cpp" />
+    <ClCompile Include="CityBuildings.cpp" />
     <ClCompile Include="ClosingRingGuide.cpp" />
     <ClCompile Include="ComboHud.cpp" />
     <ClCompile Include="JudgeSystem.cpp" />
+    <ClCompile Include="MagicCircleTransitionEffect.cpp" />
     <ClCompile Include="NotePath.cpp" />
     <ClCompile Include="ChartLoader.cpp" />
     <ClCompile Include="ModelUtil.cpp" />
@@ -200,9 +202,11 @@
     <ClInclude Include="Baton.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="ChartObject.h" />
+    <ClInclude Include="CityBuildings.h" />
     <ClInclude Include="ClosingRingGuide.h" />
     <ClInclude Include="ComboHud.h" />
     <ClInclude Include="JudgeSystem.h" />
+    <ClInclude Include="MagicCircleTransitionEffect.h" />
     <ClInclude Include="NotePath.h" />
     <ClInclude Include="ChartLoader.h" />
     <ClInclude Include="ChartHomingBeam.h" />
@@ -278,6 +282,10 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
     </FxCompile>
     <FxCompile Include="shader\closingRingPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="shader\magicCircleTransitionPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
     </FxCompile>

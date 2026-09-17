@@ -37,51 +37,76 @@ void Camera::Update()
 	//左右キーでカメラ回転
 	//操作入力
 	const float rotSpeed = 0.04f;
-	const float pitchSpeed = 0.025f;
+	const float heightSpeed = 6.0f;
 	const float zoomSpeed = 25.0f;
+	const float cameraSpeed = 5.0f;
 
-	if(Input::GetKeyPress(VK_LEFT))
+	if (Input::GetKeyPress(VK_LEFT))
 	{
 		m_targetTheta -= rotSpeed;
 	}
-	if(Input::GetKeyPress(VK_RIGHT))
+	if (Input::GetKeyPress(VK_RIGHT))
 	{
 		m_targetTheta += rotSpeed;
 	}
-	if(Input::GetKeyPress(VK_UP))
+	if (Input::GetKeyPress(VK_UP))
 	{
-		m_targetPhi += pitchSpeed;
+		m_targetHeightOffset += heightSpeed;
 	}
-	if(Input::GetKeyPress(VK_DOWN))
+	if (Input::GetKeyPress(VK_DOWN))
 	{
-		m_targetPhi -= pitchSpeed;
+		m_targetHeightOffset -= heightSpeed;
 	}
-	if(Input::GetKeyPress(VK_PRIOR)) // PageUp
+	if (Input::GetKeyPress(VK_PRIOR)) // PageUp
 	{
 		m_targetDistance -= zoomSpeed;
 	}
-	if(Input::GetKeyPress(VK_NEXT)) // PageDown
+	if (Input::GetKeyPress(VK_NEXT)) // PageDown
 	{
 		m_targetDistance += zoomSpeed;
 	}
+	if (Input::GetKeyPress(VK_J))
+	{
+		m_FreeMoveOffset.x -= cameraSpeed;
+	}
+	if (Input::GetKeyPress(VK_L))
+	{
+		m_FreeMoveOffset.x += cameraSpeed;
+	}
+	if (Input::GetKeyPress(VK_I))
+	{
+		m_FreeMoveOffset.y += cameraSpeed;
+	}
+	if (Input::GetKeyPress(VK_K))
+	{
+		m_FreeMoveOffset.y -= cameraSpeed;
+	}
+	if (Input::GetKeyPress(VK_P))
+	{
+		m_FreeMoveOffset.z += cameraSpeed;
+	}
+	if (Input::GetKeyPress(VK_O))
+	{
+		m_FreeMoveOffset.z -= cameraSpeed;
+	}
 
 	//clamp
-	if (m_targetPhi < m_minPhi) m_targetPhi = m_minPhi;
-	if (m_targetPhi > m_maxPhi) m_targetPhi = m_maxPhi;
+	if (m_targetHeightOffset < m_minHeightOffset) m_targetHeightOffset = m_minHeightOffset;
+	if (m_targetHeightOffset > m_maxHeightOffset) m_targetHeightOffset = m_maxHeightOffset;
 	if (m_targetDistance < m_minDistance) m_targetDistance = m_minDistance;
 	if (m_targetDistance > m_maxDistance) m_targetDistance = m_maxDistance;
 
 	//smooth interp
 	m_theta += (m_targetTheta - m_theta) * m_smooth;
-	m_phi += (m_targetPhi - m_phi) * m_smooth;
+	m_HeightOffset += (m_targetHeightOffset - m_HeightOffset) * m_smooth;
 	m_distance += (m_targetDistance - m_distance) * m_smooth;
 
-	//compute position from spherical coords
+	//compute position from spherical coords(左右) + 高さオフセット(上下)
 	float cosPhi = cosf(m_phi);
 	float x = m_Target.x + m_distance * cosPhi * sinf(m_theta);
-	float y = m_Target.y + m_distance * sinf(m_phi);
+	float y = m_Target.y + m_distance * sinf(m_phi) + m_HeightOffset; // 高さオフセットを加算
 	float z = m_Target.z + m_distance * cosPhi * cosf(m_theta);
-	m_Position = Vector3(x, y, z);
+	m_Position = Vector3(x, y, z) + m_FreeMoveOffset;
 	m_CameraDirection = m_theta;
 }
 
@@ -144,7 +169,7 @@ void Camera::SetCamera(int mode)
 //=======================================
 void Camera::Uninit()
 {
-
+	std::cout << "CameraPosition : " << m_Position.x << "," << m_Position.y << "," << m_Position.z << std::endl;
 }
 
 void Camera::SetFixedPose(DirectX::SimpleMath::Vector3 pos, DirectX::SimpleMath::Vector3 target)

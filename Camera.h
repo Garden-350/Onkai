@@ -15,6 +15,7 @@ private:
 	DirectX::SimpleMath::Vector3 m_ShakeOffset = DirectX::SimpleMath::Vector3::Zero;
 	DirectX::SimpleMath::Vector3	m_Target{};
 	DirectX::SimpleMath::Matrix		m_ViewMatrix{};
+	DirectX::SimpleMath::Vector3 m_FreeMoveOffset = DirectX::SimpleMath::Vector3::Zero;
 
 	float m_theta = 3.14f;	//カメラの角度(horizontal)
 	float m_phi = 0.15f;	//カメラの角度(vertical)
@@ -31,6 +32,11 @@ private:
 
 	float m_smooth = 0.12f;	//カメラの追従速度
 	float m_CameraDirection = 0;	//カメラの距離
+
+	float m_HeightOffset = 0.0f;
+	float m_targetHeightOffset = 0.0f;
+	float m_minHeightOffset = -400.0f;
+	float m_maxHeightOffset = 400.0f;
 
 	bool m_Fixed = false;
 

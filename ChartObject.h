@@ -21,6 +21,7 @@
 #include "JudgeSystem.h"
 #include "ComboHud.h"
 #include "ClosingRingGuide.h"
+#include "HitPillarEffect.h"
 #include "BarrierPlate.h"
 
 class Player;
@@ -57,15 +58,15 @@ struct ChartNote
 	DirectX::SimpleMath::Vector3 judgePos{};	// 判定位置（ワールド座標）
 	std::vector<DirectX::SimpleMath::Vector3> controlPoints;	// ベジェ曲線の制御点。0個=直線 1個=2次ベジェ 2個=3次ベジェ
 
-	// ── フィナーレ演出用：ロングノーツを螺旋状に描画するオプション（無指定なら従来通り直線）──
+	//フィナーレ演出用：ロングノーツを螺旋状に描画するオプション（無指定なら従来通り直線）──
 	float spiralTurns = 0.0f;		// 螺旋の回転数（例:2.0で2回転）。0なら螺旋なし
 	float spiralRadius = 0.0f;		// 螺旋の半径(spawn時が最大、判定時刻に向けて0へ収束)
 
-	// ── 判定の進行状態 ──
+	//判定の進行状態
 	bool judged = false;			// true になったら以後描画・判定の対象から外す（Update末尾で一括削除される）
 	bool approcachPlayed = false;	// 接近時の効果音を一度だけ鳴らすためのフラグ
 
-	// ── LONGNOTE専用の状態 ──
+	//LONGNOTE専用の状態 
 	float nextTickTime = 0.0f;	// 次に「継続判定(tick)」を加算すべき時刻
 
 	// 出現時刻を取得。未設定なら「判定時刻の1秒前」をデフォルトとする
@@ -150,6 +151,8 @@ public:
 	{
 		return m_ScreenEffects.GetFlashAlpha();
 	}
+	float GetMusicTime() const { return m_MusicTime; }	// 曲の再生時刻(秒)
+	float GetBpm() const { return m_Bpm; }
 	//曲が最後まで再生したか
 	bool IsAudioFinish() const
 	{
@@ -168,6 +171,7 @@ private:
 	// ────────────────────────────────────────
 
 	ClosingRingGuide m_ClosingRingGuide;	// 判定円の外枠が閉じるやつ
+	HitPillarEffect m_HitPillar;			//判定時に判定円から伸びる光の柱
 	BarrierPlate m_BarrierPlate;
 	JudgeSystem m_JudgeSystem;	// 判定結果の集計・参照用
 	Sound sound;

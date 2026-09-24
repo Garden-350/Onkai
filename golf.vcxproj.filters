@@ -52,6 +52,12 @@
     <FxCompile Include="shader\magicCircleTransitionPS.hlsl">
       <Filter>リソースファイル</Filter>
     </FxCompile>
+    <FxCompile Include="shader\spectrumBarPS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\spotlightPS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChartObject.cpp">
@@ -206,6 +212,22 @@
     </ClCompile>
     <ClCompile Include="CityBuildings.cpp" />
     <ClCompile Include="MagicCircleTransitionEffect.cpp" />
+    <ClCompile Include="AudioSpectrum.cpp">
+      <Filter>ソースファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="SpectrumRing.cpp">
+      <Filter>ソースファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="SpotlightRow.cpp">
+      <Filter>ソースファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="StageBackdrop.cpp">
+      <Filter>ソースファイル\Sky</Filter>
+    </ClCompile>
+    <ClCompile Include="HitPillarEffect.cpp">
+      <Filter>ソースファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="OuterEdge.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -384,6 +406,22 @@
     </ClInclude>
     <ClInclude Include="CityBuildings.h" />
     <ClInclude Include="MagicCircleTransitionEffect.h" />
+    <ClInclude Include="AudioSpectrum.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="SpectrumRing.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="SpotlightRow.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="StageBackdrop.h">
+      <Filter>ヘッダーファイル\Sky</Filter>
+    </ClInclude>
+    <ClInclude Include="HitPillarEffect.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="OuterEdge.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">

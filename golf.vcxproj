@@ -143,6 +143,7 @@
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="AssimpPerse.cpp" />
+    <ClCompile Include="AudioSpectrum.cpp" />
     <ClCompile Include="BarrierPlate.cpp" />
     <ClCompile Include="BarrierQuad.cpp" />
     <ClCompile Include="Baton.cpp" />
@@ -151,11 +152,13 @@
     <ClCompile Include="CityBuildings.cpp" />
     <ClCompile Include="ClosingRingGuide.cpp" />
     <ClCompile Include="ComboHud.cpp" />
+    <ClCompile Include="HitPillarEffect.cpp" />
     <ClCompile Include="JudgeSystem.cpp" />
     <ClCompile Include="MagicCircleTransitionEffect.cpp" />
     <ClCompile Include="NotePath.cpp" />
     <ClCompile Include="ChartLoader.cpp" />
     <ClCompile Include="ModelUtil.cpp" />
+    <ClCompile Include="OuterEdge.cpp" />
     <ClCompile Include="ScreenEffects.cpp" />
     <ClCompile Include="HomingBeamSystem.cpp" />
     <ClCompile Include="Collision.cpp" />
@@ -181,7 +184,10 @@
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="SkyBox.cpp" />
     <ClCompile Include="sound.cpp" />
+    <ClCompile Include="SpectrumRing.cpp" />
+    <ClCompile Include="SpotlightRow.cpp" />
     <ClCompile Include="Stage1Scene.cpp" />
+    <ClCompile Include="StageBackdrop.cpp" />
     <ClCompile Include="StaticMesh.cpp" />
     <ClCompile Include="stb_image.cpp" />
     <ClCompile Include="TestCube.cpp" />
@@ -197,6 +203,7 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="AssimpPerse.h" />
+    <ClInclude Include="AudioSpectrum.h" />
     <ClInclude Include="BarrierPlate.h" />
     <ClInclude Include="BarrierQuad.h" />
     <ClInclude Include="Baton.h" />
@@ -205,12 +212,14 @@
     <ClInclude Include="CityBuildings.h" />
     <ClInclude Include="ClosingRingGuide.h" />
     <ClInclude Include="ComboHud.h" />
+    <ClInclude Include="HitPillarEffect.h" />
     <ClInclude Include="JudgeSystem.h" />
     <ClInclude Include="MagicCircleTransitionEffect.h" />
     <ClInclude Include="NotePath.h" />
     <ClInclude Include="ChartLoader.h" />
     <ClInclude Include="ChartHomingBeam.h" />
     <ClInclude Include="ModelUtil.h" />
+    <ClInclude Include="OuterEdge.h" />
     <ClInclude Include="ScreenEffects.h" />
     <ClInclude Include="HomingBeamSystem.h" />
     <ClInclude Include="Collision.h" />
@@ -242,7 +251,10 @@
     <ClInclude Include="SimpleJson.h" />
     <ClInclude Include="SkyBox.h" />
     <ClInclude Include="sound.h" />
+    <ClInclude Include="SpectrumRing.h" />
+    <ClInclude Include="SpotlightRow.h" />
     <ClInclude Include="Stage1Scene.h" />
+    <ClInclude Include="StageBackdrop.h" />
     <ClInclude Include="StaticMesh.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="TestCube.h" />
@@ -263,6 +275,7 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="lightShaftVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
@@ -274,18 +287,36 @@
     <FxCompile Include="shader\barrierPlatePS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="shader\barrierPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="shader\barrierVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="shader\closingRingPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="shader\magicCircleTransitionPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="shader\spectrumBarPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="shader\spotlightPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
     </FxCompile>
@@ -323,6 +354,7 @@
     <FxCompile Include="shader\BarrierBuffer.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="shader\magicCireclePS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>

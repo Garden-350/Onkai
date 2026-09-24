@@ -8,6 +8,9 @@
 #include "Ground.h"
 #include "WireShape.h"
 #include "WireShapeSpawner.h"
+#include "StageBackdrop.h"
+#include "SpotlightRow.h"
+#include "OuterEdge.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -39,10 +42,22 @@ void Stage1Scene::Init()
 
 	//auto* ground = Game::GetInstance()->AddObject<Ground>();
 	//m_MySceneObjects.emplace_back(ground);
-	auto* skybox = Game::GetInstance()->AddObject<SkyBox>();
-	m_MySceneObjects.emplace_back(skybox);
+	//auto* skybox = Game::GetInstance()->AddObject<SkyBox>();
+	//m_MySceneObjects.emplace_back(skybox);
+
+	//背景画像
+	auto* backdrop = Game::GetInstance()->AddObject<StageBackdrop>();
+	m_MySceneObjects.emplace_back(backdrop);
+	// ランウェイ風スポットライト（背景の次、敵やノーツより前に追加する）
+	auto* spotlights = Game::GetInstance()->AddObject<SpotlightRow>();
+	m_MySceneObjects.emplace_back(spotlights);
+	m_Spotlights = spotlights;
+	auto* outeredge = Game::GetInstance()->AddObject<OuterEdge>();
+	m_MySceneObjects.emplace_back(outeredge);
+
 	auto* enemy = Game::GetInstance()->AddObject<Enemy>();
 	m_MySceneObjects.emplace_back(enemy);
+	spotlights->SetFarTarget(enemy->GetPosition());	//列の奥の端を敵の位置に設定
 	auto* player = Game::GetInstance()->AddObject<Player>();
 	m_MySceneObjects.emplace_back(player);
 	auto* chart = Game::GetInstance()->AddObject<ChartObject>();
@@ -70,6 +85,8 @@ void Stage1Scene::Update()
 	}
 
 	if (!m_Chart)return;
+	//スポットライトを曲の拍に合わせる
+	if (m_Spotlights) m_Spotlights->SetBeat(m_Chart->GetMusicTime(), m_Chart->GetBpm());
 
 	auto now = std::chrono::steady_clock::now();
 	if (!m_ClockInitialized)

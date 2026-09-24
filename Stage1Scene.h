@@ -20,6 +20,7 @@ private:
 	void SendResult();
 
 	ChartObject* m_Chart = nullptr;
+	class SpotlightRow* m_Spotlights = nullptr;	//ランウェイ風なスポットライトを追加したい
 	bool m_AudioFinished = false;
 	float m_FinishWaitTimer = 0.0f;
 	static constexpr float kResultDelaySeconds = 2.0f;	//曲が終わってから何秒待つか

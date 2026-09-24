@@ -289,7 +289,7 @@ void HomingBeamSystem::Draw(Camera* cam, float musicTime, Enemy* enemyRef,
 		: Vector3(0.0f, 0.0f, 500.0f);
 
 	cam->SetCamera(0);
-	Renderer::SetBlendState(BS_ALPHABLEND);
+	Renderer::SetBlendState(BS_ADDITIVE);
 	//Renderer::SetBlendState(BS_NONE);
 
 	for (auto& beam : m_HomingBeams)

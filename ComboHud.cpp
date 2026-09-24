@@ -30,6 +30,7 @@ void ComboHud::Init()
 	initDigitRow(m_GoodDigits);
 	initDigitRow(m_MissDigits);
 
+	Renderer::SetBlendState(BS_ADDITIVE);
 	m_BreakdownLabelPerfect.Init();
 	m_BreakdownLabelPerfect.SetTexture("assets/texture/PERFECT.png");
 	m_BreakdownLabelPerfect.SetScale(70.0f, 18.0f, 1.0f);
@@ -64,6 +65,7 @@ void ComboHud::Init()
 	m_FullComboTex.SetTexture("assets/texture/FullCpmbo.png");
 	m_FullComboTex.SetRotation(0.0f, 0.0f, 0.0f);
 	m_FullComboTex.SetScale(360.0f, 260.0f, 0.0f);
+	Renderer::SetBlendState(BS_NONE);
 }
 
 void ComboHud::TriggerRankPop(int laneIndex, int rank)

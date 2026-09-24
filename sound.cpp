@@ -7,6 +7,7 @@
 #include <mferror.h>
 #include <string>
 #include <vector>
+#include <cmath>
 #pragma comment(lib, "mfplat.lib")
 #pragma comment(lib, "mfreadwrite.lib")
 #pragma comment(lib, "mfuuid.lib")
@@ -301,6 +302,7 @@ HRESULT Sound::LoadDynamic(const std::string& path, bool loop)
 		m_dynamicData = nullptr;
 	}
 	m_dynamicPlayPos = 0;
+	m_dynamicPlaying = false;
 	memset(&m_dynamicWfx, 0, sizeof(m_dynamicWfx));
 	memset(&m_dynamicBuffer, 0, sizeof(m_dynamicBuffer));
 
@@ -390,6 +392,14 @@ void Sound::PlayDynamic()
 	m_pDynamicVoice->FlushSourceBuffers();
 	m_pDynamicVoice->SubmitSourceBuffer(&buffer);
 	m_pDynamicVoice->Start(0);
+
+	// 再生位置の追跡を開始
+	const UINT32 sampleRate = m_dynamicWfx.Format.nSamplesPerSec;
+	m_dynamicStartSec = (sampleRate > 0) ? (float)m_dynamicPlayPos / (float)sampleRate : 0.0f;
+	m_dynamicSectionBegin = 0.0f;
+	m_dynamicSectionLength = 0.0f;
+	m_dynamicStartClock = std::chrono::steady_clock::now();
+	m_dynamicPlaying = true;
 }
 
 void Sound::StopDynamic()
@@ -398,12 +408,14 @@ void Sound::StopDynamic()
 	m_pDynamicVoice->Stop(0);
 	m_pDynamicVoice->FlushSourceBuffers();
 	m_dynamicPlayPos = 0;
+	m_dynamicPlaying = false;
 }
 
 void Sound::PauseDynamic()
 {
 	if (!m_pDynamicVoice) return;
 	m_pDynamicVoice->Stop(0);
+	m_dynamicPlaying = false;
 
 	XAUDIO2_VOICE_STATE state;
 	m_pDynamicVoice->GetState(&state);
@@ -450,6 +462,65 @@ float Sound::GetDynamicDurationSeconds() const
 
 	const UINT32 totalSamples = m_dynamicBuffer.AudioBytes / blockAlign;
 	return (float)totalSamples / (float)sampleRate;
+}
+
+void Sound::PlayDynamicSection(float beginSec, float lenghtSec)
+{
+	if (!m_pDynamicVoice) return;
+
+	const UINT32 sampleRate = m_dynamicWfx.Format.nSamplesPerSec;
+	const UINT32 blockAlign = m_dynamicWfx.Format.nBlockAlign;
+	if (sampleRate == 0 || blockAlign == 0) return;
+	const UINT32 totalSamples = m_dynamicBuffer.AudioBytes / blockAlign;
+	if (totalSamples == 0) return;
+
+	if (beginSec < 0.0f) beginSec = 0.0f;
+	if (lenghtSec < 0.0f) lenghtSec = 0.0f;
+
+	UINT32 begin = (UINT32)(beginSec * sampleRate);
+	if (begin >= totalSamples) begin = 0;
+	UINT32 length = (UINT32)(lenghtSec * sampleRate);
+	if (length == 0 || begin + length > totalSamples) length = totalSamples - begin;
+
+	//再生区間とループ区間を同じにしてループ
+	XAUDIO2_BUFFER buffer = m_dynamicBuffer;
+	buffer.PlayBegin = begin;
+	buffer.PlayLength = length;
+	buffer.LoopBegin = begin;
+	buffer.LoopLength = length;
+	buffer.LoopCount = XAUDIO2_LOOP_INFINITE;
+
+	m_pDynamicVoice->Stop(0);
+	m_pDynamicVoice->FlushSourceBuffers();
+	m_pDynamicVoice->SubmitSourceBuffer(&buffer);
+	m_pDynamicVoice->Start(0);
+
+	m_dynamicSectionBegin = (float)begin / (float)sampleRate;
+	m_dynamicSectionLength = (float)length / (float)sampleRate;
+	m_dynamicStartSec = m_dynamicSectionBegin;
+	m_dynamicStartClock = std::chrono::steady_clock::now();
+	m_dynamicPlaying = true;
+}
+
+float Sound::GetDynamicPlaySeconds() const
+{
+	if (!m_dynamicPlaying) return m_dynamicStartSec;
+
+	float elapsed = std::chrono::duration<float>(std::chrono::steady_clock::now() - m_dynamicStartClock).count();
+
+	// 区間ループ中
+	if (m_dynamicSectionLength > 0.0f)
+		return m_dynamicSectionBegin + fmodf(elapsed, m_dynamicSectionLength);
+
+	// 通常再生（曲全体）
+	float t = m_dynamicStartSec + elapsed;
+	float duration = GetDynamicDurationSeconds();
+	if (duration > 0.0f)
+	{
+		if (m_dynamicLoop) t = fmodf(t, duration);
+		else if (t > duration) t = duration;
+	}
+	return t;
 }
 
 //=============================================================================

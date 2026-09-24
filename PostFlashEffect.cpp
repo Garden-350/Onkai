@@ -122,6 +122,7 @@ void PostFlashEffect::EndSceneAndApply(float flashAlpha)
 	context->PSSetSamplers(1, 1, m_Sampler.GetAddressOf());
 	context->PSSetConstantBuffers(0, 1, m_FlashCB.GetAddressOf());
 
+	Renderer::SetBlendState(BS_NONE);
 	context->Draw(3, 0);
 
 	// 後片付け：SRVをアンバインド（同じテクスチャを次フレームRTVとして使うため必須）

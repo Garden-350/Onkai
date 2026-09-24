@@ -8,6 +8,7 @@
 #include "sound.h"
 #include "SimpleJson.h"
 #include "MagicCircleTransitionEffect.h"
+#include "SpectrumRing.h"
 #include <filesystem>
 #include <algorithm>
 #include <cmath>
@@ -42,13 +43,13 @@ void SelectScene::Init()
 	m_MySceneObjects.emplace_back(pt);
 
 	//透過する（たぶんリザルトとかで使ってるのが必須）　エンター押したら難易度選択して行く感じ？横に曲名出すかどうかは要検討
-	Renderer::SetBlendState(BS_NONE);
-	Texture2D* left = Game::GetInstance()->AddObject<Texture2D>();
-	left->SetTexture("assets/texture/nanido.png");
-	left->SetPosition(0.0f, -300.0f, 0.0f);
-	left->SetRotation(0.0f, 0.0f, 0.0f);
-	left->SetScale(400.0f, 200.0f, 0.0f);
-	m_MySceneObjects.emplace_back(left);
+	//Renderer::SetBlendState(BS_NONE);
+	//Texture2D* left = Game::GetInstance()->AddObject<Texture2D>();
+	//left->SetTexture("assets/texture/nanido.png");
+	//left->SetPosition(0.0f, -300.0f, 0.0f);
+	//left->SetRotation(0.0f, 0.0f, 0.0f);
+	//left->SetScale(400.0f, 200.0f, 0.0f);
+	//m_MySceneObjects.emplace_back(left);
 
 	// オートモード切替ボタン
 	m_AutoModeSelected = false;
@@ -73,6 +74,13 @@ void SelectScene::Init()
 	RefreshSongList();
 	SetupJacketSlots();
 
+	//円形スペクトラム
+	m_Spectrum.Init(2048, 48);	//FFTサイズ2048,片側48本　両方合わせて円になるように
+	m_SpectrumRing = Game::GetInstance()->AddObject<SpectrumRing>();
+	m_MySceneObjects.emplace_back(m_SpectrumRing);
+	//最初に選ばれている曲のプレビュー予約
+	RequestPreview();
+
 	m_TransitionEffect = Game::GetInstance()->AddObject<MagicCircleTransitionEffect>();
 	m_MySceneObjects.emplace_back(m_TransitionEffect);
 }
@@ -93,6 +101,9 @@ void SelectScene::Update()
 	}
 	float dt = std::chrono::duration<float>(now - m_LastUpdateClock).count();
 	m_LastUpdateClock = now;
+	if (dt > 0.1f) dt = 0.1f;	//読み込みで止まったフレームの後に大きく飛ばないように
+	//曲のプレビューとスペクトラム（遷移演出中も鳴らし続ける）
+	UpdatePreview(dt);
 
 	// ── 遷移演出中：魔法陣を描き進めるだけで、他の操作は受け付けない ──
 	if (m_Transitioning)
@@ -271,6 +282,7 @@ void SelectScene::ShiftJackets(int direction)
 			LoadJacketTexture(slot);
 		}
 	}
+	RequestPreview();	//曲が変わったからプレビューも切替
 }
 
 void SelectScene::UpdateJacketLayout()
@@ -284,9 +296,15 @@ void SelectScene::UpdateJacketLayout()
 		float absOffset = fabsf(offset);
 
 		// 中央(offset=0)ほど手前・大きく、外側ほど奥・小さく
-		float x = offset * 220.0f;
+		float x = offset * 220.0f + std::clamp(offset, -1.0f, 1.0f) * kSpectrumGap;
 		float z = 300.0f + absOffset * 50.0f; // 奥へ行くほどzを大きくして遠ざける
 		float scale = std::max(150.0f, 250.0f - absOffset * 90.0f);
+		// 中央のジャケットだけ、低音に合わせて少し鼓動させる いらんかったらコメントアウト
+		if (m_SpectrumRing && absOffset < 0.5f)
+		{
+			float weight = 1.0f - absOffset * 2.0f;	// 真ん中に来るほど強く
+			scale *= 1.0f + 0.05f * m_SpectrumRing->GetBass() * weight;
+		}
 
 		slot.tex->SetPosition(x, 0.0f, z);
 		slot.tex->SetScale(scale, scale, 0.0f);
@@ -331,6 +349,100 @@ int SelectScene::WrapIndex(int idx) const
 	int r = idx % count;
 	if (r < 0) r += count;
 	return r;
+}
+
+//連打中は読み込まない
+void SelectScene::RequestPreview()
+{
+	sound.StopDynamic();
+	m_PreviewPlaying = false;
+	m_PreviewPending = true;
+	m_PreviewTimer = kPreviewDelay;
+}
+
+void SelectScene::StartPreview(int songIndex)
+{
+	if (m_SongNames.empty()) return;
+
+	std::string audioFile;
+	float previewTime = -1.0f;
+	if (!LoadPreviewInfo(m_SongNames[songIndex], audioFile, previewTime)) return;	//曲の設定がなかったら無音
+
+	std::string fullPath = "assets/bgm/" + audioFile;
+	if (FAILED(sound.LoadDynamic(fullPath, true))) return;
+
+	float duration = sound.GetDynamicDurationSeconds();
+	if (duration <= 0.0f) return;
+
+	//開始位置　特に指定がなければ曲の3割りぐらいから
+	float begin = (previewTime >= 0.0f) ? previewTime : duration * 0.3f;
+	if (begin > duration) begin = 0.0f;
+	float length = std::min(kPreviewLength, duration - begin);
+	if (length < 3.0f)	//短い曲はまるごとループする
+	{
+		begin = 0.0f;
+		length = duration;
+	}
+	sound.SetVolumeDynamic(0.0f);	//フェードインするから0から
+	sound.PlayDynamicSection(begin, length);
+
+	m_PreviewBegin = begin;
+	m_PreviewLength = length;
+	m_PreviewPlaying = true;
+}
+
+void SelectScene::UpdatePreview(float dt)
+{
+	//予約の消化
+	if (m_PreviewPending)
+	{
+		m_PreviewTimer -= dt;
+		if (m_PreviewTimer <= 0.0f)
+		{
+			m_PreviewPending = false;
+			StartPreview(m_SelectedIndex);
+		}
+	}
+	//ループの頭と終わりで音量フェード（ぶつ切り防止）
+	float volume = 0.0f;
+	if (m_PreviewPlaying && m_PreviewLength > 0.0f)
+	{
+		float t = sound.GetDynamicPlaySeconds() - m_PreviewBegin;	//区間内の経過秒
+		volume = 1.0f;
+		volume = std::min(volume, t / kPreviewFadeIn);
+		volume = std::min(volume, (m_PreviewLength - t) / kPreviewFadeOut);
+		volume = std::clamp(volume, 0.0f, 1.0f);
+		sound.SetVolumeDynamic(volume * kPreviewVolume);
+	}
+	//スペクトラム
+	m_Spectrum.Analyze(sound, m_SpectrumLevels);
+	for (auto& v : m_SpectrumLevels) v *= volume;	//フェード中はバーも小さく
+	if (m_SpectrumRing) m_SpectrumRing->SetLevels(m_SpectrumLevels, dt);
+}
+
+bool SelectScene::LoadPreviewInfo(const std::string& name, std::string& outAudioFile, float& outPreviewTime)
+{
+	outAudioFile.clear();
+	outPreviewTime = -1.0f;
+
+	JsonValue root;
+	std::string err;
+	if (!SimpleJson::ParseFile("charts/" + name + ".json", root, &err))
+	{
+		OutputDebugStringA(("[SelectScene] preview: chart parse failed: " + name + "\n").c_str());
+		return false;
+	}
+
+	if (root.Has("meta"))
+	{
+		const JsonValue& meta = root["meta"];
+		outAudioFile = meta["audioFile"].AsString("");
+		outPreviewTime = meta["previewTime"].AsFloat(-1.0f);	// 譜面に "previewTime": 秒 があればそこから
+	}
+	if (outAudioFile.empty() && root.Has("audioFile"))
+		outAudioFile = root["audioFile"].AsString("");
+
+	return !outAudioFile.empty();
 }
 
 //選択中の曲名から　assets/jacket/内の画像を探してセット　.png .jpgどっちでも可

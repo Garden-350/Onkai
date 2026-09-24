@@ -2,6 +2,7 @@
 
 #include <xaudio2.h>
 #include <string>
+#include <chrono>
 
 // サウンドファイル
 typedef enum
@@ -74,6 +75,12 @@ private:
 	UINT32                m_dynamicPlayPos = 0;
 	bool                  m_dynamicLoop = true;
 	std::string           m_dynamicLoadedPath;
+	//再生位置の追跡　オーディオスペクトラム表示用
+	std::chrono::steady_clock::time_point m_dynamicStartClock;
+	float m_dynamicStartSec = 0.0f;			//再生を始めた位置
+	float m_dynamicSectionBegin = 0.0f;		//ループの開始
+	float m_dynamicSectionLength = 0.0f;	//ループの長さ
+	bool m_dynamicPlaying = false;
 
 	HRESULT FindChunk(HANDLE, DWORD, DWORD&, DWORD&);
 	HRESULT ReadChunkData(HANDLE, void*, DWORD, DWORD);
@@ -111,4 +118,14 @@ public:
 	void SeekSecondsDynamic(float seconds);
 	void SetVolumeDynamic(float volume);
 	float GetDynamicDurationSeconds() const;
+	//曲選択画面のオーディオスペクトラム用
+	//beginSec~lenghtSecの間をループ
+	void PlayDynamicSection(float beginSec, float lenghtSec);
+	//今鳴っている位置。ループしても曲の中の位置で返す
+	float GetDynamicPlaySeconds() const;
+	bool IsDynamicPlaying() const { return m_dynamicPlaying; }
+	//読み込み済みのPCMデータを直接参照
+	const BYTE* GetDynamicData() const { return m_dynamicData; }
+	UINT32 GetDynamicDataBytes() const { return m_dynamicBuffer.AudioBytes; }
+	const WAVEFORMATEX& GetDynamicFormat() const { return m_dynamicWfx.Format; }
 };

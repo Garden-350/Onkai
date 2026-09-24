@@ -27,14 +27,14 @@ namespace
 {
 	// レーンごとの左右補正量（S,D,F,J,K,L の順）
 // S/L ペア、D/K ペア、F/J ペアで同じ値
-	constexpr float kLaneOffsetFix[6] = {
-		180.0f,  // S (lane0)
-		110.0f,  // D (lane1)
-		40.0f,  // F (lane2)
-		40.0f,  // J (lane3)
-		110.0f,  // K (lane4)
-		180.0f,  // L (lane5)
-	};
+	//constexpr float kLaneOffsetFix[6] = {
+	//	180.0f,  // S (lane0)
+	//	110.0f,  // D (lane1)
+	//	40.0f,  // F (lane2)
+	//	40.0f,  // J (lane3)
+	//	110.0f,  // K (lane4)
+	//	180.0f,  // L (lane5)
+	//};
 	// 2つのVector3を線形補間する
 	Vector3 LerpVector3(const Vector3& a, const Vector3& b, float t)
 	{
@@ -219,7 +219,7 @@ void ChartObject::Init()
 	// ── 接近リング・パーティクルの画像セット ──
 	m_ApproachRing.Init("assets/texture/ring.png");
 	m_ParticleQuad.Init("assets/texture/sakura2.png");
-	m_LongParticleQuad.Init("assets/texture/beamP.png.png");
+	m_LongParticleQuad.Init("assets/texture/beamP.png");
 	m_MagicCircleQuad.Init("assets/texture/magic-circle (1).png");
 	m_TapAuraParticleQuad.Init("assets/texture/oura.png");
 
@@ -236,6 +236,7 @@ void ChartObject::Init()
 	}
 
 	m_ClosingRingGuide.Init();
+	m_HitPillar.Init();
 
 	//ロングノーツを押してる間だすテクスチャ
 	m_BarrierPlate.Init("assets/texture/barrier.png");
@@ -371,10 +372,6 @@ DirectX::SimpleMath::Vector3 ChartObject::GetPlayerSideAnchor(int side) const
 	}
 	return sum / 3.0f;
 }
-
-// ============================================================
-// EvaluateNotePosition / EvaluateLongNotePosition は NotePath.h/.cpp に切り出し済み
-// ============================================================
 
 // ============================================================
 // Update : 毎フレームのゲームロジック更新。
@@ -654,11 +651,6 @@ void ChartObject::Update()
 		m_BeamSystem.Update(deltaTime, m_MusicTime, playerSide, GetPlayerSideAnchor(playerSide), sound, m_ScreenEffects);
 	}
 }
-
-// InitBeamScatter は ChartLoader.cpp のローカル関数に切り出し済み
-
-// UpdateHomingBeams は HomingBeamSystem::Update に切り出し済み
-
 // ============================================================
 // OnJudge : 判定がヒットした瞬間に呼ばれるフック。
 //   コンボを加算し、判定円の位置に花びらパーティクルを100個生成する。
@@ -696,8 +688,6 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 	le.intensity = 2.5f;
 	le.origin = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
 
-	le.origin.x += (laneIndex < 3) ? -kLaneOffsetFix[laneIndex] : kLaneOffsetFix[laneIndex];
-
 	m_LightEffects.push_back(le);
 	(void)rank; // 現状rank別の演出差はまだ未実装。将来ランクごとに色や量を変える場合はここで分岐する
 }
@@ -714,8 +704,6 @@ void ChartObject::OnEmptyLanePress(int laneIndex)
 	le.duration = 0.6f;
 	le.intensity = 2.2f;
 	le.origin = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
-
-	le.origin.x += (laneIndex < 3) ? -kLaneOffsetFix[laneIndex] : kLaneOffsetFix[laneIndex];
 
 	m_LightEffects.push_back(le);
 }
@@ -734,62 +722,45 @@ void ChartObject::DrawLightEffects(Camera* cam)
 {
 	if (!m_BeamSystem.IsModelLoaded()) return;
 
+	cam->SetCamera(0);
 	Renderer::SetBlendState(BS_ADDITIVE);
 
-	constexpr int kSegments = 6;
-	constexpr float kMaxDistance = 500.0f;	//物理的な長さ
+	constexpr float kMaxDistance = 500.0f;	//柱の全体的な長さ
+	constexpr float kBaseWidth = 360.0f;		//柱の根元の太さ
+	constexpr float kTopWidth = 550.0f;		//柱の先端の太さ
+	constexpr float kLampSize = 140.0f;		//根元の丸い光の大きさ
 
-	Matrix view = cam->GetViewMatrix();
-	Matrix invView = view.Invert();
+	//柱は画面の上方向へまっすぐ伸ばす
+	Matrix invView = cam->GetViewMatrix().Invert();
 	Vector3 screenUpInWorld(invView._21, invView._22, invView._23);
 	screenUpInWorld.Normalize();
 
 	for (auto& le : m_LightEffects)
 	{
+		if (le.lane < 0 || le.lane >= (int)m_JudgeCircles.size()) continue;
+
 		float age = m_MusicTime - le.startTime;
 		float t = std::clamp(age / le.duration, 0.0f, 1.0f);
 
-		// ── アニメーションカーブ ──
-		// 立ち上がりは一瞬(0〜0.15)でMAXに達し、そこから減衰していく
+		//アニメーションカーブ
+		//立ち上がりは一瞬でマックスに到達、そこから減衰
 		float growT = std::clamp(t / 0.15f, 0.0f, 1.0f);
-		float riseEase = 1.0f - (1.0f - growT) * (1.0f - growT); // ease-out
-		float decay = 1.0f - t;                                  // 線形フェード
-		decay = decay * decay;                                    // 後半を急速に消す(ease-in)
+		float riseEase = 1.0f - (1.0f - growT) * (1.0f - growT);
+		float decay = 1.0f - t;		//線形フェード
+		decay = decay * decay;		//後半を急速に消す
 
-		float envelope = riseEase * decay; // 全体の強さ(0〜1)
+		float envelope = riseEase * decay;	//全体の強さ
 		if (envelope <= 0.001f) continue;
 
-		Vector3 from = le.origin;
-		Vector3 dir = screenUpInWorld;
+		//根元はその時の判定円の位置
+		Vector3 from = m_JudgeCircles[le.lane].GetPosition(m_MusicTime);
 		Vector3 color = GetLaneColor(le.lane);
+		float reach = kMaxDistance * (0.3f + 0.7f * riseEase);	//出た瞬間に伸びる
 
-		float rootScale = 120.0f * envelope;
-		m_ParticleQuad.Draw(cam, from, rootScale,
-			Color(color.x, color.y, color.z, envelope));
-
-		// 根本→先端で幅が広がる台形。envelopeで全体の伸び具合も変える
-		float reach = kMaxDistance * (0.3f + 0.7f * riseEase); // 出た瞬間ニュッと伸びる
-
-		for (int s = 0; s < kSegments; s++)
-		{
-			float p0 = (float)s / kSegments;
-			float p1 = (float)(s + 1) / kSegments;
-
-			Vector3 segFrom = from + dir * (reach * p0);
-			Vector3 segTo = from + dir * (reach * p1);
-
-			float baseWidth = 200.0f + 20.0f * p1; // 先端に向けて広がる
-
-			// ── 芯(コア)：細く強い ──
-			m_BeamSystem.DrawBeamSegmentWithColor(cam, segFrom, segTo,
-				baseWidth * 0.35f, 4.0f, color, le.intensity * 1.6f * envelope);
-
-			// ── グロー：太く柔らかい ──
-			m_BeamSystem.DrawBeamSegmentWithColor(cam, segFrom, segTo,
-				baseWidth, 10.0f, color, le.intensity * 0.5f * envelope);
-		}
+		m_HitPillar.Draw(cam, from, screenUpInWorld,
+			reach, kBaseWidth, kTopWidth,
+			color, le.intensity * envelope, kLampSize * envelope);
 	}
-
 	Renderer::SetBlendState(BS_NONE);
 }
 

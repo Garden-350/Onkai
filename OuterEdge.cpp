@@ -56,7 +56,7 @@ void OuterEdge::Init()
 		float side = (rnd() < 0.5f) ? -1.0f : 1.0f;
 		out.pos = Vector3(side * (rowX + 60.0f + rnd() * 340.0f), -300.0f + rnd() * 70.0f, z);
 		out.color = Vector3(0.0f, 1.0f, 0.0f);
-		out.size = 140.0f + rnd() * 80.0f;
+		out.size = 10.0f + rnd() * 8.0f;
 		out.phase = rnd() * 6.28f;	//位相
 		out.speed = 0.5f + rnd();
 		m_Orbs.push_back(out);
@@ -102,8 +102,8 @@ void OuterEdge::Draw(Camera* cam)
 	Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	
 	
-	const Vector3 farLeft(m_FarTarget.x - 300.0f, -40.0f, m_FarTarget.z);
-	const Vector3 farRight(m_FarTarget.x + 300.0f, -40.0f, m_FarTarget.z);
+	const Vector3 farLeft(m_FarTarget.x - 400.0f, -60.0f, m_FarTarget.z);
+	const Vector3 farRight(m_FarTarget.x + 400.0f, -60.0f, m_FarTarget.z);
 	for (const Orb& o : m_Orbs)
 	{
 		float bob = sinf(m_Time * o.speed + o.phase) * 20.0f;

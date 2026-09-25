@@ -58,6 +58,9 @@
     <FxCompile Include="shader\spotlightPS.hlsl">
       <Filter>リソースファイル</Filter>
     </FxCompile>
+    <FxCompile Include="shader\judgeGuidePS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChartObject.cpp">
@@ -228,6 +231,7 @@
       <Filter>ソースファイル\Particle</Filter>
     </ClCompile>
     <ClCompile Include="OuterEdge.cpp" />
+    <ClCompile Include="JudgeLineGuide.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -422,6 +426,7 @@
       <Filter>ヘッダーファイル\Particle</Filter>
     </ClInclude>
     <ClInclude Include="OuterEdge.h" />
+    <ClInclude Include="JudgeLineGuide.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">

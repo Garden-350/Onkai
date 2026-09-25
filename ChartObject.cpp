@@ -25,16 +25,6 @@ using namespace DirectX::SimpleMath;
 // ============================================================
 namespace
 {
-	// レーンごとの左右補正量（S,D,F,J,K,L の順）
-// S/L ペア、D/K ペア、F/J ペアで同じ値
-	//constexpr float kLaneOffsetFix[6] = {
-	//	180.0f,  // S (lane0)
-	//	110.0f,  // D (lane1)
-	//	40.0f,  // F (lane2)
-	//	40.0f,  // J (lane3)
-	//	110.0f,  // K (lane4)
-	//	180.0f,  // L (lane5)
-	//};
 	// 2つのVector3を線形補間する
 	Vector3 LerpVector3(const Vector3& a, const Vector3& b, float t)
 	{
@@ -237,6 +227,7 @@ void ChartObject::Init()
 
 	m_ClosingRingGuide.Init();
 	m_HitPillar.Init();
+	m_JudgeGuide.Init();
 
 	//ロングノーツを押してる間だすテクスチャ
 	m_BarrierPlate.Init("assets/texture/barrier.png");
@@ -285,6 +276,41 @@ bool ChartObject::LoadChart(const std::string& name)
 		}
 	}
 	m_JudgeCircles = result.judgeCircles;
+	//判定ガイドのトラック：レーンごとに「ノーツがどっちから・何秒かけて来るか」の平均を取っておく
+	{
+		Vector3 sum[6];
+		int count[6] = { 0,0,0,0,0,0 };
+		Vector3 allSum = Vector3::Zero;
+		int allCount = 0;
+		double approachSum = 0.0;
+		int approachCount = 0;
+		for (const auto& note : m_Notes)
+		{
+			if (note.IsFlick()) continue;	// フリックは敵側へ飛ぶので対象外
+			if (note.lane < 0 || note.lane >= 6 || note.lane >= (int)m_JudgeCircles.size()) continue;
+
+			float arrive = note.IsLong() ? note.arrivalTime : note.time;
+			Vector3 judgeAtHit = m_JudgeCircles[note.lane].GetPosition(arrive);	// そのノーツが届く瞬間の判定円
+			Vector3 offset = note.spawnPos - judgeAtHit;
+			sum[note.lane] += offset;
+			count[note.lane]++;
+			allSum += offset;
+			allCount++;
+
+			float duration = arrive - note.GetSpawnTime();
+			if (duration > 0.05f)
+			{
+				approachSum += duration;
+				approachCount++;
+			}
+		}
+		Vector3 fallback = (allCount > 0) ? allSum / (float)allCount : Vector3(0.0f, 205.0f, 630.0f);
+		for (int i = 0; i < 6; i++)
+			m_LaneTrackOffset[i] = (count[i] > 0) ? sum[i] / (float)count[i] : fallback;
+		for (int i = 0; i < 6; i++) m_LaneTrackOffset[i].x = 0.0f;	// 横方向は捨てて、真っすぐ奥へ伸ばす
+		m_TrackApproachSeconds = (approachCount > 0) ? (float)(approachSum / approachCount) : 1.0f;
+	}
+
 	m_BeamSystem.SetBeams(result.homingBeams);
 	m_Bpm = result.bpm;
 	m_BeatsPerBar = result.beatsPerBar;
@@ -409,6 +435,22 @@ void ChartObject::Update()
 		std::chrono::duration<float>(nowClock - m_LastUpdateClock).count();
 	m_LastUpdateClock = nowClock;
 	m_ScreenEffects.Update(deltaTime);
+
+	//判定バッドの光具合
+	{
+		constexpr float kLaneGlowFall = 5.0f;	//1秒あたりに暗くなる量
+		for (int i = 0; i < 6; i++)
+		{
+			if (Input::GetKeyPress(kLaneKeys[i]))
+			{
+				m_LaneGlow[i] = 1.0f;
+			}
+			else
+			{
+				m_LaneGlow[i] = std::max(0.0f, m_LaneGlow[i] - kLaneGlowFall * deltaTime);
+			}
+		}
+	}
 
 	// 判定円の動きに合わせて、未判定ノーツのjudgePosを追従させる
 	// （フリックはjudgePosがenemy側固定なので対象外）
@@ -662,6 +704,7 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 	m_ComboHud.TriggerComboPop();
 
 	if (laneIndex < 0 || laneIndex >= 6) return;
+	m_LaneGlow[laneIndex] = 1.0f;	//判定したレーンのバッドを光らせる
 	Vector3 pos = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
 
 	for (int i = 0; i < 100; i++)
@@ -1047,6 +1090,26 @@ void ChartObject::Draw(Camera* cam)
 	DrawLaneGuideLines(cam);
 	Renderer::SetBlendState(BS_NONE);
 
+	//判定ライン・判定バッド・レーンのトラック・拍の線
+	//ノーツとかより先に描く
+	if ((int)m_JudgeCircles.size() >= JudgeLineGuide::kLaneCount)
+	{
+		JudgeLineGuide::Frame gf = {};
+		float highSpeed = Game::GetInstance()->GetHighSpeed();	//ノーツと同じくハイスピで奥行を伸ばす
+		for (int i = 0; i < JudgeLineGuide::kLaneCount; i++)
+		{
+			gf.judgePos[i] = m_JudgeCircles[i].GetPosition(m_MusicTime);
+			gf.trackOffset[i] = m_LaneTrackOffset[i] * highSpeed;
+			gf.laneColor[i] = GetLaneColor(i);
+			gf.laneGlow[i] = m_LaneGlow[i];
+		}
+		gf.musicTime = m_MusicTime;
+		gf.bpm = m_Bpm;
+		gf.beatsPerBar = m_BeatsPerBar;
+		gf.approachSeconds = m_TrackApproachSeconds;
+		m_JudgeGuide.Draw(cam, gf);
+	}
+
 	// ── ノーツ到達ガイド：左右から伸びて判定時刻ちょうどで円になるリング ──
 	// 判定が一番近いノーツのリングが必ず一番手前に見えるよう、
 	// 判定が遅い順に描いてから、判定が速いものを最後に描く。
@@ -1301,4 +1364,5 @@ void ChartObject::Draw(Camera* cam)
 void ChartObject::Uninit()
 {
 	sound.StopDynamic();
+	sound.Uninit();
 }

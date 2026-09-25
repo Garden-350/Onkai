@@ -153,6 +153,7 @@
     <ClCompile Include="ClosingRingGuide.cpp" />
     <ClCompile Include="ComboHud.cpp" />
     <ClCompile Include="HitPillarEffect.cpp" />
+    <ClCompile Include="JudgeLineGuide.cpp" />
     <ClCompile Include="JudgeSystem.cpp" />
     <ClCompile Include="MagicCircleTransitionEffect.cpp" />
     <ClCompile Include="NotePath.cpp" />
@@ -213,6 +214,7 @@
     <ClInclude Include="ClosingRingGuide.h" />
     <ClInclude Include="ComboHud.h" />
     <ClInclude Include="HitPillarEffect.h" />
+    <ClInclude Include="JudgeLineGuide.h" />
     <ClInclude Include="JudgeSystem.h" />
     <ClInclude Include="MagicCircleTransitionEffect.h" />
     <ClInclude Include="NotePath.h" />
@@ -305,6 +307,10 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="shader\judgeGuidePS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="shader\magicCircleTransitionPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>

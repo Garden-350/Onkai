@@ -167,6 +167,7 @@ void Sound::Uninit(void)
 			m_pSourceVoice[i]->Stop(0);
 			m_pSourceVoice[i]->FlushSourceBuffers();
 			m_pSourceVoice[i]->DestroyVoice();			// オーディオグラフからソースボイスを削除
+			m_pSourceVoice[i] = nullptr;
 			delete[]  m_DataBuffer[i];
 			m_DataBuffer[i] = nullptr;
 		}

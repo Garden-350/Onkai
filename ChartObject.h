@@ -23,6 +23,7 @@
 #include "ClosingRingGuide.h"
 #include "HitPillarEffect.h"
 #include "BarrierPlate.h"
+#include "JudgeLineGuide.h"
 
 class Player;
 class Enemy;
@@ -172,6 +173,10 @@ private:
 
 	ClosingRingGuide m_ClosingRingGuide;	// 判定円の外枠が閉じるやつ
 	HitPillarEffect m_HitPillar;			//判定時に判定円から伸びる光の柱
+	JudgeLineGuide m_JudgeGuide;			//ストライクライン・判定パッド・レーンのトラック・拍の線
+	float m_LaneGlow[6] = { 0,0,0,0,0,0 };	//レーンバッドの光具合。押している間、判定した直後に上がる
+	DirectX::SimpleMath::Vector3 m_LaneTrackOffset[6];	// 判定円→ノーツが飛んでくる奥の端 までの平均ベクトル（LoadChartで計算）
+	float m_TrackApproachSeconds = 1.0f;	// ノーツが出現してから判定までの平均秒数（拍の線の流れる速さに使う）
 	BarrierPlate m_BarrierPlate;
 	JudgeSystem m_JudgeSystem;	// 判定結果の集計・参照用
 	Sound sound;

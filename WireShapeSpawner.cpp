@@ -22,6 +22,7 @@ void WireShapeSpawner::Update()
 			WireShape* shape = dynamic_cast<WireShape*>(*it);
 			if (shape && shape->IsOutOfScreen())
 			{
+				shape->Kill();
 				it = m_pSceneObjects->erase(it);
 			}
 			else ++it;

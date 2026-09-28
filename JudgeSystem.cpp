@@ -46,12 +46,12 @@ void JudgeSystem::JudgeLane(int key, int laneIndex, std::vector<ChartNote>& note
 	if (rank == 0)
 	{
 		m_Perfect++;
-		sound.Play(SOUND_METAL_1);
+		sound.Play(SOUND_CLAMPU);
 	}
 	else if(rank == 1)
 	{
 		m_Great++;
-		sound.Play(SOUND_METAL_1);
+		sound.Play(SOUND_CLAMPU);
 	}
 	else if (rank == 2)
 	{
@@ -72,27 +72,27 @@ void JudgeSystem::JudgeFlickNotes(std::vector<ChartNote>& notes, float musicTime
 		float diff = n.time - musicTime;	//正：まだ来ていない　負：過ぎた
 		int requiredSide = n.IsFlickRight() ? -1 : 1;	//右フリックなら1、左フリックなら-1
 
-		if(fabsf(diff) <= kGud && playerSide == requiredSide)
-		{
-			float absDiff = fabsf(diff);
-			int rank = (absDiff < kPerfect) ? 0 : (absDiff < kGreat) ? 1 : 2;
-			
-			int laneFrom = n.lane;
-			int laneTo = (n.flickLaneTo >= 0) ? n.flickLaneTo : n.lane;
-			int lo = std::min(laneFrom, laneTo);
-			int hi = std::max(laneFrom, laneTo);
+		if (playerSide != requiredSide) continue;		//まだ正しい位置にいない
+		if (diff > 0.0f) continue;						//先についてても判定しない
 
-			if(rank == 0) m_Perfect++;
-			else if(rank == 1) m_Great++;
-			else m_Good++;
-			for(int L = lo; L <= hi; L++)
-			{
-				if(L < 0 || L >= 6) continue;
-				RegisterHit(L, rank);
-			}
-			n.judged = true;
-			continue;
+		float late = -diff;								//届いてから何秒遅れて正しい位置に来たか
+		if (late > kFlickGood) continue;				//遅すぎ
+		int rank = (late < kFlickPerfect) ? 0 : (late < kFlickGreat) ? 1 : 2;
+
+		int laneFrom = n.lane;
+		int laneTo = (n.flickLaneTo >= 0) ? n.flickLaneTo : n.lane;
+		int lo = std::min(laneFrom, laneTo);
+		int hi = std::max(laneFrom, laneTo);
+
+		if (rank == 0) m_Perfect++;
+		else if (rank == 1) m_Great++;
+		else m_Good++;
+		for (int L = lo; L <= hi; L++)
+		{
+			if (L < 0 || L >= 6) continue;
+			RegisterHit(L, rank);
 		}
+		n.judged = true;
 	}
 }
 
@@ -224,7 +224,7 @@ void JudgeSystem::MarkFlickAutoMiss(std::vector<ChartNote>& notes, float musicTi
 	{
 		if (note.judged) continue;
 		if (!note.IsFlick()) continue;
-		if (musicTime - note.time > kGud)
+		if (musicTime - note.time > kFlickGood)
 		{
 			note.judged = true;
 			m_Miss++;

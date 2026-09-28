@@ -59,8 +59,12 @@ private:
 	OnJudgeFn m_OnJudge;
 	OnEmptyPressFn m_OnEmptyPress;
 
-	// ── 判定タイミングの許容誤差（秒）。値が小さいほどシビア ──
+	//判定タイミングの許容誤差（秒）。値が小さいほどシビア
 	static constexpr float kPerfect = 0.06f;
 	static constexpr float kGreat = 0.08f;
 	static constexpr float kGud = 0.1f;			// この範囲を過ぎたら自動ミス
+	//フリックの判定幅
+	static constexpr float kFlickPerfect = 0.08f;
+	static constexpr float kFlickGreat = 0.12f;
+	static constexpr float kFlickGood = 0.15f;	//これ以上遅れたらミス
 };

@@ -152,6 +152,7 @@ HRESULT Sound::Init()
 		}
 	}
 
+	m_Initialized = true;
 	return hr;
 }
 
@@ -186,9 +187,25 @@ void Sound::Uninit(void)
 		m_dynamicData = nullptr;
 	}
 
-	if (m_pMasteringVoice)m_pMasteringVoice->DestroyVoice();
+	if (m_pMasteringVoice)
+	{
+		m_pMasteringVoice->DestroyVoice();
+		m_pMasteringVoice = nullptr;
+	}
 
-	if (m_pXAudio2) m_pXAudio2->Release();
+	if (m_pXAudio2)
+	{
+		m_pXAudio2->Release();
+		m_pXAudio2 = nullptr;
+	}
+
+	// MF ‚Æ COM ‚ÌI—¹‚ÍAInit ‚ª¬Œ÷‚µ‚½‚Æ‚«‚É1‰ñ‚¾‚¯
+	if (m_Initialized)
+	{
+		MFShutdown();
+		CoUninitialize();
+		m_Initialized = false;
+	}
 
 	MFShutdown();
 

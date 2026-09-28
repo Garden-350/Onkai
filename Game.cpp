@@ -38,7 +38,7 @@ void Game::Init()
 	m_Instance->m_PostFlash.Init(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	//最初のシーンを読み込む
-	m_Instance->m_Scene = new SelectScene;
+	m_Instance->m_Scene = new TitleScene;
 }
 
 // 更新

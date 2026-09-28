@@ -6,7 +6,7 @@
 void StageBackdrop::Init()
 {
 	m_Image.Init();
-	m_Image.SetTexture("assets/texture/stage_backdrop.png");
+	m_Image.SetTexture("assets/texture/skyboxTexture.png");
 	m_Image.SetPosition(0.0f, 0.0f, 500.0f);	// 2Dカメラのニア/ファーの内側ならどこでもOK
 	m_Image.SetScale((float)Application::GetWidth(), (float)Application::GetHeight(), 1.0f);
 }

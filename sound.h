@@ -19,6 +19,7 @@ typedef enum
 	SOUND_METAL_2,
 	SOUND_SUZU,
 	SOUND_LONG_END,
+	SOUND_CLAMPU,
 
 	SOUND_LABEL_BGM001,
 	SOUND_LABEL_BGM002,
@@ -54,18 +55,20 @@ private:
 		{"assets/se/metal2.mp3",false},
 		{"assets/se/suzu.mp3",false},
 		{"assets/se/Long_end.mp3",false},
+		{"assets/se/clampu.mp3",false},
 
 		{"assets/bgm/mirror.wav", true},
 		{"assets/bgm/maou_bgm_piano39.wav", true},
 		{"assets/bgm/Result_1.mp3",true}
 	};
 
+	bool m_Initialized = false;
 	IXAudio2* m_pXAudio2 = NULL;
 	IXAudio2MasteringVoice* m_pMasteringVoice = NULL;
-	IXAudio2SourceVoice* m_pSourceVoice[SOUND_LABEL_MAX];
+	IXAudio2SourceVoice* m_pSourceVoice[SOUND_LABEL_MAX] = {};
 	WAVEFORMATEXTENSIBLE m_wfx[SOUND_LABEL_MAX]; // WAVフォーマット
 	XAUDIO2_BUFFER m_buffer[SOUND_LABEL_MAX];
-	BYTE* m_DataBuffer[SOUND_LABEL_MAX];
+	BYTE* m_DataBuffer[SOUND_LABEL_MAX] = {};
 
 	UINT32 m_playPos[SOUND_LABEL_MAX] = { 0 };
 	IXAudio2SourceVoice* m_pDynamicVoice = nullptr;

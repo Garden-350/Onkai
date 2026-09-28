@@ -10,7 +10,7 @@ void ComboHud::Init()
 	for (int i = 0; i < 4; i++)
 	{
 		m_ComboDigits[i].Init();
-		m_ComboDigits[i].SetTexture("assets/texture/allnumber_new.png");
+		m_ComboDigits[i].SetTexture("assets/texture/number_3.png");
 		m_ComboDigits[i].SetUV(1.0f, 1.0f, 10.0f, 1.0f); // 初期表示は "0"
 		m_ComboDigits[i].SetScale(m_NuberSplite_Size, m_NuberSplite_Size, 1.0f);
 	}
@@ -20,7 +20,7 @@ void ComboHud::Init()
 			for (int i = 0; i < 4; i++)
 			{
 				row[i].Init();
-				row[i].SetTexture("assets/texture/allnumber_new.png");
+				row[i].SetTexture("assets/texture/allnumber_2.png");
 				row[i].SetUV(1.0f, 1.0f, 10.0f, 1.0f);
 				row[i].SetScale(m_NuberSplite_Size * 0.6f, m_NuberSplite_Size * 0.6f, 1.0f); // コンボより小さめ
 			}
@@ -32,31 +32,31 @@ void ComboHud::Init()
 
 	Renderer::SetBlendState(BS_ADDITIVE);
 	m_BreakdownLabelPerfect.Init();
-	m_BreakdownLabelPerfect.SetTexture("assets/texture/PERFECT.png");
+	m_BreakdownLabelPerfect.SetTexture("assets/texture/PER.png");
 	m_BreakdownLabelPerfect.SetScale(70.0f, 18.0f, 1.0f);
 
 	m_BreakdownLabelGreat.Init();
-	m_BreakdownLabelGreat.SetTexture("assets/texture/GREAT.png");
+	m_BreakdownLabelGreat.SetTexture("assets/texture/GRE.png");
 	m_BreakdownLabelGreat.SetScale(70.0f, 18.0f, 1.0f);
 
 	m_BreakdownLabelGood.Init();
-	m_BreakdownLabelGood.SetTexture("assets/texture/GOOD.png");
+	m_BreakdownLabelGood.SetTexture("assets/texture/GOO.png");
 	m_BreakdownLabelGood.SetScale(70.0f, 18.0f, 1.0f);
 
 	m_BreakdownLabelMiss.Init();
-	m_BreakdownLabelMiss.SetTexture("assets/texture/MISS.png");
+	m_BreakdownLabelMiss.SetTexture("assets/texture/MIS.png");
 	m_BreakdownLabelMiss.SetScale(70.0f, 18.0f, 1.0f);
 
 	m_JudgeRankPerfect.Init();
-	m_JudgeRankPerfect.SetTexture("assets/texture/PERFECT.png");
+	m_JudgeRankPerfect.SetTexture("assets/texture/PER.png");
 	m_JudgeRankPerfect.SetScale(200.0f, 50.0f, 1.0f);
 
 	m_JudgeRankGreat.Init();
-	m_JudgeRankGreat.SetTexture("assets/texture/GREAT.png");
+	m_JudgeRankGreat.SetTexture("assets/texture/GRE.png");
 	m_JudgeRankGreat.SetScale(200.0f, 50.0f, 1.0f);
 
 	m_JudgeRankGood.Init();
-	m_JudgeRankGood.SetTexture("assets/texture/GOOD.png");
+	m_JudgeRankGood.SetTexture("assets/texture/GOO.png");
 	m_JudgeRankGood.SetScale(200.0f, 50.0f, 1.0f);
 
 	m_BarrierQuad.Init();
@@ -101,15 +101,6 @@ void ComboHud::Update(float deltaTime)
 		m_ComboPopTimer -= deltaTime;
 		if (m_ComboPopTimer < 0.0f) m_ComboPopTimer = 0.0f;
 	}
-
-	//ボタン入力時に出る障壁
-	//for (int i = 0; i < 6; i++)
-	//{
-	//	if (!m_BarrierEffects[i].active) continue;
-	//	m_BarrierEffects[i].timer += deltaTime;
-	//	if (m_BarrierEffects[i].timer >= kBarrierDuration)
-	//		m_BarrierEffects[i].active = false;
-	//}
 
 	for (int i = 0; i < 6; i++)
 	{
@@ -170,8 +161,8 @@ void ComboHud::Draw(Camera* cam, const Matrix& view,
 		int digits[3] = { comboClamped / 100,(comboClamped / 10) % 10, comboClamped % 10 };
 		float popScale = 1.0f + (m_ComboPopTimer / 0.15f) * 0.4f; // 最大1.4倍まで膨らむ
 
-		float digitW = 40.0f;
-		float startX = 200.0f;
+		float digitW = 80.0f;
+		float startX = -65.0f;
 
 		Renderer::SetBlendState(BS_ALPHABLEND);
 		for (int i = 0; i < 3; i++)

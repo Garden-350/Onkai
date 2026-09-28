@@ -28,7 +28,7 @@ void ResultScene::Init()
 
 	Renderer::SetDepthEnable(true);
 	Texture2D* pt = Game::GetInstance()->AddObject<Texture2D>();
-	pt->SetTexture("assets/texture/heigen.jpg");
+	pt->SetTexture("assets/texture/stage_backdrop.png");
 	pt->SetPosition(0.0f, 0.0f, 485.0f);
 	pt->SetRotation(0.0f, 0.0f, 0.0f);
 	pt->SetScale(1280.0f, 720.0f, 0.0f);
@@ -142,7 +142,7 @@ void ResultScene::SetUpDigitRow(Texture2D** row, int value, float x, float y)
 {
 	if (value > 9999) value = 9999;
 	if (value < 0) value = 0;
-	int digits[4] = { value / 1000, value / 100, (value / 10) % 10,value % 10 };
+	int digits[4] = { value / 1000, (value / 100) % 10, (value / 10) % 10,value % 10 };
 
 	float digitW = 60.0f;	//Œ…‚²‚Æ‚Ì‰¡•
 

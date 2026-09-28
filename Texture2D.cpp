@@ -97,6 +97,7 @@ void Texture2D::Draw(Camera* cam)
 	float vh = 1 / m_SplitY;
 
 	Renderer::SetUV(u, v, uw, vh);
+	Renderer::SetBlendState(BS_ALPHABLEND);
 
 	devicecontext->DrawIndexed(
 		(UINT)m_Indices.size(), // 描画するインデックス数

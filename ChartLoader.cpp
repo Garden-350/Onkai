@@ -179,7 +179,7 @@ namespace ChartLoader
 						float spread = raw - kEditorRawCenterX;              // 中心からのズレ量だけ取り出す
 						key.x = -(kEditorRawCenterX + spread * kXScale);     // 中心は固定、広がりだけ拡大
 
-						key.y = k["y"].AsFloat() - 120.0f;
+						key.y = k["y"].AsFloat() - 480.0f;
 						key.z = k["z"].AsFloat();
 						circle.keyframe.push_back(key);
 					}

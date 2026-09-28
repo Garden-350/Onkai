@@ -67,7 +67,7 @@ private:
 	static constexpr float kBarrierDuration = 10.25f;
 
 	float m_ComboPopTimer = 0.0f;		// コンボ数字をポップさせる残り時間
-	float m_NuberSplite_Size = 80.0f;	// コンボ数字1桁の表示サイズ
+	float m_NuberSplite_Size = 100.0f;	// コンボ数字1桁の表示サイズ
 
 	Texture2D m_FullComboTex;	// 「FULL COMBO」バナー
 	bool m_FullComboActive = false;	// 曲終了〜シーン切り替えまで表示し続ける

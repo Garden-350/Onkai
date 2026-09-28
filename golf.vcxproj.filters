@@ -232,6 +232,10 @@
     </ClCompile>
     <ClCompile Include="OuterEdge.cpp" />
     <ClCompile Include="JudgeLineGuide.cpp" />
+    <ClCompile Include="TitleLake.cpp" />
+    <ClCompile Include="ScreenFade.cpp" />
+    <ClCompile Include="LakeParticles.cpp" />
+    <ClCompile Include="LakeGrass.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -427,6 +431,13 @@
     </ClInclude>
     <ClInclude Include="OuterEdge.h" />
     <ClInclude Include="JudgeLineGuide.h" />
+    <ClInclude Include="TitleLake.h" />
+    <ClInclude Include="ScreenFade.h" />
+    <ClInclude Include="LakeParticles.h" />
+    <ClInclude Include="LakeGrass.h" />
+    <ClInclude Include="LakeParms.h">
+      <Filter>ヘッダーファイル\Sky</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">

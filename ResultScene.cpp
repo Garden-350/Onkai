@@ -123,7 +123,7 @@ void ResultScene::Update()
 	if (Input::GetKeyTrigger(VK_RETURN))
 	{
 		sound.Uninit();
-		Game::GetInstance()->ChangeScene(TITLE);
+		Game::GetInstance()->ChangeScene(SELECT);
 	}
 }
 

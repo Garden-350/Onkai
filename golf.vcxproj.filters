@@ -61,6 +61,21 @@
     <FxCompile Include="shader\judgeGuidePS.hlsl">
       <Filter>リソースファイル</Filter>
     </FxCompile>
+    <FxCompile Include="shader\lakeGrassPS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\lakeGrassVS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\lakeParticlePS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\lakePS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\screenFadePS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChartObject.cpp">
@@ -213,8 +228,6 @@
     <ClCompile Include="LightShaft.cpp">
       <Filter>ソースファイル\Particle</Filter>
     </ClCompile>
-    <ClCompile Include="CityBuildings.cpp" />
-    <ClCompile Include="MagicCircleTransitionEffect.cpp" />
     <ClCompile Include="AudioSpectrum.cpp">
       <Filter>ソースファイル\Particle</Filter>
     </ClCompile>
@@ -230,12 +243,30 @@
     <ClCompile Include="HitPillarEffect.cpp">
       <Filter>ソースファイル\Particle</Filter>
     </ClCompile>
-    <ClCompile Include="OuterEdge.cpp" />
-    <ClCompile Include="JudgeLineGuide.cpp" />
-    <ClCompile Include="TitleLake.cpp" />
-    <ClCompile Include="ScreenFade.cpp" />
-    <ClCompile Include="LakeParticles.cpp" />
-    <ClCompile Include="LakeGrass.cpp" />
+    <ClCompile Include="CityBuildings.cpp">
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="JudgeLineGuide.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="LakeGrass.cpp">
+      <Filter>ソースファイル\TitlePBR</Filter>
+    </ClCompile>
+    <ClCompile Include="LakeParticles.cpp">
+      <Filter>ソースファイル\TitlePBR</Filter>
+    </ClCompile>
+    <ClCompile Include="MagicCircleTransitionEffect.cpp">
+      <Filter>ソースファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="OuterEdge.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="ScreenFade.cpp">
+      <Filter>ソースファイル\TitlePBR</Filter>
+    </ClCompile>
+    <ClCompile Include="TitleLake.cpp">
+      <Filter>ソースファイル\TitlePBR</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -412,8 +443,6 @@
     <ClInclude Include="LightShaft.h">
       <Filter>ヘッダーファイル\Particle</Filter>
     </ClInclude>
-    <ClInclude Include="CityBuildings.h" />
-    <ClInclude Include="MagicCircleTransitionEffect.h" />
     <ClInclude Include="AudioSpectrum.h">
       <Filter>ヘッダーファイル\Particle</Filter>
     </ClInclude>
@@ -429,14 +458,32 @@
     <ClInclude Include="HitPillarEffect.h">
       <Filter>ヘッダーファイル\Particle</Filter>
     </ClInclude>
-    <ClInclude Include="OuterEdge.h" />
-    <ClInclude Include="JudgeLineGuide.h" />
-    <ClInclude Include="TitleLake.h" />
-    <ClInclude Include="ScreenFade.h" />
-    <ClInclude Include="LakeParticles.h" />
-    <ClInclude Include="LakeGrass.h" />
     <ClInclude Include="LakeParms.h">
       <Filter>ヘッダーファイル\Sky</Filter>
+    </ClInclude>
+    <ClInclude Include="CityBuildings.h">
+      <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="JudgeLineGuide.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="LakeGrass.h">
+      <Filter>ヘッダーファイル\TitlePBR</Filter>
+    </ClInclude>
+    <ClInclude Include="OuterEdge.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="LakeParticles.h">
+      <Filter>ヘッダーファイル\TitlePBR</Filter>
+    </ClInclude>
+    <ClInclude Include="MagicCircleTransitionEffect.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="ScreenFade.h">
+      <Filter>ヘッダーファイル\TitlePBR</Filter>
+    </ClInclude>
+    <ClInclude Include="TitleLake.h">
+      <Filter>ヘッダーファイル\TitlePBR</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -490,6 +537,12 @@
     </Filter>
     <Filter Include="ヘッダーファイル\Sound">
       <UniqueIdentifier>{3d9e283b-60fa-4058-91eb-552818fc01cf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\TitlePBR">
+      <UniqueIdentifier>{91b83338-ba5f-46c8-8f29-b3f1d0776f8f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\TitlePBR">
+      <UniqueIdentifier>{65ac21ec-0252-430a-8d65-563781fee656}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

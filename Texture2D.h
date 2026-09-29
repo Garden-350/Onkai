@@ -70,5 +70,7 @@ public:
 
 	// アルファ値を指定（0.0～1.0）。フェードイン/アウト用
 	void SetAlpha(const float& a);
+	//色とアルファを指定
+	void SetColor(const float& r, const float& g, const float& b, float& a);
 };
 

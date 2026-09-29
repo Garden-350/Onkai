@@ -173,3 +173,12 @@ void Texture2D::SetAlpha(const float& a)
 	}
 	m_VertexBuffer.Modify(m_Vertices);
 }
+
+void Texture2D::SetColor(const float& r, const float& g, const float& b, float& a)
+{
+	for (int i = 0; i < 4; i++)
+	{
+		m_Vertices[i].color = Color(r, g, b, a);
+	}
+	m_VertexBuffer.Modify(m_Vertices);
+}

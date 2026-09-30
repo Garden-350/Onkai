@@ -48,7 +48,7 @@ void Game::Update()
 	Input::Update();
 
 	//ポーズ切替
-	if (Input::GetKeyTrigger(VK_SPACE))
+	if (Input::GetKeyTrigger(VK_SPACE) && dynamic_cast<Stage1Scene*>(m_Instance->m_Scene))
 	{
 		m_Instance->m_Paused = !m_Instance->m_Paused;
 
@@ -75,7 +75,20 @@ void Game::Update()
 
 	if (m_Instance->m_Paused)
 	{
-		return;
+		//ポーズ中にRでリトライ
+		if (Input::GetKeyTrigger(VK_R) && dynamic_cast<Stage1Scene*>(m_Instance->m_Scene))
+		{
+			m_Instance->m_Paused = false;
+			m_Instance->ChangeScene(STAGE1);
+		}
+		else
+		{
+			return;
+		}
+	}
+	if (Input::GetKeyTrigger(VK_R) && dynamic_cast<ResultScene*>(m_Instance->m_Scene))
+	{
+		m_Instance->ChangeScene(STAGE1);
 	}
 	//シーン更新
 	m_Instance->m_Scene->Update();

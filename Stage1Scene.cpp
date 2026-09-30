@@ -11,6 +11,7 @@
 #include "StageBackdrop.h"
 #include "SpotlightRow.h"
 #include "OuterEdge.h"
+#include "PauseOverlay.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -70,6 +71,9 @@ void Stage1Scene::Init()
 	WireShapeSpawner* spaen = Game::GetInstance()->AddObject<WireShapeSpawner>();
 	spaen->SetSceneObjects(&m_MySceneObjects);
 	m_MySceneObjects.emplace_back(spaen);
+
+	auto* pause = Game::GetInstance()->AddObject<PauseOverlay>();
+	m_MySceneObjects.emplace_back(pause);
 }
 
 

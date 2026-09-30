@@ -162,6 +162,7 @@
     <ClCompile Include="ChartLoader.cpp" />
     <ClCompile Include="ModelUtil.cpp" />
     <ClCompile Include="OuterEdge.cpp" />
+    <ClCompile Include="PauseOverlay.cpp" />
     <ClCompile Include="ScreenEffects.cpp" />
     <ClCompile Include="HomingBeamSystem.cpp" />
     <ClCompile Include="Collision.cpp" />
@@ -229,6 +230,7 @@
     <ClInclude Include="ChartHomingBeam.h" />
     <ClInclude Include="ModelUtil.h" />
     <ClInclude Include="OuterEdge.h" />
+    <ClInclude Include="PauseOverlay.h" />
     <ClInclude Include="ScreenEffects.h" />
     <ClInclude Include="HomingBeamSystem.h" />
     <ClInclude Include="Collision.h" />

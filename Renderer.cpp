@@ -633,8 +633,17 @@ HRESULT Renderer::CompileShader(const char* szFileName, LPCSTR szEntryPoint, LPC
 		if (pErrorBlob) pErrorBlob->Release();
 
 		// コンパイル成功時のバイナリデータを呼び出し元に渡す
-		*ppShaderObject = (pBlob)->GetBufferPointer();
-		*pShaderObjectSize = (pBlob)->GetBufferSize();
+		//*ppShaderObject = (pBlob)->GetBufferPointer();
+		//*pShaderObjectSize = (pBlob)->GetBufferSize();
+
+		//コンパイル結果を自分で確保したメモリへコピーしてBlobはここで解放する
+		//csoを読んだ時と同じ形にそろえて使い終わったら呼び出し側でdelete[]する
+		SIZE_T size = pBlob->GetBufferSize();
+		unsigned char* byteArray = new unsigned char[size];
+		memcpy(byteArray, pBlob->GetBufferPointer(), size);
+
+		*ppShaderObject = byteArray;
+		*pShaderObjectSize = (int)size;
 	}
 
 	return S_OK;
@@ -658,6 +667,8 @@ HRESULT Renderer::CreateVertexShader(ID3D11VertexShader** ppVertexShader, ID3D11
 	// デバイスを使って頂点レイアウトを作成
 	m_pDevice->CreateInputLayout(pLayout, numElements, ShaderObject, ShaderObjectSize, ppVertexLayout);
 
+	delete[](unsigned char*)ShaderObject;	//コンパイル結果は不要
+
 	return S_OK;
 }
 
@@ -675,6 +686,7 @@ HRESULT Renderer::CreatePixelShader(ID3D11PixelShader** ppPixelShader, const cha
 
 	// ピクセルシェーダーを生成
 	hr = m_pDevice->CreatePixelShader(ShaderObject, ShaderObjectSize, nullptr, ppPixelShader);
+	delete[](unsigned char*)ShaderObject;
 	if (FAILED(hr)) return hr;
 
 	return S_OK;

@@ -116,6 +116,12 @@ void ResultScene::Update()
 			m_MySceneObjects.emplace_back(full);
 		}
 
+		Texture2D* ret = Game::GetInstance()->AddObject<Texture2D>();
+		ret->SetTexture("assets/texture/retry_white.png");
+		ret->SetPosition(-580.0f, 300.0f, 0.0f);
+		ret->SetScale(100.0f, 100.0f, 0.0f);
+		m_MySceneObjects.emplace_back(ret);
+
 		m_Initialized = true;
 	}
 

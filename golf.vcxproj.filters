@@ -267,6 +267,7 @@
     <ClCompile Include="TitleLake.cpp">
       <Filter>ソースファイル\TitlePBR</Filter>
     </ClCompile>
+    <ClCompile Include="PauseOverlay.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -485,6 +486,7 @@
     <ClInclude Include="TitleLake.h">
       <Filter>ヘッダーファイル\TitlePBR</Filter>
     </ClInclude>
+    <ClInclude Include="PauseOverlay.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">

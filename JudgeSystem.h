@@ -44,6 +44,7 @@ public:
 	int GetMaxComboCount() const { return m_MaxCombo; }
 	int GetComboCount()   const { return m_Combo; } // Draw()でのコンボ数字表示用
 	static constexpr float kLongTickInterval = 0.2f;	// ロングノーツの継続判定(tick)間隔
+	static constexpr float kTurnGrace = 0.12f;
 
 private:
 	void RegisterHit(int laneIndex, int rank); // m_Combo++ / m_MaxCombo更新 + m_OnJudgeコールバック呼び出し

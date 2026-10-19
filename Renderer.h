@@ -173,6 +173,8 @@ public:
 	static void SetMaterial(MATERIAL Material);
 	static void SetUV(float u, float v, float uw, float vh);
 
+	static void ClearCurrentDepth();	//今つながっている深度バッファをクリアする
+
 	static void SetCullMode(int mode);
 	//=============================================================================
 	// ブレンド ステート設定

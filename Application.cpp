@@ -2,6 +2,8 @@
 #include <thread>
 #include "Application.h"
 #include "Game.h"
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
 
 const auto ClassName = TEXT("音廻");     //ウィンドウクラス名
 const auto WindowName = TEXT("音廻");    //ウィンドウ名
@@ -159,7 +161,7 @@ void Application::MainLoop()
    long long oldCount = liWork.QuadPart;// 前回計測時の時間
    long long nowCount = oldCount;// 今回計測時の時間
 
-
+   timeBeginPeriod(1);
    // ゲームループ
    while (1)
    {
@@ -191,8 +193,13 @@ void Application::MainLoop()
                fpsCounter++; // ゲーム処理を実行したら＋１する
                oldCount = nowCount;
            }
+           else
+           {
+               Sleep(1);
+           }
         }
     }
+   timeEndPeriod(1);
 
    // ゲーム終了処理
    Game::Uninit();

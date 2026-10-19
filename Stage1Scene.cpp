@@ -12,6 +12,7 @@
 #include "SpotlightRow.h"
 #include "OuterEdge.h"
 #include "PauseOverlay.h"
+#include "CameraLayerMarker.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -36,15 +37,18 @@ void Stage1Scene::Init()
 {
 	// 横からの斜め見下ろし視点：
 	// プレイヤーの斜め後方・少し上から、奥の敵方向を見下ろす
-	Game::GetInstance()->GetCamera()->SetFixedPose(
-		Vector3(0.0f, 667.0f, -850.0f),   // カメラ位置：プレイヤーのやや上・後方
-		Vector3(0.0f, 0.0f, -300.0f)      // 注視点：奥(敵方向)の少し高い位置
-	);
+	//Game::GetInstance()->GetCamera()->SetFixedPose(
+	//	Vector3(0.0f, 667.0f, -850.0f),   // カメラ位置：プレイヤーのやや上・後方
+	//	Vector3(0.0f, 0.0f, -300.0f)      // 注視点：奥(敵方向)の少し高い位置
+	//);
 
 	//auto* ground = Game::GetInstance()->AddObject<Ground>();
 	//m_MySceneObjects.emplace_back(ground);
 	//auto* skybox = Game::GetInstance()->AddObject<SkyBox>();
 	//m_MySceneObjects.emplace_back(skybox);
+	auto* worldLayer = Game::GetInstance()->AddObject<CameraLayerMarker>();
+	worldLayer->SetUp(Camera::Layer::World, false);
+	m_MySceneObjects.emplace_back(worldLayer);
 
 	//背景画像
 	auto* backdrop = Game::GetInstance()->AddObject<StageBackdrop>();
@@ -59,14 +63,15 @@ void Stage1Scene::Init()
 	auto* enemy = Game::GetInstance()->AddObject<Enemy>();
 	m_MySceneObjects.emplace_back(enemy);
 	spotlights->SetFarTarget(enemy->GetPosition());	//列の奥の端を敵の位置に設定
-	auto* player = Game::GetInstance()->AddObject<Player>();
-	m_MySceneObjects.emplace_back(player);
+	//auto* player = Game::GetInstance()->AddObject<Player>();
+	//m_MySceneObjects.emplace_back(player);
 	auto* chart = Game::GetInstance()->AddObject<ChartObject>();
 	chart->LoadChart(Game::GetInstance()->GetSelectedChart());
 	m_MySceneObjects.emplace_back(chart);
 	m_Chart = chart;
+	ApplyCamera();
 	chart->SetEnemyRef(enemy);
-	chart->SetPlayerRef(player);
+	//chart->SetPlayerRef(player);
 	//横方向の正方形グリッド表示
 	WireShapeSpawner* spaen = Game::GetInstance()->AddObject<WireShapeSpawner>();
 	spaen->SetSceneObjects(&m_MySceneObjects);
@@ -74,6 +79,9 @@ void Stage1Scene::Init()
 
 	auto* pause = Game::GetInstance()->AddObject<PauseOverlay>();
 	m_MySceneObjects.emplace_back(pause);
+
+	Game::GetInstance()->GetCamera()->SetWorldOffset(0.0f,
+		DirectX::XMConvertToRadians(0.0f), 0.0f);	//確認用
 }
 
 
@@ -89,6 +97,28 @@ void Stage1Scene::Update()
 	}
 
 	if (!m_Chart)return;
+
+#ifdef _DEBUG
+	{
+		bool changed = false;
+		const float step = 10.0f;
+		if (Input::GetKeyPress(VK_F1)) { m_CamHeight -= step; changed = true; }
+		if (Input::GetKeyPress(VK_F2)) { m_CamHeight += step; changed = true; }
+		if (Input::GetKeyPress(VK_F3)) { m_CamBack -= step; changed = true; }
+		if (Input::GetKeyPress(VK_F4)) { m_CamBack += step; changed = true; }
+		if (Input::GetKeyPress(VK_F5)) { m_CamLookAhead -= step; changed = true; }
+		if (Input::GetKeyPress(VK_F6)) { m_CamLookAhead += step; changed = true; }
+		if (changed)
+		{
+			ApplyCamera();
+			char buf[128];
+			sprintf_s(buf, "[Camera] height=%.0f back=%.0f lookAhead=%.0f\n", m_CamHeight, m_CamBack, m_CamLookAhead);
+			OutputDebugStringA(buf);
+		}
+	}
+#endif
+
+
 	//スポットライトを曲の拍に合わせる
 	if (m_Spotlights) m_Spotlights->SetBeat(m_Chart->GetMusicTime(), m_Chart->GetBpm());
 
@@ -142,5 +172,19 @@ void Stage1Scene::SendResult()
 		Game::SetResultData(result);
 	}
 	Game::GetInstance()->ChangeScene(RESULT);
+}
+
+void Stage1Scene::ApplyCamera()
+{
+	if (!m_Chart) return;
+	Vector3 c = m_Chart->GetJudgeLineCenter();
+	Vector3 eye = c + Vector3(0.0f, m_CamHeight, -m_CamBack);   // カメラの位置
+	Vector3 target = c + Vector3(0.0f, 0.0f, m_CamLookAhead);      // 見る先
+	Game::GetInstance()->GetCamera()->SetFixedPose(eye, target);
+
+	char buf[200];
+	sprintf_s(buf, "[Camera] height=%.0f back=%.0f lookAhead=%.0f | eye=(%.0f, %.0f, %.0f) target=(%.0f, %.0f, %.0f)\n",
+		m_CamHeight, m_CamBack, m_CamLookAhead, eye.x, eye.y, eye.z, target.x, target.y, target.z);
+	OutputDebugStringA(buf);
 }
 

@@ -371,6 +371,21 @@ void Renderer::SetUV(float u, float v, float uw, float vh)
 		m_pTextureBuffer, 0, NULL, &mat, 0, 0);
 }
 
+void Renderer::ClearCurrentDepth()
+{
+	ID3D11RenderTargetView* rtv = nullptr;
+	ID3D11DepthStencilView* dsv = nullptr;
+	//PostFlushが別の描画先に切り替えてても今使っているものを取る
+	m_pDeviceContext->OMGetRenderTargets(1, &rtv, &dsv);
+	if (dsv)
+	{
+		m_pDeviceContext->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH |
+			D3D11_CLEAR_STENCIL, 1.0f, 0);
+		dsv->Release();	//OMGetRenderTargetsは参照カウントを増やすのでからなずReleaseをすること
+	}
+	if (rtv)rtv->Release();
+}
+
 void Renderer::SetCullMode(int mode)
 {
 	if (mode >= 0 && mode < MAX_CULLMODE)

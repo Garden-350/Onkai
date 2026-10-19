@@ -14,6 +14,10 @@ private:
 	Sound sound;
 
 	std::vector<Object*> m_MySceneObjects; // このシーンのオブジェクト
+	std::chrono::steady_clock::time_point m_LastClock;
+	bool  m_ClockStarted = false;
+	float m_FadeAlpha = 1.0f;   // 1 = 真っ黒
+	bool  m_Leaving = false;    // Enter を押して暗転中か
 
 	TitleLake* m_Lake = nullptr;	//背景の湖
 	ScreenFade* m_Fade = nullptr;	//画面全体へのフェード

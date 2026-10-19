@@ -119,6 +119,15 @@ Vector3 ChartJudgeCircle::GetPosition(float now) const
 
 // LoadOptionalModel / DrawModel は ModelUtil.h/.cpp に切り出し済み
 
+DirectX::SimpleMath::Vector3 ChartObject::GetJudgeLineCenter() const
+{
+	if (m_JudgeCircles.empty()) return Vector3::Zero;
+	Vector3 sum = Vector3::Zero;
+	for (const auto& c : m_JudgeCircles) sum += c.GetPosition(0.0f);
+
+	return sum / (float)m_JudgeCircles.size();
+}
+
 // ============================================================
 // Init : オブジェクト初期化。
 //   各種3Dモデル・テクスチャ・判定円のデフォルト値をセットアップする。
@@ -189,6 +198,7 @@ void ChartObject::Init()
 
 	// ── ビーム用モデルの初期化は HomingBeamSystem::Init に切り出し済み ──
 	m_BeamSystem.Init();
+	m_LongBeam.Init();
 
 	// ── 判定円の初期配置（JSONにjudgeCirclesが無い旧フォーマット用のデフォルト値）──
 // ── 判定円の初期配置（JSONにjudgeCirclesが無い旧フォーマット用のデフォルト値）──
@@ -276,6 +286,23 @@ bool ChartObject::LoadChart(const std::string& name)
 		}
 	}
 	m_JudgeCircles = result.judgeCircles;
+
+	if (kHighwayMode)
+	{
+		for (auto& note : m_Notes)
+		{
+			if (note.IsFlick()) continue;	//フリックは敵側へ飛ぶので今まで通り
+			if (note.lane < 0 || note.lane >= (int)m_JudgeCircles.size()) continue;
+
+			float arrive = note.IsLong() ? note.arrivalTime : note.time;	//判定んに届く時間
+			Vector3 judge = m_JudgeCircles[note.lane].GetPosition(arrive);
+			note.spawnPos = judge + Vector3(0.0f, 0.0f, m_HighwayDepth);	//同じ高さで奥から
+			note.spawnTime = arrive - m_HighwayApproach;	//全ノーツ同じ速さで
+			note.controlPoints.clear();	//曲線じゃなくて直線で
+			note.spiralRadius = 0.0f;	//螺旋もやめる
+		}
+	}
+
 	//判定ガイドのトラック：レーンごとに「ノーツがどっちから・何秒かけて来るか」の平均を取っておく
 	{
 		Vector3 sum[6];
@@ -369,6 +396,72 @@ void ChartObject::AddPauseOffset(std::chrono::steady_clock::duration offset)
 	m_LastUpdateClock += offset;
 }
 
+//移動するロング　tau秒に判定ラインへ届く部分が今どこにあるか
+DirectX::SimpleMath::Vector3 ChartObject::LongPointAt(const ChartNote& n, float tau) const
+{
+	constexpr float kTurnBlend = 0.06f;	//曲がりにかける秒数
+	float x = m_JudgeCircles[n.lane].GetPosition(m_MusicTime).x;
+	int ln = n.lane;
+	for (const auto& tr : n.turns)
+	{
+		if (tau < tr.time) break;
+		float from = m_JudgeCircles[ln].GetPosition(m_MusicTime).x;
+		float to = m_JudgeCircles[tr.lane].GetPosition(m_MusicTime).x;
+		float k = std::clamp((tau - tr.time) / kTurnBlend, 0.0f, 1.0f);
+		k = k * k * (3.0f - 2.0f * k);
+		x = from + (to - from) * k;
+		ln = tr.lane;
+	}
+	Vector3 base = m_JudgeCircles[n.lane].GetPosition(m_MusicTime);
+	float hs = Game::GetInstance()->GetHighSpeed();
+	float z = (tau - m_MusicTime) / m_HighwayApproach * m_HighwayDepth * hs;   // 届くのが先ほど奥
+	return DirectX::SimpleMath::Vector3(x, base.y, base.z + z);
+}
+
+void ChartObject::DrawHighwayLongNotes(Camera* cam)
+{
+	constexpr float kStep = 0.01f;	//何秒ごとに点を打つか　小さいほど滑らか
+	const Vector3 kGlowColor(0.6f, 0.35f, 1.0f);	//色を変えてるところ
+
+	Renderer::SetBlendState(BS_ADDITIVE);
+	for (auto& note : m_Notes)
+	{
+		if (!note.IsLong() || note.judged) continue;
+		float from = std::max(m_MusicTime, note.arrivalTime);			//もう受けた部分は描かない
+		float to = std::min(note.time, m_MusicTime + m_HighwayApproach);//出現位置より奥は見えない
+		if (from >= to) continue;
+
+		bool started = (m_MusicTime >= note.arrivalTime);
+		bool held = false;
+		if (started)
+			for (int ln = 0; ln < 6; ln++)
+				if (note.AcceptsLane(ln, m_MusicTime, JudgeSystem::kTurnGrace) && Input::GetKeyPress(kLaneKeys[ln])) { held = true; break; }
+		bool missedLook = started && !held;   // 受けられていない間は暗く
+
+		//手前から奥へ点を並べる
+		m_LongPoints.clear();
+		bool continuesBeyond = (to < note.time);	//奥の出現位置の先にもまだ続いてるか
+		for (float t = from;; t += kStep)
+		{
+			float tt = std::min(t, to);
+			LongBeamRibbon::Point p;
+			p.pos = LongPointAt(note, tt) + Vector3(0.0f, 4.0f, 0.0f);	//床から少し浮かせる
+			Vector3 c = missedLook ? Vector3(0.4f, 0.4f, 0.4f) : GetLaneColor(note.LaneAt(tt));
+			float fade = 1.0f;
+			if (continuesBeyond)	//奥から現れるように奥の端を薄くする
+				fade = std::clamp((to - tt) / (m_HighwayApproach * 0.15f), 0.0f, 1.0f);
+			p.color = Color(c.x, c.y, c.z, fade);
+			m_LongPoints.push_back(p);
+			if (tt >= to)break;
+		}
+		m_LongBeam.Draw(cam, m_LongPoints,
+			missedLook ? 60.0f : 90.0f,      // 帯の幅
+			missedLook ? 0.35f : 1.0f,       // 明るさ
+			m_MusicTime, kGlowColor);
+	}
+	Renderer::SetBlendState(BS_NONE);
+}
+
 void ChartObject::DrawSpawnMagicCircle(Camera* cam, const ChartNote& note)
 {
 	float st = note.GetSpawnTime();
@@ -398,6 +491,7 @@ DirectX::SimpleMath::Vector3 ChartObject::GetPlayerSideAnchor(int side) const
 	}
 	return sum / 3.0f;
 }
+
 
 // ============================================================
 // Update : 毎フレームのゲームロジック更新。
@@ -483,8 +577,9 @@ void ChartObject::Update()
 			if (note.judged) continue;
 			if (note.lane < 0 || note.lane >= 6) continue;
 			if (m_MusicTime < note.arrivalTime || m_MusicTime > note.time) continue;	//判定圏外は無視
-			if (!Input::GetKeyPress(kLaneKeys[note.lane])) continue;
-			holding[note.lane] = true;
+			int ln = note.LaneAt(m_MusicTime);	//今線が来ているレーン
+			if (!Input::GetKeyPress(kLaneKeys[ln])) continue;
+			holding[ln] = true;
 		}
 		for (int lane = 0; lane < 6; lane++)
 		{
@@ -520,63 +615,67 @@ void ChartObject::Update()
 	}
 	//ロングノーツ成功中のレーンパーティクル
 	{
-		// ふよふよ浮くアンビエントパーティクル（ロングノーツの周り、常時）
-		constexpr float kGraceTime = 0.5f;
-		constexpr float kAmbientInterval = 0.12f;
-
-		for (int lane = 0; lane < 6; lane++)
+		if (!kHighwayMode)
 		{
-			bool spawnedThisLane = false;
-			for (auto& note : m_Notes)
+			// ふよふよ浮くアンビエントパーティクル（ロングノーツの周り、常時）
+			constexpr float kGraceTime = 0.5f;
+			constexpr float kAmbientInterval = 0.12f;
+
+			for (int lane = 0; lane < 6; lane++)
 			{
-				if (!note.IsLong()) continue;
-				if (note.lane != lane) continue;
-				if (note.judged) continue;
-
-				float displayStart = note.GetSpawnTime();
-				float extendedEnd = note.time + kGraceTime;
-				if (m_MusicTime < displayStart || m_MusicTime > extendedEnd) continue;
-
-				spawnedThisLane = true;
-
-				m_LongAmbientParticleTimer[lane] += deltaTime;
-				if (m_LongAmbientParticleTimer[lane] >= kAmbientInterval)
+				bool spawnedThisLane = false;
+				for (auto& note : m_Notes)
 				{
-					m_LongAmbientParticleTimer[lane] = 0.0f;
+					if (!note.IsLong()) continue;
+					if (note.lane != lane) continue;
+					if (note.judged) continue;
 
-					// ノーツの経路上のランダムな地点を選ぶ
-					float sampleT = (float)rand() / RAND_MAX;
-					float sampleTime = displayStart + (m_MusicTime - displayStart) * sampleT;
+					float displayStart = note.GetSpawnTime();
+					float extendedEnd = note.time + kGraceTime;
+					if (m_MusicTime < displayStart || m_MusicTime > extendedEnd) continue;
 
-					Vector3 spawnPos = NotePath::EvaluateLongNotePosition(note, sampleTime);
-					Vector3 laneColor = GetLaneColor(lane);
-					float deg = (float)(rand() % 360);
+					spawnedThisLane = true;
 
-					Particle p(
-						spawnPos,
-						1.2f,                                              // lifeTime
-						8.0f,                                              // gravity
-						Color(laneColor.x, laneColor.y, laneColor.z, 0.8f),// 開始色
-						Color(laneColor.x, laneColor.y, laneColor.z, 0.0f),// 終了色（透明にフェード）
-						0.5f,                                              // フェード開始位置
-						18.0f, 6.0f,                                       // 開始/終了サイズ
-						Vector3(20.0f, 15.0f, 20.0f),                      // 初速
-						deg
-					);
-					m_LongAmbientParticles.push_back(p);
+					m_LongAmbientParticleTimer[lane] += deltaTime;
+					if (m_LongAmbientParticleTimer[lane] >= kAmbientInterval)
+					{
+						m_LongAmbientParticleTimer[lane] = 0.0f;
+
+						// ノーツの経路上のランダムな地点を選ぶ
+						float sampleT = (float)rand() / RAND_MAX;
+						float sampleTime = displayStart + (m_MusicTime - displayStart) * sampleT;
+
+						Vector3 spawnPos = NotePath::EvaluateLongNotePosition(note, sampleTime);
+						Vector3 laneColor = GetLaneColor(lane);
+						float deg = (float)(rand() % 360);
+
+						Particle p(
+							spawnPos,
+							1.2f,                                              // lifeTime
+							8.0f,                                              // gravity
+							Color(laneColor.x, laneColor.y, laneColor.z, 0.8f),// 開始色
+							Color(laneColor.x, laneColor.y, laneColor.z, 0.0f),// 終了色（透明にフェード）
+							0.5f,                                              // フェード開始位置
+							18.0f, 6.0f,                                       // 開始/終了サイズ
+							Vector3(20.0f, 15.0f, 20.0f),                      // 初速
+							deg
+						);
+						m_LongAmbientParticles.push_back(p);
+					}
+					break; // このレーンは1本のロングだけ処理すれば十分
 				}
-				break; // このレーンは1本のロングだけ処理すれば十分
+				if (!spawnedThisLane) m_LongAmbientParticleTimer[lane] = 0.0f;
 			}
-			if (!spawnedThisLane) m_LongAmbientParticleTimer[lane] = 0.0f;
+
+			// 経過したアンビエントパーティクルを削除・更新
+			for (auto& p : m_LongAmbientParticles) { p.Update(deltaTime); }
+			m_LongAmbientParticles.erase(
+				std::remove_if(m_LongAmbientParticles.begin(), m_LongAmbientParticles.end(),
+					[](Particle& p) { return p.IsStop(); }),
+				m_LongAmbientParticles.end()
+			);
 		}
 
-		// 経過したアンビエントパーティクルを削除・更新
-		for (auto& p : m_LongAmbientParticles) { p.Update(deltaTime); }
-		m_LongAmbientParticles.erase(
-			std::remove_if(m_LongAmbientParticles.begin(), m_LongAmbientParticles.end(),
-				[](Particle& p) { return p.IsStop(); }),
-			m_LongAmbientParticles.end()
-		);
 	}
 	m_ComboHud.Update(deltaTime);
 
@@ -1256,7 +1355,8 @@ void ChartObject::Draw(Camera* cam)
 
 
 	// ── ロングノーツ・フリックノーツの描画 ──
-	DrawLongNotes(cam);
+	if (kHighwayMode) DrawHighwayLongNotes(cam);
+	else DrawLongNotes(cam);
 	DrawFlickNotes(cam);
 
 	//魔法障壁　ロングノーツ成功中に出すやつ

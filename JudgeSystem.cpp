@@ -105,16 +105,26 @@ void JudgeSystem::JudgeLongNoteHold(std::vector<ChartNote>& notes, float musicTi
 		if (n.judged) continue;
 
 		if (n.lane < 0 || n.lane >= 6) continue;
-		bool isDown = Input::GetKeyPress(kLaneKeys[n.lane]);
 
 		while (musicTime >= n.nextTickTime - kEps)
 		{
 			bool isFinalTick = (n.nextTickTime >= n.time - kEps);
+			// その tick の時刻に線があるレーン（曲がりの前後は両方）のキーが押されているか
+			bool isDown = false;
+			for (int ln = 0; ln < 6; ln++)
+			{
+				if (n.AcceptsLane(ln, n.nextTickTime, kTurnGrace) && Input::GetKeyPress(kLaneKeys[ln]))
+				{
+					isDown = true;
+					break;
+				}
+			}
+			int effectLane = n.LaneAt(n.nextTickTime);	//今線があるところに出す
 
 			if (isDown)
 			{
 				m_Perfect++;
-				RegisterHit(n.lane, 0);
+				RegisterHit(effectLane, 0);
 			}
 			else
 			{

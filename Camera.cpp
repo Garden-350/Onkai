@@ -121,8 +121,28 @@ void Camera::SetCamera(int mode)
 		Vector3 shakenPos = m_Position + m_ShakeOffset;
 		Vector3 shakenTarget = m_Target + m_ShakeOffset;
 		// ビュー変換行列作成
+		Vector3 eye = m_Position + m_ShakeOffset;
+		Vector3 target = m_Target + m_ShakeOffset;
+
+		if (m_Layer == Layer::World)
+		{
+			Vector3 forward = target - eye;
+			float dist = forward.Length();
+			if (dist > 0.0001f)
+			{
+				forward /= dist;
+				Vector3 right = Vector3::Up.Cross(forward);	//左手系
+				right.Normalize();
+				//右軸回りにマイナス回すと上を向く。その後に左右に振る
+				Matrix rot = Matrix::CreateFromAxisAngle(right, -m_WorldPitch)
+					* Matrix::CreateFromAxisAngle(Vector3::Up, m_WorldYaw);
+				forward = Vector3::TransformNormal(forward, rot);
+				eye += forward * m_WorldDolly;	//前に寄る
+				target = eye + forward * dist;
+			}
+		}
 		Vector3 up = Vector3(0.0f, 1.0f, 0.0f);
-		m_ViewMatrix = DirectX::XMMatrixLookAtLH(shakenPos, shakenTarget, up); //左手系
+		m_ViewMatrix = DirectX::XMMatrixLookAtLH(eye, target, up);	//左手系
 		Renderer::SetViewMatrix(&m_ViewMatrix);
 		//プロジェクション行列の生成
 		constexpr float fieldOfView = DirectX::XMConvertToRadians(45.0f); // 視野角
@@ -133,7 +153,9 @@ void Camera::SetCamera(int mode)
 
 		//プロジェクション行列の生成
 		Matrix projectionMatrix;
+		m_ProjMatrix = projectionMatrix;
 		projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(fieldOfView, aspectRatio, nearPlane, farPlane);	//左手系
+
 
 		Renderer::SetProjectionMatrix(&projectionMatrix);
 	}

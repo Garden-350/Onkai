@@ -18,6 +18,7 @@ private:
 	void Init(); // 初期化
 	void Uninit(); // 終了処理
 	void SendResult();
+	void ApplyCamera();
 
 	ChartObject* m_Chart = nullptr;
 	class SpotlightRow* m_Spotlights = nullptr;	//ランウェイ風なスポットライトを追加したい
@@ -25,6 +26,9 @@ private:
 	float m_FinishWaitTimer = 0.0f;
 	static constexpr float kResultDelaySeconds = 2.0f;	//曲が終わってから何秒待つか
 
+	float m_CamHeight = 840.0f;	//判定ラインからの高さ
+	float m_CamBack = 670.0f;	//判定ラインから手前への距離
+	float m_CamLookAhead = 500.0f;	//判定ラインよりどれだけ奥を見るか
 public:
 	Stage1Scene(); // コンストラクタ
 	~Stage1Scene(); // デストラクタ

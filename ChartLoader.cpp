@@ -146,6 +146,21 @@ namespace ChartLoader
 				if (n.Has("spiralRadius"))
 					note.spiralRadius = n["spiralRadius"].AsFloat(0.0f);
 
+				//移動するロングの曲がり点
+				if (n.Has("turns") && n["turns"].IsArray())
+				{
+					for (const auto& tr : n["turns"].arrayValue)
+					{
+						LaneTurn t;
+						t.time = tr["time"].AsFloat(0.0f);
+						t.lane = tr["lane"].AsInt(note.lane);
+						if (t.lane < 0 || t.lane > 5) continue;
+						note.turns.push_back(t);
+					}
+					std::sort(note.turns.begin(), note.turns.end(),
+						[](const LaneTurn& a, const LaneTurn& b) { return a.time < b.time; });
+				}
+
 				// 状態フラグの初期化
 				note.judged = false;
 				note.approcachPlayed = false;

@@ -6,6 +6,37 @@
 //CameraƒNƒ‰ƒX
 //-----------------------------------------------------------------------------
 class Camera {
+public:
+	enum class Layer
+	{
+		Playfield,	//•ˆ–Ê
+		World		//”wŒi
+	};
+	void Init();
+	void Update();
+	void SetCamera(int mode = 0);
+	void Uninit();
+	void SetFixedPose(DirectX::SimpleMath::Vector3 pos, DirectX::SimpleMath::Vector3 target);
+
+	void SetTarget(DirectX::SimpleMath::Vector3 target);
+	void SetShakeOffset(const DirectX::SimpleMath::Vector3& offset) { m_ShakeOffset = offset; }
+	void SetLayer(Layer layer) { m_Layer = layer; }
+	void SetWorldOffset(float yaw, float pitch, float dolly)
+	{
+		m_WorldYaw = yaw;
+		m_WorldPitch = pitch;
+		m_WorldDolly = dolly;
+	}
+
+	float GetDirection() const { return m_CameraDirection; }
+
+	const DirectX::SimpleMath::Matrix& GetViewMatrix();
+	const DirectX::SimpleMath::Matrix& GetProjectionMatrix() const { return m_ProjMatrix; }
+	DirectX::SimpleMath::Vector3 GetPosition() const
+	{
+		return m_Position;
+	}
+
 private:
 	DirectX::SimpleMath::Matrix m_ProjMatrix{};
 	DirectX::SimpleMath::Vector3	m_Position = DirectX::SimpleMath::Vector3(0.0f, 0.0f, 0.0f);
@@ -40,22 +71,7 @@ private:
 
 	bool m_Fixed = false;
 
-public:
-	void Init();
-	void Update();
-	void SetCamera(int mode = 0);
-	void Uninit();
-	void SetFixedPose(DirectX::SimpleMath::Vector3 pos, DirectX::SimpleMath::Vector3 target);
+	Layer m_Layer = Layer::Playfield;
+	float m_WorldYaw = 0.0f, m_WorldPitch = 0.0f, m_WorldDolly = 0.0f;
 
-	void SetTarget(DirectX::SimpleMath::Vector3 target);
-	void SetShakeOffset(const DirectX::SimpleMath::Vector3& offset) { m_ShakeOffset = offset; }
-
-	float GetDirection() const { return m_CameraDirection; }
-
-	const DirectX::SimpleMath::Matrix& GetViewMatrix();
-	const DirectX::SimpleMath::Matrix& GetProjectionMatrix() const { return m_ProjMatrix; }
-	DirectX::SimpleMath::Vector3 GetPosition() const
-	{
-		return m_Position;
-	}
 };

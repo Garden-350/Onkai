@@ -76,6 +76,12 @@
     <FxCompile Include="shader\screenFadePS.hlsl">
       <Filter>リソースファイル</Filter>
     </FxCompile>
+    <FxCompile Include="shader\longBeamPS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\longBeamVS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChartObject.cpp">
@@ -177,9 +183,6 @@
     <ClCompile Include="Texture2D.cpp">
       <Filter>ソースファイル\Appli</Filter>
     </ClCompile>
-    <ClCompile Include="Camera.cpp">
-      <Filter>ソースファイル\Object</Filter>
-    </ClCompile>
     <ClCompile Include="Particle.cpp">
       <Filter>ソースファイル\Particle</Filter>
     </ClCompile>
@@ -267,7 +270,18 @@
     <ClCompile Include="TitleLake.cpp">
       <Filter>ソースファイル\TitlePBR</Filter>
     </ClCompile>
-    <ClCompile Include="PauseOverlay.cpp" />
+    <ClCompile Include="PauseOverlay.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="LongBeamRibbon.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>ソースファイル\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="CameraLayerMarker.cpp">
+      <Filter>ソースファイル\Camera</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -352,9 +366,6 @@
       <Filter>ヘッダーファイル\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Baton.h">
-      <Filter>ヘッダーファイル\Object</Filter>
-    </ClInclude>
-    <ClInclude Include="Camera.h">
       <Filter>ヘッダーファイル\Object</Filter>
     </ClInclude>
     <ClInclude Include="Collision.h">
@@ -486,7 +497,18 @@
     <ClInclude Include="TitleLake.h">
       <Filter>ヘッダーファイル\TitlePBR</Filter>
     </ClInclude>
-    <ClInclude Include="PauseOverlay.h" />
+    <ClInclude Include="PauseOverlay.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="LongBeamRibbon.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>ヘッダーファイル\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="CameraLayerMarker.h">
+      <Filter>ヘッダーファイル\Camera</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">
@@ -545,6 +567,12 @@
     </Filter>
     <Filter Include="ヘッダーファイル\TitlePBR">
       <UniqueIdentifier>{65ac21ec-0252-430a-8d65-563781fee656}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Camera">
+      <UniqueIdentifier>{393809a1-5126-478b-9bfa-c6b3c0ac5959}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Camera">
+      <UniqueIdentifier>{154a7a5d-421a-4c37-b0c2-d72bb5c695f3}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

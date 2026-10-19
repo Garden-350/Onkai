@@ -36,7 +36,7 @@ void SelectScene::Init()
 	Renderer::SetDepthEnable(true);
 	sound.Init();
 	Texture2D* pt = Game::GetInstance()->AddObject<Texture2D>();
-	pt->SetTexture("assets/texture/park.jpg");
+	pt->SetTexture("assets/texture/saiba-.jpg");
 	pt->SetPosition(0.0f, 0.0f, 485.0f);
 	pt->SetRotation(0.0f, 0.0f, 0.0f);
 	pt->SetScale(1280.0f, 720.0f, 0.0f);
@@ -119,19 +119,13 @@ void SelectScene::Update()
 		return;
 	}
 
-	//今選択してるジャケットによって曲を流そうと思ったんだけどうまくいかなかった残骸
-	//if (m_AudioFile.empty())
-	//{
-	//	sound.PlayDynamic();
-	//}
-
 	// Sキーで前の曲へ
-	if (Input::GetKeyTrigger(VK_S))
+	if (Input::GetKeyTrigger(VK_S) || Input::GetKeyTrigger(VK_LEFT))
 	{
 		ShiftJackets(-1);
 	}
 	// Dキーで次の曲へ
-	if (Input::GetKeyTrigger(VK_D))
+	if (Input::GetKeyTrigger(VK_D) || Input::GetKeyTrigger(VK_RIGHT))
 	{
 		ShiftJackets(1);
 	}

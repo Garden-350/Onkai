@@ -12,6 +12,7 @@
 #include <vector>
 #include <memory>
 #include <chrono>
+#include <cmath>
 #include "Particle.h"
 #include "MagicCircleQuad.h"
 #include "BarrierQuad.h"
@@ -24,6 +25,7 @@
 #include "HitPillarEffect.h"
 #include "BarrierPlate.h"
 #include "JudgeLineGuide.h"
+#include "LongBeamRibbon.h"
 
 class Player;
 class Enemy;
@@ -39,6 +41,12 @@ enum class ChartNoteType
 	LONGNOTE = 1,
 	FLICK_RIGHT = 2,
 	FLICK_LEFT = 3
+};
+
+struct LaneTurn
+{
+	float time = 0.0f;
+	int lane = 0;
 };
 
 // ============================================================
@@ -58,6 +66,7 @@ struct ChartNote
 	DirectX::SimpleMath::Vector3 spawnPos{};	// 出現位置（ワールド座標）
 	DirectX::SimpleMath::Vector3 judgePos{};	// 判定位置（ワールド座標）
 	std::vector<DirectX::SimpleMath::Vector3> controlPoints;	// ベジェ曲線の制御点。0個=直線 1個=2次ベジェ 2個=3次ベジェ
+	std::vector<LaneTurn> turns;	//LONG専用の曲がる点
 
 	//フィナーレ演出用：ロングノーツを螺旋状に描画するオプション（無指定なら従来通り直線）──
 	float spiralTurns = 0.0f;		// 螺旋の回転数（例:2.0で2回転）。0なら螺旋なし
@@ -69,6 +78,26 @@ struct ChartNote
 
 	//LONGNOTE専用の状態 
 	float nextTickTime = 0.0f;	// 次に「継続判定(tick)」を加算すべき時刻
+
+	//t秒の時点で線があるレーン
+	int LaneAt(float t) const
+	{
+		int ln = lane;
+		for (const auto& tr : turns) { if (t >= tr.time) ln = tr.lane; else break; }
+		return ln;
+	}
+	//t秒にそのレーンのキーで受けてよいか
+	bool AcceptsLane(int keyLane, float t, float grace) const
+	{
+		if (LaneAt(t) == keyLane) return true;
+		int prev = lane;
+		for (const auto& tr : turns)
+		{
+			if (std::fabs(t - tr.time) <= grace && (keyLane == prev || keyLane == tr.lane)) return true;
+			prev = tr.lane;
+		}
+		return false;
+	}
 
 	// 出現時刻を取得。未設定なら「判定時刻の1秒前」をデフォルトとする
 	float GetSpawnTime() const
@@ -83,6 +112,7 @@ struct ChartNote
 	bool IsFlick()  const { return type == (int)ChartNoteType::FLICK_RIGHT || type == (int)ChartNoteType::FLICK_LEFT; }
 	bool IsFlickRight() const { return type == (int)ChartNoteType::FLICK_RIGHT; }
 };
+
 
 // ============================================================
 // 判定円の1キーフレーム（time秒時点でのxyz座標）
@@ -125,6 +155,8 @@ struct ChartKeyLightEffect
 class ChartObject : public Object
 {
 public:
+	//判定円6個の中心位置にカメラ
+	DirectX::SimpleMath::Vector3 GetJudgeLineCenter() const;
 
 	void Init() override;
 	void Update() override;
@@ -167,15 +199,16 @@ public:
 	void AddPauseOffset(std::chrono::steady_clock::duration offset);
 
 private:
-	// ────────────────────────────────────────
+	// ===================
 	// TAPノーツ本体の3Dモデル・エフェクト一式
-	// ────────────────────────────────────────
+	// ===================
 
 	ClosingRingGuide m_ClosingRingGuide;	// 判定円の外枠が閉じるやつ
 	HitPillarEffect m_HitPillar;			//判定時に判定円から伸びる光の柱
 	JudgeLineGuide m_JudgeGuide;			//ストライクライン・判定パッド・レーンのトラック・拍の線
 	float m_LaneGlow[6] = { 0,0,0,0,0,0 };	//レーンバッドの光具合。押している間、判定した直後に上がる
 	DirectX::SimpleMath::Vector3 m_LaneTrackOffset[6];	// 判定円→ノーツが飛んでくる奥の端 までの平均ベクトル（LoadChartで計算）
+	DirectX::SimpleMath::Vector3 LongPointAt(const ChartNote& n, float tau) const;
 	float m_TrackApproachSeconds = 1.0f;	// ノーツが出現してから判定までの平均秒数（拍の線の流れる速さに使う）
 	BarrierPlate m_BarrierPlate;
 	JudgeSystem m_JudgeSystem;	// 判定結果の集計・参照用
@@ -189,7 +222,7 @@ private:
 	bool m_ShowLaneKeyIcons = false;	// レーンキーアイコン(S/D/F/J/K/L)を表示するか。視認性改善のためデフォルトOFF
 	Texture2D m_LaneFrame[6];		// 判定円の外枠
 	bool m_ShowLaneFrame = false;		// 判定円の外枠(sotohako)を表示するか。デフォルトOFF
-	Texture2D m_LaneFill[6];		// 判定円の内側（接近度に応じて育つ・フェードイン）
+	Texture2D m_LaneFill[6];		//判定円の内側（接近度に応じて育つ・フェードイン）
 	std::vector<SUBSET> m_Subsets;
 	std::vector<Particle> m_Particle;
 	std::vector<Particle> m_LongAmbientParticles;
@@ -198,22 +231,25 @@ private:
 	float m_TapAuraTimer[6] = { 0,0,0,0,0,0 };
 	ParticleQuad m_LongParticleQuad;
 	ParticleQuad m_TapOrbAuraQuad;
+	LongBeamRibbon m_LongBeam;	//ロングの光の帯
 	std::vector<std::unique_ptr<Material>> m_Materials;
 	std::vector<std::unique_ptr<Texture>> m_Textures;
-	std::vector<ChartKeyLightEffect> m_LightEffects;	// 判定時のキーライト点滅エフェクト
+	std::vector<ChartKeyLightEffect> m_LightEffects;	//判定時のキーライト点滅エフェクト
 	std::chrono::steady_clock::time_point m_LastUpdateClock;
+	std::vector<LongBeamRibbon::Point> m_LongPoints; //帯の点（毎フレーム作り直す）
 	std::string m_AudioFile;
-	float m_NoteScale = 30.0f;	// TAPモデルの表示スケール
+	float m_NoteScale = 60.0f;	// TAPモデルの表示スケール
 	float m_BarrierSparkleTimer[6] = { 0,0,0,0,0,0 };	//レーンごとのキラキラパーティクル生成タイマー
 	float m_LongAmbientParticleTimer[6] = { 0,0,0,0,0,0 };
 
+	void DrawHighwayLongNotes(Camera* cam);
 	void DrawSpawnMagicCircle(Camera* cam, const ChartNote& note);
 
-	// ────────────────────────────────────────
+	// ===================
 	// ロングノーツ用モデル（sentan=先端／dou=本体(鎖)／o=終端の輪）
 	// エディター(Game.cpp)の m_Long_Sentan_Model 等に対応する3パーツ構成。
 	// ロード失敗時は個別に「TAPモデルで代用」にフォールバックする。
-	// ────────────────────────────────────────
+	// ===================
 	bool m_LongSentanLoaded = false;
 	MeshRenderer m_LongSentanRenderer;
 	Shader m_LongSentanShader;
@@ -237,9 +273,9 @@ private:
 	std::vector<std::unique_ptr<Material>> m_LongOMaterials;
 	std::vector<std::unique_ptr<Texture>> m_LongOTextures;
 
-	// ────────────────────────────────────────
+	// ===================
 	// フリック用モデル（無ければTAPモデルで代用）
-	// ────────────────────────────────────────
+	// ===================
 	bool m_FlickModelLoaded = false;
 	MeshRenderer m_FlickMeshRenderer;
 	Shader m_FlickShader;
@@ -254,9 +290,9 @@ private:
 	bool m_AutoMode = false;
 
 
-	// ────────────────────────────────────────
+	// ===================
 	// 譜面データ本体
-	// ────────────────────────────────────────
+	// ===================
 	std::vector<ChartNote> m_Notes;
 	std::vector<ChartJudgeCircle> m_JudgeCircles;	// レーン0〜5に対応
 
@@ -307,5 +343,11 @@ private:
 		default: return DirectX::SimpleMath::Vector3(1.0f, 1.0f, 1.0f);
 		}
 	}
+
+	//ハイウェイにするやつ
+	static constexpr bool kHighwayMode = true;	//falseにするとエディターのやつ
+	float m_HighwayDepth = 1800.0f;	//判定円から出現位置までの奥行
+	float m_HighwayApproach = 1.2f;	//出現から判定までの秒数
+
 	ComboHud m_ComboHud;
 };

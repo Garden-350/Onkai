@@ -56,6 +56,12 @@ void Game::Update()
 		{
 			//ポーズ開始時刻を記録
 			m_Instance->m_PauseStartClock = std::chrono::steady_clock::now();
+			//ポーズ中にループ音が鳴り続けないように止める
+			for (auto& o : m_Instance->m_Objects)
+			{
+				if (auto chart = dynamic_cast<ChartObject*>(o.get()))
+					chart->StopLongSounds();
+			}
 		}
 		else
 		{

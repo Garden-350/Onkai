@@ -20,6 +20,7 @@ typedef enum
 	SOUND_SUZU,
 	SOUND_LONG_END,
 	SOUND_CLAMPU,
+	SOUND_CHARGE,
 
 	SOUND_LABEL_BGM001,
 	SOUND_LABEL_BGM002,
@@ -56,6 +57,7 @@ private:
 		{"assets/se/suzu.mp3",false},
 		{"assets/se/Long_end.mp3",false},
 		{"assets/se/clampu.mp3",false},
+		{"assets/se/charge.wav",false},
 
 		{"assets/bgm/mirror.wav", true},
 		{"assets/bgm/maou_bgm_piano39.wav", true},

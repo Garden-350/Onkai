@@ -145,7 +145,7 @@ void ChartObject::Init()
 
 	//  TAPノーツ本体モデルのロード（これは必須。無いと何も表示されない）
 	StaticMesh staticmesh;
-	std::string modelFile = "assets/model/maru/maru.fbx";
+	std::string modelFile = "assets/model/note/tap.fbx";
 	std::string texDirectory = "assets/model/maru";
 
 	staticmesh.Load(modelFile, texDirectory);
@@ -397,6 +397,11 @@ void ChartObject::AddPauseOffset(std::chrono::steady_clock::duration offset)
 	m_LastUpdateClock += offset;
 }
 
+void ChartObject::StopLongSounds()
+{
+	sound.Stop(SOUND_CHARGE);
+}
+
 //移動するロング　tau秒に判定ラインへ届く部分が今どこにあるか
 DirectX::SimpleMath::Vector3 ChartObject::LongPointAt(const ChartNote& n, float tau) const
 {
@@ -479,6 +484,53 @@ void ChartObject::DrawSpawnMagicCircle(Camera* cam, const ChartNote& note)
 	Vector3 tintColor(0.05f, 0.05f, 0.05f);
 
 	m_MagicCircleQuad.Draw(pos, 200.0f, progress, glowColor, tintColor);
+}
+
+bool ChartObject::IsHoldingLong(const ChartNote& n) const
+{
+	if (m_MusicTime < n.arrivalTime || m_MusicTime >= n.time) return false;
+	if (m_AutoMode) return true;
+	for (int ln = 0; ln < 6; ln++)
+	{
+		if (n.AcceptsLane(ln, m_MusicTime, JudgeSystem::kTurnGrace) && Input::GetKeyPress(kLaneKeys[ln]))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+//押してる間のループ音と曲がった時の音
+//押している間の音（拍に合わせて一定間隔）と、曲がった時の音
+void ChartObject::UpdateLongSounds()
+{
+	constexpr int kHoldSePerBeat = 2;	// 1拍に何回鳴らすか（2なら8分音符ごと）
+	float beat = (m_Bpm > 0.0f) ? 60.0f / m_Bpm : 0.5f;
+	float interval = beat / kHoldSePerBeat;
+
+	for (auto& n : m_Notes)
+	{
+		if (!n.IsLong() || n.judged) continue;
+		bool holding = IsHoldingLong(n);
+
+		//曲がり点の時刻を過ぎたら一回だけ鳴らす
+		while (n.nextTurnIndex < (int)n.turns.size() && m_MusicTime >= n.turns[n.nextTurnIndex].time)
+		{
+			if (holding) sound.Play(SOUND_CLAMPU);
+			n.nextTurnIndex++;
+		}
+
+		//押している間の音：先端が届いた時刻から interval ごと
+		//（先端が届いた瞬間はタップの判定音が鳴るので、1つ目は1間隔あとから）
+		if (n.nextHoldSeTime < 0.0f) n.nextHoldSeTime = n.arrivalTime + interval;
+		bool due = false;
+		while (m_MusicTime >= n.nextHoldSeTime && n.nextHoldSeTime < n.time)
+		{
+			due = true;
+			n.nextHoldSeTime += interval;
+		}
+		if (due && holding) sound.Play(SOUND_CHARGE);
+	}
 }
 
 // side > 0 : S/D/F側(index 0,1,2)、side <= 0 : J/K/L側(index 3,4,5)
@@ -778,6 +830,9 @@ void ChartObject::Update()
 		m_JudgeSystem.JudgeFlickNotes(m_Notes, m_MusicTime, playerSideForFlick);
 		m_JudgeSystem.JudgeLongNoteHold(m_Notes, m_MusicTime);
 	}
+
+	//ロングノーツの音を鳴らしたりするところ
+	UpdateLongSounds();
 
 	// 判定済み(judged=true)になったノーツをまとめて削除
 	// （TAPの判定はJudgeLaneで即座にjudged=trueにするが、実削除はここでまとめて行う）
@@ -1482,5 +1537,6 @@ void ChartObject::Draw(Camera* cam)
 void ChartObject::Uninit()
 {
 	sound.StopDynamic();
+	StopLongSounds();
 	sound.Uninit();
 }

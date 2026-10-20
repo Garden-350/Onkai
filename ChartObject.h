@@ -61,6 +61,7 @@ struct ChartNote
 	float spawnTime = -1.0f;	// 出現時刻。-1なら GetSpawnTime() が自動計算する
 	float arrivalTime = 0.0f;	// LONGNOTE専用：先端が判定ラインに到達する時刻
 	float holdDuration = 0.0f;	// LONGNOTE専用：保持時間（エディタUI入力補助用。実描画では time-arrivalTime を都度計算するので必須ではない）
+	float nextHoldSeTime = -1.0f;	// LONG専用：次に押している間の音を鳴らす時刻（-1なら未設定）
 	int flickLaneTo = -1;		// FLICK専用：フリックの着地先レーン。-1なら「lane と同じ」扱い
 
 	DirectX::SimpleMath::Vector3 spawnPos{};	// 出現位置（ワールド座標）
@@ -78,6 +79,8 @@ struct ChartNote
 
 	//LONGNOTE専用の状態 
 	float nextTickTime = 0.0f;	// 次に「継続判定(tick)」を加算すべき時刻
+
+	int nextTurnIndex = 0;		//次に音を鳴らす曲がり点
 
 	//t秒の時点で線があるレーン
 	int LaneAt(float t) const
@@ -197,6 +200,7 @@ public:
 
 	void DrawLaneGuideLines(Camera* cam);
 	void AddPauseOffset(std::chrono::steady_clock::duration offset);
+	void StopLongSounds();					// ポーズ時に Game から呼ぶ
 
 	Camera::Layer GetLayer() const override { return Camera::Layer::Playfield; }
 
@@ -246,6 +250,10 @@ private:
 
 	void DrawHighwayLongNotes(Camera* cam);
 	void DrawSpawnMagicCircle(Camera* cam, const ChartNote& note);
+
+	bool m_HoldSePlaying = false;			// 押している間のループ音が鳴っているか
+	bool IsHoldingLong(const ChartNote& n) const;
+	void UpdateLongSounds();
 
 	// ===================
 	// ロングノーツ用モデル（sentan=先端／dou=本体(鎖)／o=終端の輪）

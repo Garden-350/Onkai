@@ -26,8 +26,9 @@ private:
 	float m_FinishWaitTimer = 0.0f;
 	static constexpr float kResultDelaySeconds = 2.0f;	//曲が終わってから何秒待つか
 
-	float m_CamHeight = 840.0f;	//判定ラインからの高さ
-	float m_CamBack = 670.0f;	//判定ラインから手前への距離
+	//元のカメラの座標(0,-535,-210)これをそれぞれ計算する
+	float m_CamHeight = 980.0f;	//判定ラインからの高さ     (デバッグログの2つめの数値)-(-535)
+	float m_CamBack = 670.0f;	//判定ラインから手前への距離	-210-(でばっブログの3つめの数値)
 	float m_CamLookAhead = 500.0f;	//判定ラインよりどれだけ奥を見るか
 public:
 	Stage1Scene(); // コンストラクタ

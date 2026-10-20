@@ -36,7 +36,7 @@ void Player::Init()
 	m_Size = Vector3(0.05f, 0.05f, 0.05f);
 
 	// カメラに一番近い・一番低い位置＝スケッチの「じぶん」の位置に合わせる
-	m_BasePosition = Vector3(0.0f, -60.0f, -550.0f);
+	m_BasePosition = Vector3(0.0f, -160.0f, -580.0f);
 	m_Position = m_BasePosition;
 	m_VisualX = m_BasePosition.x;
 }

@@ -122,10 +122,20 @@ void Game::Draw()
 	//Renderer::DrawStart();
 	m_Instance->m_PostFlash.BeginScene();
 	
+	Camera* cam = &m_Instance->m_Camera;
+
+	//1‰ñ–Ú‚É”wŒi•`‰æ@SetWorldOffset‚Ì‰e‹¿‚ðŽó‚¯‚é
+	cam->SetLayer(Camera::Layer::World);
 	for (auto& o : m_Instance->m_Objects)
-	{
-		o->Draw(&m_Instance->m_Camera);
-	}
+		if (o->GetLayer() == Camera::Layer::World)o->Draw(cam);
+
+	//”wŒi‚Ì‰œs‚ðÁ‚·@•ˆ–Ê‚Í”wŒi‚æ‚èŽè‘O
+	Renderer::ClearCurrentDepth();
+
+	//2‰ñ–Ú@•ˆ–Ê•`‰æ
+	cam->SetLayer(Camera::Layer::Playfield);
+	for (auto& o : m_Instance->m_Objects)
+		if (o->GetLayer() == Camera::Layer::Playfield)o->Draw(cam);
 
 	float flashAlpha = 0.0f;
 	for (auto& o : m_Instance->m_Objects)

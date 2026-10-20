@@ -23,6 +23,7 @@ public:
 	virtual void Update() = 0;
 	virtual void Draw(Camera* cam) = 0;
 	virtual void Uninit() = 0;
+	virtual Camera::Layer GetLayer() const { return Camera::Layer::World; }
 
 	void Kill() { m_IsAlive = false; }
 	bool IsAlive() const { return m_IsAlive; }

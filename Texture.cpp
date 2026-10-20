@@ -1,11 +1,34 @@
 #include	<iostream>
+#include    <unordered_map>
 #include	"Texture.h"
 #include	"stb_image.h"
 #include	"renderer.h"
 
+namespace
+{
+	struct CachedTexture
+	{
+		ComPtr<ID3D11ShaderResourceView> srv;
+		int width, height, bpp;
+	};
+	std::unordered_map<std::string, CachedTexture> g_TextureCache;
+}
+
 // テクスチャをロード
 bool Texture::Load(const std::string& filename)
 {
+	//前に読んだことがあればおなじものを共有
+	auto cached = g_TextureCache.find(filename);
+	if (cached != g_TextureCache.end())
+	{
+		m_srv = cached->second.srv;
+		m_width = cached->second.width;
+		m_height = cached->second.height;
+		m_bpp = cached->second.bpp;
+		m_texname = filename;
+		return true;
+	}
+
 	bool sts = true;
 	unsigned char* pixels;
 
@@ -58,6 +81,7 @@ bool Texture::Load(const std::string& filename)
 	// テクスチャ解放
 	//pTexture->Release();
 
+	g_TextureCache[filename] = { m_srv, m_width, m_height, m_bpp };
 	return true;
 }
 

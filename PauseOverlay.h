@@ -10,6 +10,8 @@ public:
 	void Update() override {};
 	void Draw(Camera* cam) override;
 	void Uninit() override {};
+
+	Camera::Layer GetLayer() const override { return Camera::Layer::Playfield; }
 private:
 	ScreenFade m_Fade;
 	Texture2D m_TextRetry;

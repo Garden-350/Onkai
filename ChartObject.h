@@ -198,6 +198,8 @@ public:
 	void DrawLaneGuideLines(Camera* cam);
 	void AddPauseOffset(std::chrono::steady_clock::duration offset);
 
+	Camera::Layer GetLayer() const override { return Camera::Layer::Playfield; }
+
 private:
 	// ===================
 	// TAPノーツ本体の3Dモデル・エフェクト一式

@@ -1,6 +1,15 @@
 
 #include "Renderer.h"
 #include "Application.h"
+#include <unordered_map>
+#include <vector>
+#include <string>
+
+namespace
+{
+	//一度コンパイルしたシェーダーのバイナリを覚えておく（キー：ファイル名|エントリ|モデル）
+	std::unordered_map<std::string, std::vector<unsigned char>> g_ShaderCache;
+}
 
 
 using namespace DirectX::SimpleMath;
@@ -567,6 +576,20 @@ HRESULT Renderer::ResizeWindow(int width, int height)
 //--------------------------------------------------------------------------------------
 HRESULT Renderer::CompileShader(const char* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, void** ppShaderObject, int* pShaderObjectSize)
 {
+	//前にコンパイルしたことがあればそのコピーを返す
+	std::string cacheKey = std::string(szFileName) + "|" + szEntryPoint + "|" + szShaderModel;
+	auto cached = g_ShaderCache.find(cacheKey);
+	if (cached != g_ShaderCache.end())
+	{
+		const auto& bin = cached->second;
+		unsigned char* byteArray = new unsigned char[bin.size()];	//呼び出し側がdelete[]する
+		memcpy(byteArray, bin.data(), bin.size());
+		*ppShaderObject = byteArray;
+		*pShaderObjectSize = (int)bin.size();
+		return S_OK;
+	}
+	OutputDebugStringA(("[Shader] compile:" + cacheKey + "\n").c_str());
+	
 	//拡張子csoのファイル名を作成
 	char csoFileName[256];
 	const char* dot = strrchr(szFileName, '.');  // 最後の '.' を探す
@@ -614,7 +637,7 @@ HRESULT Renderer::CompileShader(const char* szFileName, LPCSTR szEntryPoint, LPC
 		// シェーダーコンパイルオプションを設定
 		DWORD dwShaderFlags = D3DCOMPILE_ENABLE_STRICTNESS;
 #if defined( DEBUG ) || defined( _DEBUG )
-		dwShaderFlags |= D3DCOMPILE_DEBUG; // デバッグビルドの場合はデバッグ情報も含める
+		dwShaderFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION; // デバッグビルドの場合はデバッグ情報も含める
 #endif
 
 		// コンパイル結果およびエラー情報格納用のBlob
@@ -660,6 +683,9 @@ HRESULT Renderer::CompileShader(const char* szFileName, LPCSTR szEntryPoint, LPC
 		*ppShaderObject = byteArray;
 		*pShaderObjectSize = (int)size;
 	}
+
+	unsigned char* p = (unsigned char*)*ppShaderObject;
+	g_ShaderCache[cacheKey].assign(p, p + *pShaderObjectSize);
 
 	return S_OK;
 }

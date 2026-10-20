@@ -120,9 +120,6 @@
     <ClCompile Include="main.cpp">
       <Filter>ソースファイル\Appli</Filter>
     </ClCompile>
-    <ClCompile Include="Object.cpp">
-      <Filter>ソースファイル\Appli</Filter>
-    </ClCompile>
     <ClCompile Include="Renderer.cpp">
       <Filter>ソースファイル\Appli</Filter>
     </ClCompile>
@@ -281,6 +278,9 @@
     </ClCompile>
     <ClCompile Include="CameraLayerMarker.cpp">
       <Filter>ソースファイル\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Object.cpp">
+      <Filter>ソースファイル\Object</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -46,9 +46,9 @@ void Stage1Scene::Init()
 	//m_MySceneObjects.emplace_back(ground);
 	//auto* skybox = Game::GetInstance()->AddObject<SkyBox>();
 	//m_MySceneObjects.emplace_back(skybox);
-	auto* worldLayer = Game::GetInstance()->AddObject<CameraLayerMarker>();
-	worldLayer->SetUp(Camera::Layer::World, false);
-	m_MySceneObjects.emplace_back(worldLayer);
+	//auto* worldLayer = Game::GetInstance()->AddObject<CameraLayerMarker>();
+	//worldLayer->SetUp(Camera::Layer::World, false);
+	//m_MySceneObjects.emplace_back(worldLayer);
 
 	//背景画像
 	auto* backdrop = Game::GetInstance()->AddObject<StageBackdrop>();
@@ -63,8 +63,8 @@ void Stage1Scene::Init()
 	auto* enemy = Game::GetInstance()->AddObject<Enemy>();
 	m_MySceneObjects.emplace_back(enemy);
 	spotlights->SetFarTarget(enemy->GetPosition());	//列の奥の端を敵の位置に設定
-	//auto* player = Game::GetInstance()->AddObject<Player>();
-	//m_MySceneObjects.emplace_back(player);
+	auto* player = Game::GetInstance()->AddObject<Player>();
+	m_MySceneObjects.emplace_back(player);
 	auto* chart = Game::GetInstance()->AddObject<ChartObject>();
 	chart->LoadChart(Game::GetInstance()->GetSelectedChart());
 	m_MySceneObjects.emplace_back(chart);
@@ -154,6 +154,7 @@ void Stage1Scene::Uninit()
 		Game::GetInstance()->DeleteObject(o);
 	}
 	m_MySceneObjects.clear();
+	Game::GetInstance()->GetCamera()->SetWorldOffset(0.0f, 0.0f, 0.0f);
 }
 
 void Stage1Scene::SendResult()

@@ -153,9 +153,9 @@ void Camera::SetCamera(int mode)
 
 		//プロジェクション行列の生成
 		Matrix projectionMatrix;
-		m_ProjMatrix = projectionMatrix;
 		projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(fieldOfView, aspectRatio, nearPlane, farPlane);	//左手系
 
+		m_ProjMatrix = projectionMatrix;
 
 		Renderer::SetProjectionMatrix(&projectionMatrix);
 	}

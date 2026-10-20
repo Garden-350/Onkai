@@ -351,5 +351,8 @@ private:
 	float m_HighwayDepth = 1800.0f;	//判定円から出現位置までの奥行
 	float m_HighwayApproach = 1.2f;	//出現から判定までの秒数
 
+	//直前にロングを押しきった曲時間を記録
+	float m_GazeKickTime = -1000.0f;
+
 	ComboHud m_ComboHud;
 };

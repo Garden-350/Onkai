@@ -18,6 +18,9 @@ public:
 	using OnJudgeFn = std::function<void(int laneIndex, int rank)>;
 	// TAPノーツが無いレーンを空押ししたときに呼ばれる
 	using OnEmptyPressFn = std::function<void(int laneIndex)>;
+	using OnLongEndFn = std::function<void(int laneIndex)>;
+
+	void SetOnLongEnd(OnLongEndFn fn) { m_OnLongEnd = fn; }
 
 	void SetOnJudge(OnJudgeFn fn) { m_OnJudge = fn; }
 	void SetOnEmptyPress(OnEmptyPressFn fn) { m_OnEmptyPress = fn; }
@@ -59,6 +62,7 @@ private:
 
 	OnJudgeFn m_OnJudge;
 	OnEmptyPressFn m_OnEmptyPress;
+	OnLongEndFn m_OnLongEnd;
 
 	//判定タイミングの許容誤差（秒）。値が小さいほどシビア
 	static constexpr float kPerfect = 0.06f;

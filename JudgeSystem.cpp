@@ -134,6 +134,7 @@ void JudgeSystem::JudgeLongNoteHold(std::vector<ChartNote>& notes, float musicTi
 
 			if (isFinalTick)
 			{
+				if (isDown && m_OnLongEnd) m_OnLongEnd(n.lane);	//最後まで押した
 				n.judged = true;
 				break;
 			}

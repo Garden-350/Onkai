@@ -138,6 +138,7 @@ void ChartObject::Init()
 
 	m_AutoMode = Game::GetInstance()->IsAutoMode();
 	m_JudgeSystem.SetOnJudge([this](int laneIndex, int rank) { OnJudge(laneIndex, rank); });
+	m_JudgeSystem.SetOnLongEnd([this](int) { m_GazeKickTime = m_MusicTime; });
 	m_JudgeSystem.SetOnEmptyPress([this](int laneIndex) { OnEmptyLanePress(laneIndex); });
 	// サウンドエンジン初期化 
 	sound.Init();
@@ -790,6 +791,23 @@ void ChartObject::Update()
 	{
 		int playerSide = m_PlayerRef ? m_PlayerRef->GetSide() : 0;
 		m_BeamSystem.Update(deltaTime, m_MusicTime, playerSide, GetPlayerSideAnchor(playerSide), sound, m_ScreenEffects);
+	}
+
+	//Camera::Layer::Worldのほうの目線をロングを押し切った瞬間に上げて一拍後戻す
+	{
+		float beat = (m_Bpm > 0.0f) ? 60.0f / m_Bpm : 0.5f;
+		float a = (m_MusicTime - m_GazeKickTime) / beat;	//経過を拍で数える
+		float k = 0.0f;
+		if (a >= 0.0f && a <= 1.0f)
+		{
+			float up = std::min(a / 0.15f, 1.0f);	//0.15拍で上がり切る
+			float down = 1.0f - std::max((a - 0.4f) / 0.6f, 0.0f);	//0.4拍から戻る
+			k = up * down;
+			k = k * k * (3.0f - 2.0f * k);	//smoothstep 動き始めと終わりを滑らかに
+		}
+		Game::GetInstance()->GetCamera()->SetWorldOffset(
+			0.0f, DirectX::XMConvertToRadians(3.0f) * k, 0.0f
+		);
 	}
 }
 // ============================================================

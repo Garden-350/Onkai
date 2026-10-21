@@ -138,7 +138,12 @@ void ChartObject::Init()
 
 	m_AutoMode = Game::GetInstance()->IsAutoMode();
 	m_JudgeSystem.SetOnJudge([this](int laneIndex, int rank) { OnJudge(laneIndex, rank); });
-	m_JudgeSystem.SetOnLongEnd([this](int) { m_GazeKickTime = m_MusicTime; });
+	m_JudgeSystem.SetOnLongEnd([this](int)
+		{
+			m_GazeKickTime = m_MusicTime;
+			//カウンター　HPの4割りをロングの本数で割った分のダメージにする
+			if (m_EnemyRef && m_LongCount > 0) m_EnemyRef->Damage(40.0f / m_LongCount);
+		});
 	m_JudgeSystem.SetOnEmptyPress([this](int laneIndex) { OnEmptyLanePress(laneIndex); });
 	// サウンドエンジン初期化 
 	sound.Init();
@@ -257,6 +262,10 @@ void ChartObject::Init()
 		m_LaneFill[i].SetScale(m_FrameSize / 10, m_FrameSize / 10, 1.0f);
 	}
 	m_ComboHud.Init();
+
+	m_EnemyHp.Init();
+	m_EnemyHp.SetPosition(400.0f, 230.0f);	//画面の上
+	m_EnemyHp.SetSize(250.0f);
 }
 
 // ============================================================
@@ -275,11 +284,13 @@ bool ChartObject::LoadChart(const std::string& name)
 
 	m_Notes = result.notes;
 	m_TotalNote = 0;
+	m_LongCount = 0;
 	for (const auto& note : m_Notes)
 	{
 		if (note.IsLong())
 		{
 			m_TotalNote += CountLongNoteCheckPoint(note.arrivalTime, note.time);
+			m_LongCount++;
 		}
 		else
 		{
@@ -529,7 +540,7 @@ void ChartObject::UpdateLongSounds()
 			due = true;
 			n.nextHoldSeTime += interval;
 		}
-		if (due && holding) sound.Play(SOUND_CHARGE);
+		if (due && holding) sound.Play(SOUND_FINGERSNAP);
 	}
 }
 
@@ -732,6 +743,9 @@ void ChartObject::Update()
 	}
 	m_ComboHud.Update(deltaTime);
 
+	if (m_EnemyRef) m_EnemyHp.SetRatio(m_EnemyRef->GetHpRatio());
+	m_EnemyHp.Update(deltaTime);
+
 	if(!m_FullCombo && IsAudioFinish() && IsFullCombo())
 	{
 		m_ComboHud.TriggerFullCombo();
@@ -874,6 +888,9 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 	m_ComboHud.TriggerBarrier(laneIndex);
 	m_ComboHud.TriggerRankPop(laneIndex, rank);
 	m_ComboHud.TriggerComboPop();
+
+	//叩くたびに少しダメージを与える　ロングで4割り削るのであとの6割り分
+	if (m_EnemyRef && m_TotalNote > 0) m_EnemyRef->Damage(60.0f / m_TotalNote);
 
 	if (laneIndex < 0 || laneIndex >= 6) return;
 	m_LaneGlow[laneIndex] = 1.0f;	//判定したレーンのバッドを光らせる
@@ -1527,6 +1544,7 @@ void ChartObject::Draw(Camera* cam)
 		m_BeamSystem.Draw(cam, m_MusicTime, m_EnemyRef, GetPlayerSideAnchor(playerSide));
 	}
 
+	m_EnemyHp.Draw(cam);
 	cam->SetCamera(0);
 }
 

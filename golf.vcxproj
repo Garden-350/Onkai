@@ -154,6 +154,7 @@
     <ClCompile Include="CityBuildings.cpp" />
     <ClCompile Include="ClosingRingGuide.cpp" />
     <ClCompile Include="ComboHud.cpp" />
+    <ClCompile Include="HexHpGauge.cpp" />
     <ClCompile Include="HitPillarEffect.cpp" />
     <ClCompile Include="JudgeLineGuide.cpp" />
     <ClCompile Include="JudgeSystem.cpp" />
@@ -222,6 +223,7 @@
     <ClInclude Include="CityBuildings.h" />
     <ClInclude Include="ClosingRingGuide.h" />
     <ClInclude Include="ComboHud.h" />
+    <ClInclude Include="HexHpGauge.h" />
     <ClInclude Include="HitPillarEffect.h" />
     <ClInclude Include="JudgeLineGuide.h" />
     <ClInclude Include="JudgeSystem.h" />

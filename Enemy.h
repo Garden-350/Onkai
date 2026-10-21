@@ -16,10 +16,21 @@ public:
 	void Update() override;
 	void Draw(Camera* cam) override;
 	void Uninit() override;
+	void Damage(float amount)
+	{
+		m_Hp -= amount;
+		if (m_Hp < 0.0f) m_Hp = 0.0f;	// 0‚æ‚è‰º‚É‚Í‚µ‚È‚¢
+		m_HitTimer = 0.25f;
+	}
+	float GetHpRatio() const { return m_Hp / m_MaxHp; }
+	bool IsDefeated() const { return m_Hp <= 0.0f; }
 
 	DirectX::SimpleMath::Vector3 GetPosition() const { return m_Position; }
 private:
 	float m_Size = 200.0f;
+	float m_MaxHp = 100.0f;
+	float m_Hp = 100.0f;
+	float m_HitTimer = 0.0f;	//UŒ‚‚ðŽó‚¯‚Ä‚©‚ç—h‚ê‚ÌŽc‚èŽžŠÔ
 
 	DirectX::SimpleMath::Vector3 m_Position = DirectX::SimpleMath::Vector3(0.0f, 100.0f, 200.0f);
 	DirectX::SimpleMath::Vector3 m_Rotation = DirectX::SimpleMath::Vector3(1.57f, 3.14f, 0.0f);

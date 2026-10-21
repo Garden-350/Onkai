@@ -26,6 +26,7 @@
 #include "BarrierPlate.h"
 #include "JudgeLineGuide.h"
 #include "LongBeamRibbon.h"
+#include "HexHpGauge.h"
 
 class Player;
 class Enemy;
@@ -363,4 +364,7 @@ private:
 	float m_GazeKickTime = -1000.0f;
 
 	ComboHud m_ComboHud;
+
+	HexHpGauge m_EnemyHp;	//敵ゲージ
+	int m_LongCount = 0;	//ロングの本数(カウンターのダメージ計算に使用する)
 };

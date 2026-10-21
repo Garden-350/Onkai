@@ -127,13 +127,13 @@ void SelectScene::Init()
 	m_MySceneObjects.emplace_back(m_ArrowDown);
 
 	Texture2D* UI_A = Game::GetInstance()->AddObject<Texture2D>();
-	UI_A->SetTexture("assets/UI/UI_A.png");
+	UI_A->SetTexture("assets/UI/UI_S.png");
 	UI_A->SetPosition(-50.0f, 150.0f, 0.0f);
 	UI_A->SetScale(100.0f, 100.0f, 0.0f);
 	m_MySceneObjects.emplace_back(UI_A);
 
 	Texture2D* UI_D = Game::GetInstance()->AddObject<Texture2D>();
-	UI_D->SetTexture("assets/UI/UI_D.png");
+	UI_D->SetTexture("assets/UI/UI_F.png");
 	UI_D->SetPosition(-50.0f, -150.0f, 0.0f);
 	UI_D->SetScale(100.0f, 100.0f, 0.0f);
 	m_MySceneObjects.emplace_back(UI_D);
@@ -210,12 +210,12 @@ void SelectScene::Update()
 	}
 
 	// Sキーで前の曲へ
-	if (Input::GetKeyTrigger(VK_A) || Input::GetKeyTrigger(VK_LEFT) || Input::GetKeyTrigger(VK_UP))
+	if (Input::GetKeyTrigger(VK_S) || Input::GetKeyTrigger(VK_LEFT) || Input::GetKeyTrigger(VK_UP))
 	{
 		ShiftJackets(-1);
 	}
 	// Dキーで次の曲へ
-	if (Input::GetKeyTrigger(VK_D) || Input::GetKeyTrigger(VK_RIGHT) || Input::GetKeyTrigger(VK_DOWN))
+	if (Input::GetKeyTrigger(VK_F) || Input::GetKeyTrigger(VK_RIGHT) || Input::GetKeyTrigger(VK_DOWN))
 	{
 		ShiftJackets(1);
 	}

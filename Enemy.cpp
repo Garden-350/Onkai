@@ -1,5 +1,6 @@
 #include "Enemy.h"
 #include "Game.h"
+#undef max
 
 void Enemy::Init()
 {
@@ -34,6 +35,7 @@ void Enemy::Init()
 void Enemy::Update()
 {
 	m_Rotation.y += 0.01f;
+	if (m_HitTimer > 0.0f) m_HitTimer -= 1.0f / 60.0f;
 }
 
 void Enemy::Draw(Camera* cam)
@@ -50,7 +52,10 @@ void Enemy::Draw(Camera* cam)
 	m_MeshRenderer.BeforeDraw();
 
 	Matrix s = Matrix::CreateScale(m_Size);
-	Matrix t = Matrix::CreateTranslation(m_Position);
+	//UŒ‚‚ğó‚¯‚½’¼Œã‚Í¶‰E‚É×‚©‚­—h‚ç‚·
+	float k = std::max(0.0f, m_HitTimer / 0.25f);
+	Vector3 shake(sinf(m_HitTimer * 120.0f) * 12.0f * k, 0.0f, 0.0f);
+	Matrix t = Matrix::CreateTranslation(m_Position + shake);
 	Matrix x = Matrix::CreateRotationX(m_Rotation.x);
 	Matrix y = Matrix::CreateRotationY(m_Rotation.y);
 	Matrix z = Matrix::CreateRotationZ(m_Rotation.z);

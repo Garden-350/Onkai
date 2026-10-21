@@ -282,6 +282,9 @@
     <ClCompile Include="Object.cpp">
       <Filter>ソースファイル\Object</Filter>
     </ClCompile>
+    <ClCompile Include="HexHpGauge.cpp">
+      <Filter>ソースファイル\Object</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -508,6 +511,9 @@
     </ClInclude>
     <ClInclude Include="CameraLayerMarker.h">
       <Filter>ヘッダーファイル\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="HexHpGauge.h">
+      <Filter>ヘッダーファイル\Object</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

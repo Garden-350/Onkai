@@ -30,33 +30,51 @@ SelectScene::~SelectScene()
 }
 
 
+void SelectScene::UpdateSongInfo()
+{
+	if (m_SongNames.empty()) return;
+
+	UpdateJacket();	//ジャケット（assets/music_name/<曲名>.png、無ければ default.png）
+
+	const std::string& name = m_SongNames[m_SelectedIndex];
+	std::string path = "assets/music_name/" + name + ".png";
+	if (!fs::exists(path)) path = "assets/music_name/_unknown.png";	//なかったら「???」を表示
+	if (fs::exists(path)) m_TitlePlate->SetTexture(path.c_str());
+
+	m_InfoAnim = 0.0f;	//滑り込みを最初から
+}
+
+void SelectScene::UpdateSongInfoAnim(float dt)
+{
+	m_InfoAnim = std::min(1.0f, m_InfoAnim + dt / kInfoAnimSec);
+	float e = 1.0f - (1.0f - m_InfoAnim) * (1.0f - m_InfoAnim);	//最初は速く最後はゆっくり
+	float slide = kInfoSlide * (1.0f - e);
+
+	m_TitlePlate->SetPosition(kInfoX + slide, kTitleY, 100.0f);
+	m_TitlePlate->SetAlpha(e);
+	m_JacketTexture->SetPosition(kJacketX + slide, kJacketY, 100.0f);
+	m_JacketTexture->SetAlpha(e);
+}
+
 // 初期化
 void SelectScene::Init()
 {
 	Renderer::SetDepthEnable(true);
 	sound.Init();
 	Texture2D* pt = Game::GetInstance()->AddObject<Texture2D>();
-	pt->SetTexture("assets/texture/saiba-.jpg");
+	pt->SetTexture("assets/texture/haikei_1.png");
 	pt->SetPosition(0.0f, 0.0f, 485.0f);
 	pt->SetRotation(0.0f, 0.0f, 0.0f);
 	pt->SetScale(1280.0f, 720.0f, 0.0f);
 	m_MySceneObjects.emplace_back(pt);
 
-	//透過する（たぶんリザルトとかで使ってるのが必須）　エンター押したら難易度選択して行く感じ？横に曲名出すかどうかは要検討
-	//Renderer::SetBlendState(BS_NONE);
-	//Texture2D* left = Game::GetInstance()->AddObject<Texture2D>();
-	//left->SetTexture("assets/texture/nanido.png");
-	//left->SetPosition(0.0f, -300.0f, 0.0f);
-	//left->SetRotation(0.0f, 0.0f, 0.0f);
-	//left->SetScale(400.0f, 200.0f, 0.0f);
-	//m_MySceneObjects.emplace_back(left);
 
 	// オートモード切替ボタン
 	m_AutoModeSelected = false;
 	m_AutoButton = Game::GetInstance()->AddObject<Texture2D>();
 	m_AutoButton->SetTexture("assets/texture/Auto_off.png");
-	m_AutoButton->SetPosition(500.0f, -280.0f, 0.0f);
-	m_AutoButton->SetScale(180.0f, 80.0f, 0.0f);
+	m_AutoButton->SetPosition(430.0f, 200.0f, 0.0f);
+	m_AutoButton->SetScale(80.0f, 80.0f, 0.0f);
 	m_MySceneObjects.emplace_back(m_AutoButton);
 
 	// ハイスピ表示（コンボと同じ数字画像を流用。小数点の絵は無いので2桁を隙間を空けて並べる）
@@ -68,11 +86,22 @@ void SelectScene::Init()
 		m_HighSpeedDigits[i]->SetScale(60.0f, 60.0f, 0.0f);
 		m_MySceneObjects.emplace_back(m_HighSpeedDigits[i]);
 	}
-	m_HighSpeedDigits[0]->SetPosition(480.0f, -180.0f, 0.0f);
-	m_HighSpeedDigits[1]->SetPosition(530.0f, -180.0f, 0.0f); // 少し離して小数点っぽく見せる
+	m_HighSpeedDigits[0]->SetPosition(360.0f, -180.0f, 0.0f);
+	m_HighSpeedDigits[1]->SetPosition(410.0f, -180.0f, 0.0f); // 少し離して小数点っぽく見せる
 
 	RefreshSongList();
 	SetupJacketSlots();
+
+	//右側ジャケットと曲名の帯
+	m_JacketTexture = Game::GetInstance()->AddObject<Texture2D>();
+	m_JacketTexture->SetScale(kJacketSize, kJacketSize, 0.0f);
+	m_MySceneObjects.emplace_back(m_JacketTexture);
+
+	m_TitlePlate = Game::GetInstance()->AddObject<Texture2D>();
+	m_TitlePlate->SetScale(kTitleW, kTitleH, 0.0f);
+	m_MySceneObjects.emplace_back(m_TitlePlate);
+
+	UpdateSongInfo();	// 最初の曲を表示
 
 	//円形スペクトラム
 	m_Spectrum.Init(2048, 48);	//FFTサイズ2048,片側48本　両方合わせて円になるように
@@ -80,6 +109,58 @@ void SelectScene::Init()
 	m_MySceneObjects.emplace_back(m_SpectrumRing);
 	//最初に選ばれている曲のプレビュー予約
 	RequestPreview();
+
+	m_ArrowUp = Game::GetInstance()->AddObject<Texture2D>();
+	m_ArrowUp->SetTexture("assets/texture/sankakuren_SP.png");
+	m_ArrowUp->SetPosition(20.0f, 200.0f, 0.0f);
+	m_ArrowUp->SetRotation(0.0f, 0.0f, 0.0f);
+	m_ArrowUp->SetScale(105.0f, 202.0f, 0.0f);						// 1コマ分の大きさ
+	m_ArrowUp->SetUV(1.0f, 1.0f, (float)kArrowFrames, 1.0f);	// 1コマ目、横3分割・縦1段
+	m_MySceneObjects.emplace_back(m_ArrowUp);
+
+	m_ArrowDown = Game::GetInstance()->AddObject<Texture2D>();
+	m_ArrowDown->SetTexture("assets/texture/sankakuren_gyaku_SP.png");
+	m_ArrowDown->SetPosition(20.0f, -200.0f, 0.0f);
+	m_ArrowDown->SetRotation(0.0f, 0.0f, 0.0f);
+	m_ArrowDown->SetScale(105.0f, 202.0f, 0.0f);						// 1コマ分の大きさ
+	m_ArrowDown->SetUV(1.0f, 1.0f, (float)kArrowFramws_Down, 1.0f);	// 1コマ目、横3分割・縦1段
+	m_MySceneObjects.emplace_back(m_ArrowDown);
+
+	Texture2D* UI_A = Game::GetInstance()->AddObject<Texture2D>();
+	UI_A->SetTexture("assets/UI/UI_A.png");
+	UI_A->SetPosition(-50.0f, 150.0f, 0.0f);
+	UI_A->SetScale(100.0f, 100.0f, 0.0f);
+	m_MySceneObjects.emplace_back(UI_A);
+
+	Texture2D* UI_D = Game::GetInstance()->AddObject<Texture2D>();
+	UI_D->SetTexture("assets/UI/UI_D.png");
+	UI_D->SetPosition(-50.0f, -150.0f, 0.0f);
+	UI_D->SetScale(100.0f, 100.0f, 0.0f);
+	m_MySceneObjects.emplace_back(UI_D);
+
+	Texture2D* UI_J = Game::GetInstance()->AddObject<Texture2D>();
+	UI_J->SetTexture("assets/UI/Down_J.png");
+	UI_J->SetPosition(230.0f, -180.0f, 0.0f);
+	UI_J->SetScale(150.0f, 150.0f, 0.0f);
+	m_MySceneObjects.emplace_back(UI_J);
+
+	Texture2D* UI_L = Game::GetInstance()->AddObject<Texture2D>();
+	UI_L->SetTexture("assets/UI/High_L.png");
+	UI_L->SetPosition(530.0f, -180.0f, 0.0f);
+	UI_L->SetScale(150.0f, 150.0f, 0.0f);
+	m_MySceneObjects.emplace_back(UI_L);
+
+	Texture2D* High = Game::GetInstance()->AddObject<Texture2D>();
+	High->SetTexture("assets/UI/highspeed.png");
+	High->SetPosition(390.0f, -130.0f, 0.0f);
+	High->SetScale(150.0f, 50.0f, 0.0f);
+	m_MySceneObjects.emplace_back(High);
+
+	Texture2D* Enter = Game::GetInstance()->AddObject<Texture2D>();
+	Enter->SetTexture("assets/UI/enter.png");
+	Enter->SetPosition(390.0f, -280.0f, 0.0f);
+	Enter->SetScale(350.0f, 50.0f, 0.0f);
+	m_MySceneObjects.emplace_back(Enter);
 
 	m_TransitionEffect = Game::GetInstance()->AddObject<MagicCircleTransitionEffect>();
 	m_MySceneObjects.emplace_back(m_TransitionEffect);
@@ -104,6 +185,15 @@ void SelectScene::Update()
 	if (dt > 0.1f) dt = 0.1f;	//読み込みで止まったフレームの後に大きく飛ばないように
 	//曲のプレビューとスペクトラム（遷移演出中も鳴らし続ける）
 	UpdatePreview(dt);
+	UpdateSongInfoAnim(dt);
+
+	m_ArrowAnimTime += dt;
+	int frame = (int)(m_ArrowAnimTime / kArrowFrameSec) % kArrowFrames;
+	m_ArrowUp->SetUV((float)(frame + 1), 1.0f, (float)kArrowFrames, 1.0f);	// コマ番号は1から数える
+
+	m_ArrowAnimTime_Down += dt;
+	int frame_down = (int)(m_ArrowAnimTime_Down / kArrowFrameSecDown) % kArrowFramws_Down;
+	m_ArrowDown->SetUV((float)(frame_down + 1), 1.0f, (float)kArrowFramws_Down, 1.0f);
 
 	// ── 遷移演出中：魔法陣を描き進めるだけで、他の操作は受け付けない ──
 	if (m_Transitioning)
@@ -120,12 +210,12 @@ void SelectScene::Update()
 	}
 
 	// Sキーで前の曲へ
-	if (Input::GetKeyTrigger(VK_S) || Input::GetKeyTrigger(VK_LEFT))
+	if (Input::GetKeyTrigger(VK_A) || Input::GetKeyTrigger(VK_LEFT) || Input::GetKeyTrigger(VK_UP))
 	{
 		ShiftJackets(-1);
 	}
 	// Dキーで次の曲へ
-	if (Input::GetKeyTrigger(VK_D) || Input::GetKeyTrigger(VK_RIGHT))
+	if (Input::GetKeyTrigger(VK_D) || Input::GetKeyTrigger(VK_RIGHT) || Input::GetKeyTrigger(VK_DOWN))
 	{
 		ShiftJackets(1);
 	}
@@ -136,7 +226,7 @@ void SelectScene::Update()
 		speed = std::clamp(Game::GetInstance()->GetHighSpeed() + 0.1f, 0.1f, 9.9f);
 		Game::SetHightSpeed(speed);
 	}
-	if (Input::GetKeyTrigger(VK_K))
+	if (Input::GetKeyTrigger(VK_J))
 	{
 		speed = std::clamp(Game::GetInstance()->GetHighSpeed() - 0.1f, 0.1f, 9.9f);
 		Game::SetHightSpeed(speed);
@@ -277,6 +367,7 @@ void SelectScene::ShiftJackets(int direction)
 		}
 	}
 	RequestPreview();	//曲が変わったからプレビューも切替
+	UpdateSongInfo();	// 右側の曲名とジャケットも切り替え
 }
 
 void SelectScene::UpdateJacketLayout()
@@ -289,19 +380,22 @@ void SelectScene::UpdateJacketLayout()
 		float offset = slot.currentOffset;
 		float absOffset = fabsf(offset);
 
-		// 中央(offset=0)ほど手前・大きく、外側ほど奥・小さく
-		float x = offset * 220.0f + std::clamp(offset, -1.0f, 1.0f) * kSpectrumGap;
-		float z = 300.0f + absOffset * 50.0f; // 奥へ行くほどzを大きくして遠ざける
-		float scale = std::max(150.0f, 250.0f - absOffset * 90.0f);
-		// 中央のジャケットだけ、低音に合わせて少し鼓動させる いらんかったらコメントアウト
+		//円周上の角度。前の曲(offsetが-)ほど上　次の曲(+)ほど上
+		float angle = -offset * kWheelStep;
+		float x = kWheelCenterX + cosf(angle) * kWheelRadius;
+		float y = kWheelCenterY + sinf(angle) * kWheelRadius;
+		float z = 300.0f + absOffset * 50.0f;	//選択中　手前
+
+		float s = std::max(0.5f, 1.0f - absOffset * 0.25f);	//選択中ほど大きくする
 		if (m_SpectrumRing && absOffset < 0.5f)
 		{
-			float weight = 1.0f - absOffset * 2.0f;	// 真ん中に来るほど強く
-			scale *= 1.0f + 0.05f * m_SpectrumRing->GetBass() * weight;
+			float weight = 1.0f - absOffset * 2.0f;
+			s *= 1.0f + 0.05f * m_SpectrumRing->GetBass() * weight;	//低音に合わせてばくばくする
 		}
-
-		slot.tex->SetPosition(x, 0.0f, z);
-		slot.tex->SetScale(scale, scale, 0.0f);
+		slot.tex->SetPosition(x, y, z);
+		slot.tex->SetRotation(0.0f, 0.0f, DirectX::XMConvertToDegrees(angle));	// SetRotation は「度」で受け取る
+		slot.tex->SetScale(kCardW * s, kCardH * s, 0.0f);
+		slot.tex->SetAlpha(std::clamp(1.0f - absOffset * 0.3f, 0.0f, 1.0f));	//外側ほど薄くする
 	}
 }
 
@@ -412,6 +506,8 @@ void SelectScene::UpdatePreview(float dt)
 	m_Spectrum.Analyze(sound, m_SpectrumLevels);
 	for (auto& v : m_SpectrumLevels) v *= volume;	//フェード中はバーも小さく
 	if (m_SpectrumRing) m_SpectrumRing->SetLevels(m_SpectrumLevels, dt);
+	m_SpectrumRing->SetCenter(DirectX::SimpleMath::Vector3(kWheelCenterX + kWheelRadius, kWheelCenterY, 450.0f));
+	m_SpectrumRing->SetRadius(360.0f);
 }
 
 bool SelectScene::LoadPreviewInfo(const std::string& name, std::string& outAudioFile, float& outPreviewTime)

@@ -12,6 +12,7 @@ float4 main(in PS_IN input) : SV_Target
     color = g_Texture.Sample(g_SamplerState, input.tex);
     color *= input.col;
 
+    clip(color.a - 0.01f);  //‚Ù‚Ú“§–¾‚ÈƒsƒNƒZƒ‹‚Í•`‚©‚È‚¢
     //color = input.col;
 
     return color;

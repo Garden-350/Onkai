@@ -67,6 +67,29 @@ private:
 	SpectrumRing* m_SpectrumRing = nullptr;	//描画
 	static constexpr float kSpectrumGap = 180.0f;	//中央ジャケットと両隣の間に追加で空ける幅
 
+	//曲選択ホイール
+	static constexpr float kWheelCenterX = -560.0f;	//円の中心（画面の左に位置）
+	static constexpr float kWheelCenterY = 0.0f;
+	static constexpr float kWheelRadius = 300.0f;	//半径。選択中の曲は中心の真右に来る
+	static constexpr float kWheelStep = 0.40f;		//隣の曲との角度
+	static constexpr float kCardW = 320.0f;			//選択中のカードの横幅
+	static constexpr float kCardH = 140.0f;			//選択中のカードの高さ
+
+	//右側　曲情報表示するやつ
+	Texture2D* m_TitlePlate = nullptr;	//曲名の帯
+	float m_InfoAnim = 1.0f;			//曲を切り替えたときの滑り込み
+	static constexpr float kInfoX = 370.0f;	//曲名の帯の中心X
+	static constexpr float kTitleY = 262.0f;
+	static constexpr float kTitleW = 520.0f;	//曲の画像サイズが違う場合はここを調整
+	static constexpr float kTitleH = 85.0f;
+	static constexpr float kJacketX = 235.0f;
+	static constexpr float kJacketY = 105.0f;
+	static constexpr float kJacketSize = 210.0f;
+	static constexpr float kInfoSlide = 40.0f;		//右からどれぐらい滑り込むか
+	static constexpr float kInfoAnimSec = 0.25f;	//滑り込みに掛ける秒数
+	void UpdateSongInfo();				// 選択中の曲の曲名・ジャケットに差し替える
+	void UpdateSongInfoAnim(float dt);	// 毎フレーム：滑り込みとフェードイン
+
 	void Init(); // 初期化
 	void Uninit(); // 終了処理
 	void RefreshSongList();	//charts/内の.jsonを並べてm_SongNamesを作成
@@ -87,6 +110,16 @@ public:
 	bool LoadChart(const std::string& name);
 
 	float speed = 0.0f;
+
+	Texture2D* m_ArrowUp = nullptr;				// 上の三角（横3コマのスプライトシート）
+	float m_ArrowAnimTime = 0.0f;				// アニメーションの経過時間
+	static constexpr int kArrowFrames = 3;		// シートのコマ数（横に3つ）
+	static constexpr float kArrowFrameSec = 0.5f;	// 1コマを何秒見せるか
+
+	Texture2D* m_ArrowDown = nullptr;
+	float m_ArrowAnimTime_Down = 0.0f;
+	static constexpr int kArrowFramws_Down = 3;
+	static constexpr float kArrowFrameSecDown = 0.5f;
 
 	void Update(); // 更新
 };

@@ -48,7 +48,7 @@ void Game::Update()
 	Input::Update();
 
 	//ƒ|[ƒYØ‘Ö
-	if (Input::GetKeyTrigger(VK_SPACE) && dynamic_cast<Stage1Scene*>(m_Instance->m_Scene))
+	if (Input::GetKeyTrigger(VK_TAB) && dynamic_cast<Stage1Scene*>(m_Instance->m_Scene))
 	{
 		m_Instance->m_Paused = !m_Instance->m_Paused;
 

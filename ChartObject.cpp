@@ -13,6 +13,7 @@
 #include "Enemy.h"
 #include "LightShaft.h"
 #include "ResultData.h"
+#include "ChargeAura.h"
 #include <algorithm>
 #include <cmath>
 #undef min
@@ -138,6 +139,23 @@ void ChartObject::Init()
 
 	m_AutoMode = Game::GetInstance()->IsAutoMode();
 	m_JudgeSystem.SetOnJudge([this](int laneIndex, int rank) { OnJudge(laneIndex, rank); });
+	m_JudgeSystem.SetOnChargeHit([this](int rank) { m_Special.AddHit(rank, true); });
+	static bool s_AuraInited = false;
+	if (!s_AuraInited)
+	{
+		ChargeAura::Instance().Init();
+		s_AuraInited = true;
+	}
+	m_Special.SetOnChargeStart([this]()
+		{
+			ChargeAura::Instance().Start();
+		});
+	m_Special.SetOnFire([this](float ratio)
+		{
+			//ここでビームを描画
+			ChargeAura::Instance().Release();
+			if (m_EnemyRef) m_EnemyRef->Damage(SpecialMove::CalcDamage(kSpecialBaseDamage, ratio));
+		});
 	m_JudgeSystem.SetOnLongEnd([this](int)
 		{
 			m_GazeKickTime = m_MusicTime;
@@ -266,6 +284,9 @@ void ChartObject::Init()
 	m_EnemyHp.Init();
 	m_EnemyHp.SetPosition(400.0f, 230.0f);	//画面の上
 	m_EnemyHp.SetSize(250.0f);
+
+	m_SpGauge.Init();
+	m_SpGauge.SetPosition(-340.0f, 290.0f);
 }
 
 // ============================================================
@@ -375,6 +396,8 @@ bool ChartObject::LoadChart(const std::string& name)
 	m_MusicTime = 0.0f;
 
 	m_JudgeSystem.ResetJudgeCounts();
+	m_Special.Reset(m_TotalNote);
+	ChargeAura::Instance().Cancel();
 
 	OutputDebugStringA(("[ChartPlayObject] Loaded: charts/" + name + ".json notes=" +
 		std::to_string(m_Notes.size()) + " beams=" + std::to_string(m_BeamSystem.GetBeamCount()) + "\n").c_str());
@@ -540,7 +563,7 @@ void ChartObject::UpdateLongSounds()
 			due = true;
 			n.nextHoldSeTime += interval;
 		}
-		if (due && holding) sound.Play(SOUND_FINGERSNAP);
+		if (due && holding) /*sound.Play(SOUND_FINGERSNAP)*/;
 	}
 }
 
@@ -841,12 +864,19 @@ void ChartObject::Update()
 		}
 
 		// フリック・ロングノーツの判定
-		m_JudgeSystem.JudgeFlickNotes(m_Notes, m_MusicTime, playerSideForFlick);
+		m_JudgeSystem.JudgeFlickNotes(m_Notes, m_MusicTime, playerSideForFlick, sound);
 		m_JudgeSystem.JudgeLongNoteHold(m_Notes, m_MusicTime);
 	}
 
 	//ロングノーツの音を鳴らしたりするところ
 	UpdateLongSounds();
+
+	//必殺技発動
+	if (Input::GetKeyTrigger(VK_SPACE))
+		m_Special.TryActivate(m_MusicTime, m_Bpm, m_BeatsPerBar, m_Notes);
+	m_Special.Update(deltaTime, m_MusicTime);
+	m_SpGauge.Update(deltaTime, m_Special);
+	ChargeAura::Instance().Update(deltaTime, m_Special.GetChargeProgress(m_MusicTime));
 
 	// 判定済み(judged=true)になったノーツをまとめて削除
 	// （TAPの判定はJudgeLaneで即座にjudged=trueにするが、実削除はここでまとめて行う）
@@ -885,6 +915,7 @@ void ChartObject::Update()
 // ============================================================
 void ChartObject::OnJudge(int laneIndex, int rank)
 {
+	m_Special.AddHit(rank, false);
 	m_ComboHud.TriggerBarrier(laneIndex);
 	m_ComboHud.TriggerRankPop(laneIndex, rank);
 	m_ComboHud.TriggerComboPop();
@@ -1377,7 +1408,7 @@ void ChartObject::Draw(Camera* cam)
 		if (m_MusicTime < st || m_MusicTime > et) continue;
 
 		Vector3 pos = NotePath::EvaluateNotePosition(note, m_MusicTime);
-		Vector3 laneColor = GetLaneColor(note.lane);
+		Vector3 laneColor = note.chargeShot ? Vector3(1.0f, 0.8f, 0.25f) : GetLaneColor(note.lane);
 		{
 			Matrix world = Matrix::CreateScale(m_NoteScale) * Matrix::CreateTranslation(pos);
 			Renderer::SetWorldMatrix(&world);
@@ -1388,7 +1419,7 @@ void ChartObject::Draw(Camera* cam)
 					DirectX::XMFLOAT4(laneColor.x, laneColor.y, laneColor.z, 1.0f)
 				);
 				m_Materials[m_Subsets[i].MaterialIdx]->SetEmission(
-					DirectX::XMFLOAT4(laneColor.z, laneColor.y, laneColor.z, 1.0f)
+					DirectX::XMFLOAT4(laneColor.x, laneColor.y, laneColor.z, 1.0f)
 				);
 				m_Materials[m_Subsets[i].MaterialIdx]->Update();
 
@@ -1545,6 +1576,7 @@ void ChartObject::Draw(Camera* cam)
 	}
 
 	m_EnemyHp.Draw(cam);
+	//m_SpGauge.Draw(cam);
 	cam->SetCamera(0);
 }
 

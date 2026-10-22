@@ -9,6 +9,7 @@
 #include "Note.h"
 #include "PostFlashEffect.h"
 #include "ResultData.h"
+#include "sound.h"
 
 enum SceneName {
 	TITLE,
@@ -31,6 +32,7 @@ private:
 
 	Note m_Note;
 	PostFlashEffect m_PostFlash;
+	Sound sound;
 
 	ResultData m_LastResult;
 

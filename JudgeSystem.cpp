@@ -58,11 +58,12 @@ void JudgeSystem::JudgeLane(int key, int laneIndex, std::vector<ChartNote>& note
 		m_Good++;
 		sound.Play(SOUND_METAL_1);
 	}
+	NotifyCharge(notes[bestIndex], rank);
 	notes[bestIndex].judged = true;
 	RegisterHit(laneIndex, rank);
 }
 
-void JudgeSystem::JudgeFlickNotes(std::vector<ChartNote>& notes, float musicTime, int playerSide)
+void JudgeSystem::JudgeFlickNotes(std::vector<ChartNote>& notes, float musicTime, int playerSide, Sound sound)
 {
 	for (auto& n : notes)
 	{
@@ -84,14 +85,27 @@ void JudgeSystem::JudgeFlickNotes(std::vector<ChartNote>& notes, float musicTime
 		int lo = std::min(laneFrom, laneTo);
 		int hi = std::max(laneFrom, laneTo);
 
-		if (rank == 0) m_Perfect++;
-		else if (rank == 1) m_Great++;
-		else m_Good++;
+		if (rank == 0)
+		{
+			m_Perfect++;	
+			sound.Play(SOUND_METAL_1);
+		}
+		else if (rank == 1)
+		{
+			m_Great++;
+			sound.Play(SOUND_METAL_1);
+		}
+		else
+		{
+			m_Good++;
+			sound.Play(SOUND_METAL_1);
+		}
 		for (int L = lo; L <= hi; L++)
 		{
 			if (L < 0 || L >= 6) continue;
 			RegisterHit(L, rank);
 		}
+		NotifyCharge(n, rank);
 		n.judged = true;
 	}
 }
@@ -166,6 +180,7 @@ void JudgeSystem::UpdateAutoJudgge(std::vector<ChartNote>& notes, float musicTim
 				m_Perfect++;
 				sound.Play(SOUND_METAL_1);
 				RegisterHit(note.lane, 0);
+				NotifyCharge(note, 0);
 				note.judged = true;
 			}
 		}
@@ -184,6 +199,7 @@ void JudgeSystem::UpdateAutoJudgge(std::vector<ChartNote>& notes, float musicTim
 					if (L < 0 || L >= 6) continue;
 					RegisterHit(L, 0);
 				}
+				NotifyCharge(note, 0);
 				note.judged = true;
 			}
 		}
@@ -202,6 +218,7 @@ void JudgeSystem::UpdateAutoJudgge(std::vector<ChartNote>& notes, float musicTim
 
 				if (isFinalTick)
 				{
+					NotifyCharge(note, 0);
 					note.judged = true;
 					break;
 				}
@@ -223,6 +240,7 @@ void JudgeSystem::MarkTapAutoMiss(std::vector<ChartNote>& notes, float musicTime
 		if (musicTime - note.time > kGud)
 		{
 			note.judged = true;
+			if (note.chargeShot) continue;	// チャージノーツは取り逃してもミスにしない（コンボも切らない）
 			m_Miss++;
 			RegisterMiss();	//コンボを切る
 		}
@@ -238,6 +256,7 @@ void JudgeSystem::MarkFlickAutoMiss(std::vector<ChartNote>& notes, float musicTi
 		if (musicTime - note.time > kFlickGood)
 		{
 			note.judged = true;
+			if (note.chargeShot) continue;	// チャージノーツは取り逃してもミスにしない（コンボも切らない）
 			m_Miss++;
 			RegisterMiss();	//コンボを切る
 		}
@@ -264,4 +283,9 @@ void JudgeSystem::RegisterHit(int laneIndex, int rank)
 void JudgeSystem::RegisterMiss()
 {
 	m_Combo = 0;
+}
+
+void JudgeSystem::NotifyCharge(const ChartNote& n, int rank)
+{
+	if (n.chargeShot && m_OnChargeHit) m_OnChargeHit(rank);
 }

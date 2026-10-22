@@ -27,6 +27,8 @@
 #include "JudgeLineGuide.h"
 #include "LongBeamRibbon.h"
 #include "HexHpGauge.h"
+#include "SpecialMove.h"
+#include "SpecialGaugeHud.h"
 
 class Player;
 class Enemy;
@@ -77,6 +79,7 @@ struct ChartNote
 	//判定の進行状態
 	bool judged = false;			// true になったら以後描画・判定の対象から外す（Update末尾で一括削除される）
 	bool approcachPlayed = false;	// 接近時の効果音を一度だけ鳴らすためのフラグ
+	bool chargeShot = false;		//必殺技のチャージノーツ？　発動した瞬間にオン
 
 	//LONGNOTE専用の状態 
 	float nextTickTime = 0.0f;	// 次に「継続判定(tick)」を加算すべき時刻
@@ -183,7 +186,7 @@ public:
 	int GetMaxComboCount() const { return m_JudgeSystem.GetMaxComboCount(); }
 	int GetTotalNoteCount() const { return m_TotalNote; }
 	// フルコンボ判定：ミスなく最後まで叩けていれば MaxCombo == 総ノーツ数 になる
-	bool IsFullCombo() const { return m_TotalNote > 0 && m_JudgeSystem.GetMaxComboCount() == m_TotalNote; }
+	bool IsFullCombo() const { return m_TotalNote > 0 && m_JudgeSystem.GetMissCount() == 0; }
 	float GetFlashAlpha()
 	{
 		return m_ScreenEffects.GetFlashAlpha();
@@ -239,6 +242,8 @@ private:
 	ParticleQuad m_LongParticleQuad;
 	ParticleQuad m_TapOrbAuraQuad;
 	LongBeamRibbon m_LongBeam;	//ロングの光の帯
+	SpecialMove m_Special;
+	SpecialGaugeHud m_SpGauge;
 	std::vector<std::unique_ptr<Material>> m_Materials;
 	std::vector<std::unique_ptr<Texture>> m_Textures;
 	std::vector<ChartKeyLightEffect> m_LightEffects;	//判定時のキーライト点滅エフェクト
@@ -248,6 +253,8 @@ private:
 	float m_NoteScale = 60.0f;	// TAPモデルの表示スケール
 	float m_BarrierSparkleTimer[6] = { 0,0,0,0,0,0 };	//レーンごとのキラキラパーティクル生成タイマー
 	float m_LongAmbientParticleTimer[6] = { 0,0,0,0,0,0 };
+
+	static constexpr float kSpecialBaseDamage = 15.0f;	//必殺技の基礎ダメージ
 
 	void DrawHighwayLongNotes(Camera* cam);
 	void DrawSpawnMagicCircle(Camera* cam, const ChartNote& note);

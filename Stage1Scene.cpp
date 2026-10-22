@@ -71,7 +71,7 @@ void Stage1Scene::Init()
 	m_Chart = chart;
 	ApplyCamera();
 	chart->SetEnemyRef(enemy);
-	//chart->SetPlayerRef(player);
+	chart->SetPlayerRef(player);
 	//横方向の正方形グリッド表示
 	WireShapeSpawner* spaen = Game::GetInstance()->AddObject<WireShapeSpawner>();
 	spaen->SetSceneObjects(&m_MySceneObjects);

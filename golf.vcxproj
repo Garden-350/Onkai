@@ -150,6 +150,7 @@
     <ClCompile Include="Baton.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CameraLayerMarker.cpp" />
+    <ClCompile Include="ChargeAura.cpp" />
     <ClCompile Include="ChartObject.cpp" />
     <ClCompile Include="CityBuildings.cpp" />
     <ClCompile Include="ClosingRingGuide.cpp" />
@@ -193,6 +194,8 @@
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="SkyBox.cpp" />
     <ClCompile Include="sound.cpp" />
+    <ClCompile Include="SpecialGaugeHud.cpp" />
+    <ClCompile Include="SpecialMove.cpp" />
     <ClCompile Include="SpectrumRing.cpp" />
     <ClCompile Include="SpotlightRow.cpp" />
     <ClCompile Include="Stage1Scene.cpp" />
@@ -219,6 +222,7 @@
     <ClInclude Include="Baton.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CameraLayerMarker.h" />
+    <ClInclude Include="ChargeAura.h" />
     <ClInclude Include="ChartObject.h" />
     <ClInclude Include="CityBuildings.h" />
     <ClInclude Include="ClosingRingGuide.h" />
@@ -270,6 +274,8 @@
     <ClInclude Include="SimpleJson.h" />
     <ClInclude Include="SkyBox.h" />
     <ClInclude Include="sound.h" />
+    <ClInclude Include="SpecialGaugeHud.h" />
+    <ClInclude Include="SpecialMove.h" />
     <ClInclude Include="SpectrumRing.h" />
     <ClInclude Include="SpotlightRow.h" />
     <ClInclude Include="Stage1Scene.h" />

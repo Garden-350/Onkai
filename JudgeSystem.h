@@ -19,6 +19,9 @@ public:
 	// TAPノーツが無いレーンを空押ししたときに呼ばれる
 	using OnEmptyPressFn = std::function<void(int laneIndex)>;
 	using OnLongEndFn = std::function<void(int laneIndex)>;
+	//チャージノーツを取った時に呼ぶ（スペース押したときに発動）
+	using OnChargeHitFn = std::function<void(int rank)>;
+	void SetOnChargeHit(OnChargeHitFn fn) { m_OnChargeHit = fn; }
 
 	void SetOnLongEnd(OnLongEndFn fn) { m_OnLongEnd = fn; }
 
@@ -28,7 +31,7 @@ public:
 	// TAPノーツ：キーを押した瞬間の判定
 	void JudgeLane(int key, int laneIndex, std::vector<ChartNote>& notes, float musicTime, Sound& sound);
 	// FLICKノーツ：時間ウィンドウ内でサイド一致を判定
-	void JudgeFlickNotes(std::vector<ChartNote>& notes, float musicTime, int playerSide);
+	void JudgeFlickNotes(std::vector<ChartNote>& notes, float musicTime, int playerSide, Sound sound);
 	// LONGNOTE：押し始め〜押しっぱなし
 	void JudgeLongNoteHold(std::vector<ChartNote>& notes, float musicTime);
 	// オートモード用：到達時刻を過ぎたらパーフェクトに確定させる
@@ -52,6 +55,7 @@ public:
 private:
 	void RegisterHit(int laneIndex, int rank); // m_Combo++ / m_MaxCombo更新 + m_OnJudgeコールバック呼び出し
 	void RegisterMiss();	//コンボリセット
+	void NotifyCharge(const ChartNote& n, int rank);
 
 	int m_Perfect = 0;
 	int m_Great = 0;
@@ -63,6 +67,7 @@ private:
 	OnJudgeFn m_OnJudge;
 	OnEmptyPressFn m_OnEmptyPress;
 	OnLongEndFn m_OnLongEnd;
+	OnChargeHitFn m_OnChargeHit;
 
 	//判定タイミングの許容誤差（秒）。値が小さいほどシビア
 	static constexpr float kPerfect = 0.06f;

@@ -128,7 +128,6 @@ void ResultScene::Update()
 	// エンターキーを押してタイトルへ
 	if (Input::GetKeyTrigger(VK_RETURN))
 	{
-		sound.Uninit();
 		Game::GetInstance()->ChangeScene(SELECT);
 	}
 }
@@ -137,6 +136,7 @@ void ResultScene::Update()
 // 終了処理
 void ResultScene::Uninit()
 {
+	sound.Uninit();
 	// このシーンのオブジェクトを削除する
 	for (auto& o : m_MySceneObjects) {
 		Game::GetInstance()->DeleteObject(o);

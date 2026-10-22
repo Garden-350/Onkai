@@ -207,10 +207,6 @@ void Sound::Uninit(void)
 		m_Initialized = false;
 	}
 
-	MFShutdown();
-
-	// COM‚Ì”jŠü
-	CoUninitialize();
 }
 
 //=============================================================================

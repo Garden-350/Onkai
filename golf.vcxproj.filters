@@ -285,6 +285,15 @@
     <ClCompile Include="HexHpGauge.cpp">
       <Filter>ソースファイル\Object</Filter>
     </ClCompile>
+    <ClCompile Include="SpecialMove.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="ChargeAura.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="SpecialGaugeHud.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -514,6 +523,15 @@
     </ClInclude>
     <ClInclude Include="HexHpGauge.h">
       <Filter>ヘッダーファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="SpecialMove.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="ChargeAura.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="SpecialGaugeHud.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

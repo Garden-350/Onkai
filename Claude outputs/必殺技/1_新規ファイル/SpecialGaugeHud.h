@@ -12,7 +12,7 @@ class SpecialMove;
 //   液面の波は、8コマの波の位相を時間で切り替え、隣のコマと重ねてなめらかにしている。
 //   量（12段階）も、隣の段と重ねてなめらかにしている。
 //
-//   使う画像（assets/UI/）：
+//   使う画像（assets/UI/hurasuko/）：
 //     flask_back / flask_liquid_teal / flask_liquid_gold / flask_front / flask_glow / flask_go（すべて .png）
 // ============================================================
 class SpecialGaugeHud

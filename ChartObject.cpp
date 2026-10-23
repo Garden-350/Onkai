@@ -1576,7 +1576,7 @@ void ChartObject::Draw(Camera* cam)
 	}
 
 	m_EnemyHp.Draw(cam);
-	//m_SpGauge.Draw(cam);
+	m_SpGauge.Draw(cam);
 	cam->SetCamera(0);
 }
 

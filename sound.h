@@ -57,7 +57,7 @@ private:
 		{"assets/se/metal2.mp3",false},
 		{"assets/se/suzu.mp3",false},
 		{"assets/se/Long_end.mp3",false},
-		{"assets/se/clampu.mp3",false},
+		{"assets/se/clampu.wav",false},
 		{"assets/se/charge.wav",false},
 		{"assets/se/fingersnap.wav",false},
 

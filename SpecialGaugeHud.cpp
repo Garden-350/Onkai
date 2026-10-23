@@ -7,16 +7,24 @@
 
 void SpecialGaugeHud::Init()
 {
-	m_Frame.Init();       m_Frame.SetTexture("assets/UI/sp_gauge_frame.png");
-	m_FillBlue.Init();    m_FillBlue.SetTexture("assets/UI/sp_fill_blue.png");
-	m_FillGold.Init();    m_FillGold.SetTexture("assets/UI/sp_fill_gold.png");
-	m_Tip.Init();         m_Tip.SetTexture("assets/UI/sp_fill_tip.png");
-	m_Glow.Init();        m_Glow.SetTexture("assets/UI/sp_gauge_glow.png");
-	m_Label.Init();       m_Label.SetTexture("assets/UI/sp_label.png");
-	m_LabelCharge.Init(); m_LabelCharge.SetTexture("assets/UI/sp_label_charge.png");
-	m_KeySpace.Init();    m_KeySpace.SetTexture("assets/UI/sp_key_space.png");
+	m_Back.Init();  m_Back.SetTexture("assets/UI/hurasuko/flask_back.png");
+	m_Front.Init(); m_Front.SetTexture("assets/UI/hurasuko/flask_front.png");
+	m_Glow.Init();  m_Glow.SetTexture("assets/UI/hurasuko/flask_glow.png");
+	m_Go.Init();    m_Go.SetTexture("assets/UI/hurasuko/Go.png");
+	const char* liquidPaths[2] = { "assets/UI/hurasuko/flask_liquid_teal.png",
+									"assets/UI/hurasuko/flask_liquid_gold.png" };
+
+	for (int c = 0; c < 2; c++)
+	{
+		for (int k = 0; k < 3; k++)
+		{
+			m_Liquid[c][k].Init();
+			m_Liquid[c][k].SetTexture(liquidPaths[c]);
+		}
+	}
+
 	m_Shown = 0.0f;
-	m_Gold = false;
+	m_GoldMix = 0.0f;
 	m_Ready = false;
 	m_ReadyPop = 0.0f;
 }
@@ -25,21 +33,28 @@ void SpecialGaugeHud::Update(float dt, const SpecialMove& sp)
 {
 	m_Time += dt;
 
-	bool gold = (sp.GetState() != SpecialMove::State::Gauge);
-	if (gold != m_Gold)
+	//目標の量　発射中は空
+	float target = 0.0f;
+	switch (sp.GetState())
 	{
-		m_Gold = gold;
-		m_Shown = 0.0f;		// 青 → 金、金 → 青 に切り替わる時は 0 から伸ばし直す
+	case SpecialMove::State::Gauge:	target = sp.GetGauge(); break;
+	case SpecialMove::State::Waiting:
+	case SpecialMove::State::Charging: target = sp.GetChargeRatio(); break;
+	case SpecialMove::State::Firing:	target = 0.0f; break;
 	}
-
-	float target = gold ? sp.GetChargeRatio() : sp.GetGauge();
 	m_Shown += (target - m_Shown) * std::min(1.0f, kFollow * dt);
 
-	// 本当に満タンの時だけ「発動できる」表示にする（デバッグ設定の kDebugAlwaysReady は見ない）
+	//満タンの時だけ発動　デバッグは無視
 	bool ready = (sp.GetState() == SpecialMove::State::Gauge) && (sp.GetGauge() >= 1.0f);
-	if (ready && !m_Ready) m_ReadyPop = 1.0f;
 	m_Ready = ready;
 	m_ReadyPop = std::max(0.0f, m_ReadyPop - dt * 3.0f);
+
+	//色
+	if (ready && !m_Ready) m_ReadyPop = 1.0f;
+	bool gold = ready || (sp.GetState() != SpecialMove::State::Gauge);
+	float goldTarget = gold ? 1.0f : 0.0f;
+	if (m_GoldMix < goldTarget) m_GoldMix = std::min(goldTarget, m_GoldMix + kGoldSpeed * dt);
+	else                        m_GoldMix = std::max(goldTarget, m_GoldMix - kGoldSpeed * dt);
 }
 
 void SpecialGaugeHud::DrawQuad(Texture2D& t, Camera* cam, float x, float y, float w, float h, float alpha)
@@ -51,44 +66,62 @@ void SpecialGaugeHud::DrawQuad(Texture2D& t, Camera* cam, float x, float y, floa
 	t.Draw(cam);
 }
 
+//量と波の位相を隣のコマと重ねてなめらかに描く
+void SpecialGaugeHud::DrawLiquid(int color, Camera* cam, float level, float alpha)
+{
+	if (alpha < 0.003f || level <= 0.001f) return;
+
+	float f = std::clamp(level, 0.0f, 1.0f) * kLevels;
+	int i = (int)std::floor(f);		//0~16
+	float fl = f - (float)i;
+
+	float phase = m_Time / kWavePeriod * kPhases;
+	int k = (int)std::floor(phase) % kPhases;
+	float fp = phase - std::floor(phase);	//次の位相への割合
+	int k2 = (k + 1) % kPhases;
+
+	int row = std::clamp(i, 1, kLevels);	//シートの段
+	float baseA = (i >= 1) ? alpha : alpha * fl;	//最初の段に満たない時は一段目を薄く
+
+	const float w = kCellW * m_Scale, h = kCellH * m_Scale;
+	Texture2D* t = m_Liquid[color];
+
+	//1枚目　今の段と位相
+	t[0].SetUV((float)(k + 1), (float)row, (float)kPhases, (float)kLevels);
+	DrawQuad(t[0], cam, m_X, m_Y, w, h, baseA);
+	//2枚目　波
+	t[1].SetUV((float)(k2 + 1), (float)row, (float)kPhases, (float)kLevels);
+	DrawQuad(t[1], cam, m_X, m_Y, w, h, baseA * fp);
+	//3枚目
+	if (i >= 1 && i < kLevels)
+	{
+		t[2].SetUV((float)(k + 1), (float)(i + 1), (float)kPhases, (float)kLevels);
+		DrawQuad(t[2], cam, m_X, m_Y, w, h, alpha * fl);
+	}
+}
+
 void SpecialGaugeHud::Draw(Camera* cam)
 {
-	const float innerW = kInnerRight - kInnerLeft;
-	const float innerH = kInnerBottom - kInnerTop;
-	const float left = m_X - kFrameW * 0.5f + kInnerLeft;						// 塗りの左端
-	const float cy = m_Y + (kFrameH * 0.5f - (kInnerTop + kInnerBottom) * 0.5f);	// 塗りの縦の中心（画像は下向きに数えるので符号に注意）
+	const float s = m_Scale;
 
-	// 満タン：枠の後ろで金の光が脈打つ
+	//満タン　金
 	if (m_Ready)
 	{
-		float pulse = 0.55f + 0.35f * std::sin(m_Time * 6.0f) + 0.5f * m_ReadyPop;
-		float s = 1.0f + 0.08f * m_ReadyPop;
-		DrawQuad(m_Glow, cam, m_X, m_Y, 600.0f * s, 160.0f * s, std::min(1.0f, pulse));
+		float pulse = std::min(1.0f, 0.6f + 0.3f * std::sin(m_Time * 6.0f) + 0.5f * m_ReadyPop);
+		DrawQuad(m_Glow, cam, m_X, m_Y, kGlowW * s, kGlowH * s, pulse);
 	}
+	DrawQuad(m_Back, cam, m_X, m_Y, kCellW * s, kCellH * s, 1.0f);
 
-	DrawQuad(m_Frame, cam, m_X, m_Y, kFrameW, kFrameH, 1.0f);
+	//液体
+	DrawLiquid(0, cam, m_Shown, 1.0f - m_GoldMix);
+	DrawLiquid(1, cam, m_Shown, m_GoldMix);
+	DrawQuad(m_Front, cam, m_X, m_Y, kCellW * s, kCellH * s, 1.0f);
 
-	// 塗り（左端を固定して、右へ伸ばす）
-	float r = std::clamp(m_Shown, 0.0f, 1.0f);
-	float w = innerW * r;
-	if (w >= 1.0f)
-	{
-		Texture2D& fill = m_Gold ? m_FillGold : m_FillBlue;
-		DrawQuad(fill, cam, left + w * 0.5f, cy, w, innerH, 1.0f);
-		DrawQuad(m_Tip, cam, left + w, cy, 44.0f, 44.0f, 0.9f);			// 先端の光
-	}
-
-	// ラベル（枠の左上）
-	if (m_Gold)
-		DrawQuad(m_LabelCharge, cam, left + kChargeLabelW * 0.5f, m_Y + 44.0f, kChargeLabelW, kChargeLabelH, 1.0f);
-	else
-		DrawQuad(m_Label, cam, left + kLabelW * 0.5f, m_Y + 44.0f, kLabelW, kLabelH, 1.0f);
-
-	// 満タン：右に SPACE キー
 	if (m_Ready)
 	{
-		float s = 1.0f + 0.25f * m_ReadyPop;
+		float gs = s * (1.0f + 0.35f * m_ReadyPop);
 		float a = 0.85f + 0.15f * std::sin(m_Time * 6.0f);
-		DrawQuad(m_KeySpace, cam, m_X + kFrameW * 0.5f + kKeyW * 0.5f - 4.0f, m_Y, kKeyW * s, kKeyH * s, a);
+		DrawQuad(m_Go, cam, m_X, m_Y - kCellH * 0.5f * s - 40.0f * s, kGoW * gs, kGoH * gs, a);
 	}
+
 }

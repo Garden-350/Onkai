@@ -179,7 +179,7 @@ void Stage1Scene::ApplyCamera()
 {
 	if (!m_Chart) return;
 	Vector3 c = m_Chart->GetJudgeLineCenter();
-	Vector3 eye = c + Vector3(0.0f, m_CamHeight, -m_CamBack);   // カメラの位置
+	Vector3 eye = kUseFixedEye ? m_FixedEye : c + Vector3(0.0f, m_CamHeight, -m_CamBack);   // カメラの位置
 	Vector3 target = c + Vector3(0.0f, 0.0f, m_CamLookAhead);      // 見る先
 	Game::GetInstance()->GetCamera()->SetFixedPose(eye, target);
 

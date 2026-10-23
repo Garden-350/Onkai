@@ -250,7 +250,7 @@ private:
 	std::chrono::steady_clock::time_point m_LastUpdateClock;
 	std::vector<LongBeamRibbon::Point> m_LongPoints; //帯の点（毎フレーム作り直す）
 	std::string m_AudioFile;
-	float m_NoteScale = 60.0f;	// TAPモデルの表示スケール
+	float m_NoteScale = 80.0f;	// TAPモデルの表示スケール
 	float m_BarrierSparkleTimer[6] = { 0,0,0,0,0,0 };	//レーンごとのキラキラパーティクル生成タイマー
 	float m_LongAmbientParticleTimer[6] = { 0,0,0,0,0,0 };
 

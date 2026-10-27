@@ -82,6 +82,9 @@
     <FxCompile Include="shader\longBeamVS.hlsl">
       <Filter>リソースファイル</Filter>
     </FxCompile>
+    <FxCompile Include="shader\enemyFlash.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChartObject.cpp">
@@ -292,6 +295,21 @@
       <Filter>ソースファイル\Chart</Filter>
     </ClCompile>
     <ClCompile Include="SpecialGaugeHud.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="NumberDisplay.cpp">
+      <Filter>ソースファイル\Score</Filter>
+    </ClCompile>
+    <ClCompile Include="SpecialBeam.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="AttackOrbs.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="ImpactFx.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
+    <ClCompile Include="WeakPoint.cpp">
       <Filter>ソースファイル\Chart</Filter>
     </ClCompile>
   </ItemGroup>
@@ -533,6 +551,27 @@
     <ClInclude Include="SpecialGaugeHud.h">
       <Filter>ヘッダーファイル\Chart</Filter>
     </ClInclude>
+    <ClInclude Include="ScoreRule.h">
+      <Filter>ヘッダーファイル\Score</Filter>
+    </ClInclude>
+    <ClInclude Include="NumberDisplay.h">
+      <Filter>ヘッダーファイル\Score</Filter>
+    </ClInclude>
+    <ClInclude Include="SpecialBeam.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="RibbonShapes.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="AttackOrbs.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="ImpactFx.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="WeakPoint.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">
@@ -597,6 +636,12 @@
     </Filter>
     <Filter Include="ヘッダーファイル\Camera">
       <UniqueIdentifier>{154a7a5d-421a-4c37-b0c2-d72bb5c695f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Score">
+      <UniqueIdentifier>{fec87f32-488e-4817-b075-7a60961d00e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Score">
+      <UniqueIdentifier>{b902fcd2-c578-49a6-8e2a-a8c6ce4bf052}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

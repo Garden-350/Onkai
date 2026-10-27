@@ -9,9 +9,11 @@
 #include "SimpleJson.h"
 #include "MagicCircleTransitionEffect.h"
 #include "SpectrumRing.h"
+#include "NumberDisplay.h"
 #include <filesystem>
 #include <algorithm>
 #include <cmath>
+#include "ScoreRule.h"
 #undef min
 #undef max
 
@@ -41,6 +43,27 @@ void SelectScene::UpdateSongInfo()
 	if (!fs::exists(path)) path = "assets/music_name/_unknown.png";	//なかったら「???」を表示
 	if (fs::exists(path)) m_TitlePlate->SetTexture(path.c_str());
 
+	//自己べ
+	if (m_BestScore)
+	{
+		int best = Game::GetBestScore(name);
+		m_HasBest = (best >= 0);
+		m_BestScore->SetValue(0, true);
+		m_BestScore->SetValue(m_HasBest ? best : 0);
+
+		//ランク画像
+		m_HasRank = false;
+		if (m_HasBest && m_BestRank)
+		{
+			const char* rankImage = ScoreRule::RankImage(best);
+			if (fs::exists(rankImage))
+			{
+				m_BestRank->SetTexture(rankImage);
+				m_HasRank = true;
+			}
+		}
+	}
+
 	m_InfoAnim = 0.0f;	//滑り込みを最初から
 }
 
@@ -54,6 +77,22 @@ void SelectScene::UpdateSongInfoAnim(float dt)
 	m_TitlePlate->SetAlpha(e);
 	m_JacketTexture->SetPosition(kJacketX + slide, kJacketY, 100.0f);
 	m_JacketTexture->SetAlpha(e);
+
+	if (m_BestScore)
+	{
+		float y = kJacketY - kJacketSize * 0.5f - kBestScoreGap;
+		float scoreX = kJacketX + slide + kBestScoreOffsetX;
+		m_BestScore->SetPosition(scoreX, y, 90.0f);
+		m_BestScore->SetAlpha(m_HasBest ? e : 0.0f);
+
+		//スコアの左
+		if (m_BestRank)
+		{
+			float rankX = scoreX - kBestDigit * 2.75f - kRankGap - kRankSize * 0.5f;
+			m_BestRank->SetPosition(rankX, y, 90.0f);
+			m_BestRank->SetAlpha(m_HasRank ? e : 0.0f);
+		}
+	}
 }
 
 // 初期化
@@ -100,6 +139,19 @@ void SelectScene::Init()
 	m_TitlePlate = Game::GetInstance()->AddObject<Texture2D>();
 	m_TitlePlate->SetScale(kTitleW, kTitleH, 0.0f);
 	m_MySceneObjects.emplace_back(m_TitlePlate);
+
+	//ジャケットの下の自己べ
+	m_BestScore = Game::GetInstance()->AddObject<NumberDisplay>();
+	m_BestScore->SetUp("assets/texture/allnumber_new.png", 7);
+	m_BestScore->SetDigitSize(kBestDigit, kBestDigit);
+	m_BestScore->SetLeadingZeroAlpha(0.25f);
+	m_BestScore->SetCountSpeed(120.0f);
+	m_MySceneObjects.emplace_back(m_BestScore);
+
+	//自己べのランク
+	m_BestRank = Game::GetInstance()->AddObject<Texture2D>();
+	m_BestRank->SetScale(kRankSize, kRankSize, 0.0f);
+	m_MySceneObjects.emplace_back(m_BestRank);
 
 	UpdateSongInfo();	// 最初の曲を表示
 

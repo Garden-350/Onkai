@@ -42,6 +42,8 @@ public:
 	void MarkFlickAutoMiss(std::vector<ChartNote>& notes, float musicTime);
 	// LoadChart時に呼ぶ：Perfect/Great/Good/Missのみリセット（Combo/MaxComboは元の仕様通りリセットしない）
 	void ResetJudgeCounts();
+	//チャージ中はロングを離してもミスにしない時間帯
+	void SetMissFressWindow(float start, float end) { m_MissFreeStart = start; m_MissFreeEnd = end; }
 
 	int GetPerfectCount() const { return m_Perfect; }
 	int GetGreatCount()   const { return m_Great; }
@@ -63,6 +65,9 @@ private:
 	int m_Miss = 0;
 	int m_Combo = 0;
 	int m_MaxCombo = 0;
+
+	float m_MissFreeStart = -1.0f;
+	float m_MissFreeEnd = -1.0f;
 
 	OnJudgeFn m_OnJudge;
 	OnEmptyPressFn m_OnEmptyPress;

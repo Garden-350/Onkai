@@ -16,7 +16,7 @@ public:
 private:
 	//画像の作り
 	static constexpr float kCellW = 152.0f, kCellH = 288.0f;	//1コマの大きさ
-	static constexpr float kGlowW = 212.0f, kGlowH = 120.0f;
+	static constexpr float kGlowW = 212.0f, kGlowH = 348.0f;
 	static constexpr float kGoW = 160.0f, kGoH = 160.0f;	//Goの大きさ
 	static constexpr int kPhases = 8;	//液体シートの横のコマ数
 	static constexpr int kLevels = 12;	//液体シートの縦のコマ数
@@ -32,8 +32,8 @@ private:
 	Texture2D m_Back, m_Front, m_Glow, m_Go;
 	Texture2D m_Liquid[2][3];	//色、重ねるやつ	同じ画像をUVを変えるために３回書くので別々に
 
-	float m_X = -340.0f;
-	float m_Y = 290.0f;
+	float m_X = 0.0f;
+	float m_Y = 0.0f;
 	float m_Scale = 1.0f;
 	float m_Shown = 0.0f;		// 表示している値（なめらかに追いかける）
 	float m_GoldMix = 0.0f;	//0青1金

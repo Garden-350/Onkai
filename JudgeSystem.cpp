@@ -140,6 +140,10 @@ void JudgeSystem::JudgeLongNoteHold(std::vector<ChartNote>& notes, float musicTi
 				m_Perfect++;
 				RegisterHit(effectLane, 0);
 			}
+			else if (n.nextTickTime >= m_MissFreeStart && n.nextTickTime < m_MissFreeEnd)
+			{
+				//チャージ中は離してもミスにならない
+			}
 			else
 			{
 				m_Miss++;
@@ -271,6 +275,8 @@ void JudgeSystem::ResetJudgeCounts()
 	m_Miss = 0;
 	m_Combo = 0;
 	m_MaxCombo = 0;
+	m_MissFreeStart = -1.0f;
+	m_MissFreeEnd = -1.0f;
 }
 
 void JudgeSystem::RegisterHit(int laneIndex, int rank)

@@ -29,6 +29,11 @@
 #include "HexHpGauge.h"
 #include "SpecialMove.h"
 #include "SpecialGaugeHud.h"
+#include "NumberDisplay.h"
+#include "SpecialBeam.h"
+#include "WeakPoint.h"
+#include "AttackOrbs.h"
+#include "ImpactFx.h"
 
 class Player;
 class Enemy;
@@ -255,6 +260,8 @@ private:
 	float m_LongAmbientParticleTimer[6] = { 0,0,0,0,0,0 };
 
 	static constexpr float kSpecialBaseDamage = 15.0f;	//必殺技の基礎ダメージ
+	static constexpr float kSpecialCritMul = 2.0f;		//必殺技が弱点に当たった時のダメージ倍率
+	static constexpr float kSpecialBlockedMul = 0.3f;	//必殺技が防がれた時のダメージ倍率
 
 	void DrawHighwayLongNotes(Camera* cam);
 	void DrawSpawnMagicCircle(Camera* cam, const ChartNote& note);
@@ -374,4 +381,17 @@ private:
 
 	HexHpGauge m_EnemyHp;	//敵ゲージ
 	int m_LongCount = 0;	//ロングの本数(カウンターのダメージ計算に使用する)
+
+	//スコア表示
+	NumberDisplay m_ScoreDisplay;
+
+	//必殺技描画
+	SpecialBeam m_SpecialBeam;
+
+	WeakPoint  m_WeakPoint;		//敵の弱点部位
+	AttackOrbs m_AttackOrbs;	//普段の攻撃（判定円から敵へ飛ぶ光）
+	ImpactFx   m_ImpactFx;		//着弾の演出
+	int m_LastPressedLane = 2;	//最後に押したレーン（必殺技の狙いに使う）
+	float m_LastOrbTime[6] = { -100.0f, -100.0f, -100.0f, -100.0f, -100.0f, -100.0f };	//レーンごとに最後に光を飛ばした時刻
+	static constexpr float kOrbMinInterval = 0.12f;	//同じレーンから光を飛ばす最短の間隔
 };

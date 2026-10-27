@@ -144,6 +144,7 @@
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="AssimpPerse.cpp" />
+    <ClCompile Include="AttackOrbs.cpp" />
     <ClCompile Include="AudioSpectrum.cpp" />
     <ClCompile Include="BarrierPlate.cpp" />
     <ClCompile Include="BarrierQuad.cpp" />
@@ -157,6 +158,7 @@
     <ClCompile Include="ComboHud.cpp" />
     <ClCompile Include="HexHpGauge.cpp" />
     <ClCompile Include="HitPillarEffect.cpp" />
+    <ClCompile Include="ImpactFx.cpp" />
     <ClCompile Include="JudgeLineGuide.cpp" />
     <ClCompile Include="JudgeSystem.cpp" />
     <ClCompile Include="LakeGrass.cpp" />
@@ -166,6 +168,7 @@
     <ClCompile Include="NotePath.cpp" />
     <ClCompile Include="ChartLoader.cpp" />
     <ClCompile Include="ModelUtil.cpp" />
+    <ClCompile Include="NumberDisplay.cpp" />
     <ClCompile Include="OuterEdge.cpp" />
     <ClCompile Include="PauseOverlay.cpp" />
     <ClCompile Include="ScreenEffects.cpp" />
@@ -194,6 +197,7 @@
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="SkyBox.cpp" />
     <ClCompile Include="sound.cpp" />
+    <ClCompile Include="SpecialBeam.cpp" />
     <ClCompile Include="SpecialGaugeHud.cpp" />
     <ClCompile Include="SpecialMove.cpp" />
     <ClCompile Include="SpectrumRing.cpp" />
@@ -210,12 +214,14 @@
     <ClCompile Include="TitleLake.cpp" />
     <ClCompile Include="TitleScene.cpp" />
     <ClCompile Include="utility.cpp" />
+    <ClCompile Include="WeakPoint.cpp" />
     <ClCompile Include="WireShape.cpp" />
     <ClCompile Include="WireShapeSpawner.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="AssimpPerse.h" />
+    <ClInclude Include="AttackOrbs.h" />
     <ClInclude Include="AudioSpectrum.h" />
     <ClInclude Include="BarrierPlate.h" />
     <ClInclude Include="BarrierQuad.h" />
@@ -229,6 +235,7 @@
     <ClInclude Include="ComboHud.h" />
     <ClInclude Include="HexHpGauge.h" />
     <ClInclude Include="HitPillarEffect.h" />
+    <ClInclude Include="ImpactFx.h" />
     <ClInclude Include="JudgeLineGuide.h" />
     <ClInclude Include="JudgeSystem.h" />
     <ClInclude Include="LakeGrass.h" />
@@ -240,8 +247,11 @@
     <ClInclude Include="ChartLoader.h" />
     <ClInclude Include="ChartHomingBeam.h" />
     <ClInclude Include="ModelUtil.h" />
+    <ClInclude Include="NumberDisplay.h" />
     <ClInclude Include="OuterEdge.h" />
     <ClInclude Include="PauseOverlay.h" />
+    <ClInclude Include="RibbonShapes.h" />
+    <ClInclude Include="ScoreRule.h" />
     <ClInclude Include="ScreenEffects.h" />
     <ClInclude Include="HomingBeamSystem.h" />
     <ClInclude Include="Collision.h" />
@@ -274,6 +284,7 @@
     <ClInclude Include="SimpleJson.h" />
     <ClInclude Include="SkyBox.h" />
     <ClInclude Include="sound.h" />
+    <ClInclude Include="SpecialBeam.h" />
     <ClInclude Include="SpecialGaugeHud.h" />
     <ClInclude Include="SpecialMove.h" />
     <ClInclude Include="SpectrumRing.h" />
@@ -291,6 +302,7 @@
     <ClInclude Include="TitleScene.h" />
     <ClInclude Include="utility.h" />
     <ClInclude Include="VertexBuffer.h" />
+    <ClInclude Include="WeakPoint.h" />
     <ClInclude Include="WireShape.h" />
     <ClInclude Include="WireShapeSpawner.h" />
   </ItemGroup>
@@ -331,6 +343,10 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="shader\enemyFlash.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="shader\judgeGuidePS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>

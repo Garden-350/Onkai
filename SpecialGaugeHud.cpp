@@ -46,11 +46,11 @@ void SpecialGaugeHud::Update(float dt, const SpecialMove& sp)
 
 	//満タンの時だけ発動　デバッグは無視
 	bool ready = (sp.GetState() == SpecialMove::State::Gauge) && (sp.GetGauge() >= 1.0f);
+	if (ready && !m_Ready) m_ReadyPop = 1.0f;
 	m_Ready = ready;
 	m_ReadyPop = std::max(0.0f, m_ReadyPop - dt * 3.0f);
 
 	//色
-	if (ready && !m_Ready) m_ReadyPop = 1.0f;
 	bool gold = ready || (sp.GetState() != SpecialMove::State::Gauge);
 	float goldTarget = gold ? 1.0f : 0.0f;
 	if (m_GoldMix < goldTarget) m_GoldMix = std::min(goldTarget, m_GoldMix + kGoldSpeed * dt);

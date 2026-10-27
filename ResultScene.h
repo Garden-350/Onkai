@@ -3,36 +3,48 @@
 #include "Object.h"
 #include "sound.h"
 #include "ResultData.h"
+#include <string>
 
 class Texture2D;
+class NumberDisplay;
 // ResultSceneクラス
 class ResultScene : public Scene
 {
-private:
-	std::vector<Object*> m_MySceneObjects; // このシーンのオブジェクト
-	std::vector<std::string> m_SongNames;
-	Sound sound;
-
-	void Init(); // 初期化
-	void Uninit(); // 終了処理
-	void SetUpDigitRow(Texture2D** row, int value, float x, float y);	// 3桁の数字テクスチャ配列を生成して、指定座標に指定値を表示する共通処理
-
-	Texture2D* m_PerfectDigits[4] = { nullptr,nullptr,nullptr };
-	Texture2D* m_GreatDigits[4] = { nullptr,nullptr,nullptr };
-	Texture2D* m_GoodDigits[4] = { nullptr,nullptr,nullptr };
-	Texture2D* m_MissDigits[4] = { nullptr, nullptr, nullptr };
-	Texture2D* m_MaxComboDigits[4] = { nullptr, nullptr, nullptr };
-	Texture2D* m_PressEnterObg = nullptr;
-
-	ResultData m_Result;
-
-	int m_SelectedIndex = 0;
-	float m_PressEnterBlinkTimer = 0.0f;
-	bool m_Initialized = false;
 public:
+	struct Box
+	{
+		float x, y;	//中心の位置
+		float w, h;	//大きさ
+	};
+
 	ResultScene(); // コンストラクタ
 	~ResultScene(); // デストラクタ
 
 	void Update(); // 更新
+private:
+	std::vector<Object*> m_MySceneObjects; // このシーンのオブジェクト
+	Sound sound;
+
+	void Init(); // 初期化
+	void Uninit(); // 終了処理
+	void BuildLayout();	//リザルトの中身を並べる　Updateで一回実行
+
+	// 画像を1枚置く
+	Texture2D* AddImage(const char* path, const Box& box, float z = 0.0f);
+	// 数字を置く。countUp = true なら 0 から数え上がる
+	NumberDisplay* AddNumber(int value, int digits, const Box& box, bool countUp = false);
+	// 判定の内訳を1行置く（ラベルの画像＋数字）。row は上から 0,1,2,3
+	void AddJudgeRow(const char* labelPath, int value, int row);
+	// 曲のジャケット画像を探す（無ければ default.png）
+	static std::string FindJacketPath(const std::string& chartName);
+
+	ResultData m_Result;
+
+	std::vector<std::string> m_SongNames;
+	Texture2D* m_PressEnterObg = nullptr;
+	int   m_SelectedIndex = 0;
+	float m_PressEnterBlinkTimer = 0.0f;
+
+	bool m_Initialized = false;	// BuildLayout を呼んだか
 };
 

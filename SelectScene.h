@@ -11,6 +11,7 @@ class Texture2D;
 class Sound;
 class MagicCircleTransitionEffect;
 class SpectrumRing;
+class NumberDisplay;
 class SelectScene : public Scene
 {
 private:
@@ -89,6 +90,19 @@ private:
 	static constexpr float kInfoAnimSec = 0.25f;	//滑り込みに掛ける秒数
 	void UpdateSongInfo();				// 選択中の曲の曲名・ジャケットに差し替える
 	void UpdateSongInfoAnim(float dt);	// 毎フレーム：滑り込みとフェードイン
+
+	//スコア表示
+	NumberDisplay* m_BestScore = nullptr;	//ジャケットの下に自己べ表示
+	static constexpr float kBestDigit = 50.0f;	//数字一桁の大きさ
+	static constexpr float kBestScoreGap = 45.0f;	//ジャケットの下端から数字の真ん中までの距離
+	bool m_HasBest = false;						//プレイ済み？
+
+	//ランク表示
+	Texture2D* m_BestRank = nullptr;	//自己べの時のランク
+	static constexpr float kBestScoreOffsetX = 150.0f;	//ジャケットの真ん中からスコアの真ん中までの横ずれ
+	static constexpr float kRankSize = 90.0f;			//ランク画像の大きさ
+	static constexpr float kRankGap = 20.0f;			//スコアの左端とランク画像の間の間隔
+	bool m_HasRank = false;	//ランク出すか
 
 	void Init(); // 初期化
 	void Uninit(); // 終了処理

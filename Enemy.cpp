@@ -16,8 +16,9 @@ void Enemy::Init()
 
 	m_Shader.Create(
 		"shader/litTextureVS.hlsl",
-		"shader/litTexturePS.hlsl"
+		"shader/enemyFlash.hlsl"
 	);
+	m_Shader.CreatePSConstantBuffer(sizeof(FlashParams));
 
 	m_Subsets = mesh.GetSubsets();
 	m_Textures = mesh.GetTextures();
@@ -36,6 +37,7 @@ void Enemy::Update()
 {
 	m_Rotation.y += 0.01f;
 	if (m_HitTimer > 0.0f) m_HitTimer -= 1.0f / 60.0f;
+	if (m_FlashTime > 0.0f) m_FlashTime = std::max(0.0f, m_FlashTime - 1.0f / 60.0f);
 }
 
 void Enemy::Draw(Camera* cam)
@@ -48,6 +50,11 @@ void Enemy::Draw(Camera* cam)
 	Renderer::SetDepthEnable(false);
 
 	m_Shader.SetGPU();
+
+	//今の光り具合をシェーダーへ送る
+	FlashParams fp;
+	fp.color = DirectX::SimpleMath::Vector4(m_FlashColor.x, m_FlashColor.y, m_FlashColor.z, CurrentFlash());
+	m_Shader.UpdatePSConstantBuffer(&fp, sizeof(fp));
 
 	m_MeshRenderer.BeforeDraw();
 
@@ -83,4 +90,23 @@ void Enemy::Draw(Camera* cam)
 
 void Enemy::Uninit()
 {
+}
+
+void Enemy::Flash(const DirectX::SimpleMath::Vector3& color, float strength, float duration)
+{
+	//今光っている方が強ければ、そちらを残す（弱い光で強い光を上書きしない）
+	if (strength < CurrentFlash()) return;
+
+	m_FlashColor = color;
+	m_FlashStrength = strength;
+	m_FlashDuration = std::max(0.01f, duration);
+	m_FlashTime = m_FlashDuration;
+}
+
+//今の光り具合：光った瞬間が一番強く、2乗で素早く元に戻る
+float Enemy::CurrentFlash() const
+{
+	if (m_FlashTime <= 0.0f) return 0.0f;
+	float k = m_FlashTime / m_FlashDuration;	// 1->0
+	return m_FlashStrength * k * k;
 }

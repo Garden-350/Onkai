@@ -179,7 +179,7 @@ void ComboHud::Draw(Camera* cam, const Matrix& view,
 		auto drawCountRow = [&](Texture2D* row, int value, float y)
 			{
 				if (value > 9999) value = 9999;
-				int digits[4] = { value / 1000, value / 100, (value / 10) % 10, value % 10 };
+				int digits[4] = { value / 1000, (value / 100) % 10, (value / 10) % 10, value % 10 };
 				float digitW = 42.0f;    // 数字同士の間隔（左上コーナーに収まるよう詰める）
 				float startX = -545.0f;  // ラベルの右側から数字を並べる
 
@@ -192,7 +192,7 @@ void ComboHud::Draw(Camera* cam, const Matrix& view,
 			};
 
 		constexpr float kLabelX = -590.0f;		// ラベルのX座標（画面左端に寄せる）
-		constexpr float kTopY = 320.0f;		// 一番上の行のY座標（画面上端に寄せる）
+		constexpr float kTopY = 100.0f;		// 一番上の行のY座標（画面上端に寄せる）
 		constexpr float kRowSpacing = 40.0f;	// 行間（詰めてまとめる）
 
 		Renderer::SetBlendState(BS_ALPHABLEND);

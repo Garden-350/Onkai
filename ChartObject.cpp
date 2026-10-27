@@ -14,6 +14,7 @@
 #include "LightShaft.h"
 #include "ResultData.h"
 #include "ChargeAura.h"
+#include "ScoreRule.h"
 #include <algorithm>
 #include <cmath>
 #undef min
@@ -152,15 +153,37 @@ void ChartObject::Init()
 		});
 	m_Special.SetOnFire([this](float ratio)
 		{
-			//ここでビームを描画
 			ChargeAura::Instance().Release();
-			if (m_EnemyRef) m_EnemyRef->Damage(SpecialMove::CalcDamage(kSpecialBaseDamage, ratio));
+			if (!m_EnemyRef) return;
+
+			//オートプレイは必ず弱点を狙う
+			if (m_AutoMode) m_WeakPoint.SetAim(m_WeakPoint.GetWeakLane());
+
+			int aim = m_WeakPoint.GetAim();
+			bool critical = (aim == m_WeakPoint.GetWeakLane());
+
+			constexpr float kFromUp = 40.0f;	//プレイヤーのどれだけ上から撃つか
+			constexpr float kToUp = 50.0f;		//敵の中心のどれだけ上に当てるか
+			Vector3 from = m_PlayerRef ? m_PlayerRef->GetPosition() + Vector3(0.0f, kFromUp, 0.0f)
+				: Vector3(0.0f, 0.0f, -300.0f);
+			Vector3 to = m_EnemyRef->GetPosition() + Vector3(0.0f, kToUp, 0.0f);	//ビームは必ず敵のど真ん中へ
+
+			m_WeakPoint.OnFired();
+			m_SpecialBeam.Fire(from, to, ratio, critical);	//ダメージは当たった瞬間（SetOnHit）
+			sound.Play(SOUND_BEAM_FIRING);
 		});
+	//発射が終わった：弱点を普段の切り替えに戻す
+	m_Special.SetOnFinish([this]()
+		{
+			m_WeakPoint.EndSpecial(m_MusicTime);
+		});
+
 	m_JudgeSystem.SetOnLongEnd([this](int)
 		{
 			m_GazeKickTime = m_MusicTime;
 			//カウンター　HPの4割りをロングの本数で割った分のダメージにする
 			if (m_EnemyRef && m_LongCount > 0) m_EnemyRef->Damage(40.0f / m_LongCount);
+			if (m_EnemyRef) m_EnemyRef->Flash(Vector3(1.0f, 1.0f, 1.0f), 0.6f, 0.15f);
 		});
 	m_JudgeSystem.SetOnEmptyPress([this](int laneIndex) { OnEmptyLanePress(laneIndex); });
 	// サウンドエンジン初期化 
@@ -224,6 +247,59 @@ void ChartObject::Init()
 	m_BeamSystem.Init();
 	m_LongBeam.Init();
 
+	//必殺技のビームが当たったりしたところ
+	m_SpecialBeam.Init();
+	m_WeakPoint.Init();
+	for (int i = 0; i < 6; i++) m_WeakPoint.SetLaneColor(i, GetLaneColor(i));
+	m_AttackOrbs.Init();
+	m_ImpactFx.Init();
+
+	//必殺技の本命の帯が当たった瞬間
+	m_SpecialBeam.SetOnHit([this](float ratio, bool critical, const Vector3& hitPos)
+		{
+			float damage = SpecialMove::CalcDamage(kSpecialBaseDamage, ratio)
+				* (critical ? kSpecialCritMul : kSpecialBlockedMul);
+			if (m_EnemyRef) m_EnemyRef->Damage(damage);
+
+			if (critical)
+			{
+				//弱点に当たった：大きな衝撃・閃光・強い揺れ・世界側カメラのキック
+				m_ImpactFx.SpawnCritical(hitPos, Vector3(1.0f, 0.85f, 0.4f), ratio);
+				m_ScreenEffects.TriggerScreenShake(0.35f, 8.0f + 10.0f * ratio);
+				m_ScreenEffects.TriggerFlash(0.18f);
+				if (m_EnemyRef) m_EnemyRef->Flash(Vector3(1.0f, 0.9f, 0.5f), 1.0f, 0.35f);	//金色に強く
+				m_GazeKickTime = m_MusicTime;
+				sound.Play(SOUND_METAL_2);
+			}
+			else
+			{
+				//防がれた：盾と、はね返る火花 盾がいるかは要検討
+				Vector3 from = m_PlayerRef ? m_PlayerRef->GetPosition() : Vector3(0.0f, 0.0f, -300.0f);
+				m_ImpactFx.SpawnBlocked(hitPos, hitPos - from);
+				m_ScreenEffects.TriggerScreenShake(0.15f, 4.0f);
+				if (m_EnemyRef) m_EnemyRef->Flash(Vector3(0.55f, 0.75f, 1.0f), 0.6f, 0.2f);	//青白く（盾の色があったら）
+				sound.Play(SOUND_REFLECTION);
+			}
+		});
+	//必殺技の群れの光が1本当たるたび
+	m_SpecialBeam.SetOnSubHit([this](const Vector3& pos, const Vector3& color)
+		{
+			m_ImpactFx.SpawnSmallHit(pos, color);
+		});
+	//普段の攻撃の光が着いた時
+	m_AttackOrbs.SetOnArrive([this](int, const Vector3& pos, const Vector3& color, bool critical)
+		{
+			if (critical) m_ImpactFx.SpawnWeakHit(pos, color);
+			else          m_ImpactFx.SpawnSmallHit(pos, color);
+
+			//敵を一瞬光らせる
+			if (m_EnemyRef)
+			{
+				if (critical) m_EnemyRef->Flash(Vector3(1.0f, 0.85f, 0.4f), 0.45f, 0.12f);
+				else          m_EnemyRef->Flash(Vector3(1.0f, 1.0f, 1.0f), 0.2f, 0.08f);
+			}
+		});
+
 	// ── 判定円の初期配置（JSONにjudgeCirclesが無い旧フォーマット用のデフォルト値）──
 // ── 判定円の初期配置（JSONにjudgeCirclesが無い旧フォーマット用のデフォルト値）──
 	m_JudgeCircles.resize(6);
@@ -281,12 +357,18 @@ void ChartObject::Init()
 	}
 	m_ComboHud.Init();
 
+	m_ScoreDisplay.Init();
+	m_ScoreDisplay.SetUp("assets/texture/allnumber_new.png", 7);
+	m_ScoreDisplay.SetDigitSize(72.0f, 72.0f);
+	m_ScoreDisplay.SetPosition(-400.0f, 325.0f);
+	m_ScoreDisplay.SetLeadingZeroAlpha(0.25f);	//頭の0を薄くする
+
 	m_EnemyHp.Init();
 	m_EnemyHp.SetPosition(400.0f, 230.0f);	//画面の上
 	m_EnemyHp.SetSize(250.0f);
 
 	m_SpGauge.Init();
-	m_SpGauge.SetPosition(-340.0f, 290.0f);
+	m_SpGauge.SetPosition(-540.0f, -100.0f);
 }
 
 // ============================================================
@@ -396,8 +478,18 @@ bool ChartObject::LoadChart(const std::string& name)
 	m_MusicTime = 0.0f;
 
 	m_JudgeSystem.ResetJudgeCounts();
+
+	m_ScoreDisplay.SetValue(0, true);
+
 	m_Special.Reset(m_TotalNote);
 	ChargeAura::Instance().Cancel();
+	m_SpecialBeam.Cancel();
+	m_WeakPoint.Reset();
+	m_AttackOrbs.Clear();
+	m_ImpactFx.Clear();
+	m_LastPressedLane = 2;
+
+	for (auto& t : m_LastOrbTime) t = -100.0f;
 
 	OutputDebugStringA(("[ChartPlayObject] Loaded: charts/" + name + ".json notes=" +
 		std::to_string(m_Notes.size()) + " beams=" + std::to_string(m_BeamSystem.GetBeamCount()) + "\n").c_str());
@@ -766,6 +858,11 @@ void ChartObject::Update()
 	}
 	m_ComboHud.Update(deltaTime);
 
+	m_ScoreDisplay.SetValue(ScoreRule::Calc(
+		m_JudgeSystem.GetPerfectCount(), m_JudgeSystem.GetGreatCount(), m_JudgeSystem.GetGoodCount(), m_TotalNote
+	));
+	m_ScoreDisplay.Update();
+
 	if (m_EnemyRef) m_EnemyHp.SetRatio(m_EnemyRef->GetHpRatio());
 	m_EnemyHp.Update(deltaTime);
 
@@ -872,9 +969,40 @@ void ChartObject::Update()
 	UpdateLongSounds();
 
 	//必殺技発動
+	//最後に押したレーンを覚える（チャージ中でロック前なら、狙いもそのレーンへ動く）
+	for (int lane = 0; lane < 6; lane++)
+	{
+		if (Input::GetKeyTrigger(kLaneKeys[lane]))
+		{
+			m_LastPressedLane = lane;
+			m_WeakPoint.SetAim(lane);
+		}
+	}
+
+	//Space：溜め中なら発動、チャージ中ならロックオン
 	if (Input::GetKeyTrigger(VK_SPACE))
-		m_Special.TryActivate(m_MusicTime, m_Bpm, m_BeatsPerBar, m_Notes);
+	{
+		if (m_Special.GetState() == SpecialMove::State::Gauge)
+		{
+			if (m_Special.TryActivate(m_MusicTime, m_Bpm, m_BeatsPerBar, m_Notes))
+			{
+				m_JudgeSystem.SetMissFressWindow(m_Special.GetChargeStart(), m_Special.GetChargeEnd());
+				m_WeakPoint.BeginSpecial(m_MusicTime, m_Special.GetChargeEnd(), m_LastPressedLane);
+			}
+		}
+		else if (m_WeakPoint.Lock())
+		{
+			sound.Play(SOUND_BEAM_DECITION);	//ロックオンの音
+		}
+	}
 	m_Special.Update(deltaTime, m_MusicTime);
+	m_SpecialBeam.Update(deltaTime);
+	// 判定円の位置を渡す（弱点のレーンの判定円に印を出すため）
+	for (int i = 0; i < 6 && i < (int)m_JudgeCircles.size(); i++)
+		m_WeakPoint.SetLaneAnchor(i, m_JudgeCircles[i].GetPosition(m_MusicTime));
+	if (m_EnemyRef) m_WeakPoint.Update(deltaTime, m_MusicTime, m_Bpm, m_BeatsPerBar, m_EnemyRef->GetPosition());
+	m_AttackOrbs.Update(deltaTime);
+	m_ImpactFx.Update(deltaTime);
 	m_SpGauge.Update(deltaTime, m_Special);
 	ChargeAura::Instance().Update(deltaTime, m_Special.GetChargeProgress(m_MusicTime));
 
@@ -927,6 +1055,14 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 	m_LaneGlow[laneIndex] = 1.0f;	//判定したレーンのバッドを光らせる
 	Vector3 pos = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
 
+	//判定円から、敵の体のランダムな位置へ光を飛ばす。PERFECT は太い金の光（同じレーンは kOrbMinInterval に1つまで）
+	bool perfect = (rank == 0);
+	if (m_EnemyRef && m_MusicTime - m_LastOrbTime[laneIndex] >= kOrbMinInterval)
+	{
+		m_AttackOrbs.Launch(laneIndex, pos, m_WeakPoint.GetRandomBodyPos(), GetLaneColor(laneIndex), perfect);
+		m_LastOrbTime[laneIndex] = m_MusicTime;
+	}
+
 	for (int i = 0; i < 100; i++)
 	{
 		float deg = (float)(rand() % 360);
@@ -952,7 +1088,6 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 	le.origin = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
 
 	m_LightEffects.push_back(le);
-	(void)rank; // 現状rank別の演出差はまだ未実装。将来ランクごとに色や量を変える場合はここで分岐する
 }
 
 // ============================================================
@@ -1488,9 +1623,8 @@ void ChartObject::Draw(Camera* cam)
 			if (!note.IsLong()) continue;
 			if (note.judged) continue;
 			if (note.lane < 0 || note.lane >= 6) continue;
-			if (m_MusicTime < note.arrivalTime || m_MusicTime > note.time) continue;
-			if (!Input::GetKeyPress(kLaneKeys[note.lane])) continue;
-			holding[note.lane] = true;
+			if (!IsHoldingLong(note)) continue;
+			holding[note.LaneAt(m_MusicTime)] = true;
 		}
 		constexpr float kBarrierScale = 260.0f;	//大きさ
 		Renderer::SetBlendState(BS_ALPHABLEND);
@@ -1575,8 +1709,15 @@ void ChartObject::Draw(Camera* cam)
 		m_BeamSystem.Draw(cam, m_MusicTime, m_EnemyRef, GetPlayerSideAnchor(playerSide));
 	}
 
+	//戦闘の演出：HUDより先に描いて上に来るように
+	m_WeakPoint.Draw(cam);
+	m_AttackOrbs.Draw(cam);
+	m_SpecialBeam.Draw(cam);
+
+	m_ImpactFx.Draw(cam);
 	m_EnemyHp.Draw(cam);
 	m_SpGauge.Draw(cam);
+	m_ScoreDisplay.Draw(cam);
 	cam->SetCamera(0);
 }
 

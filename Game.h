@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <map>
 
 #include "Renderer.h"
 #include "TitleScene.h"
@@ -42,6 +43,7 @@ private:
 	std::vector<std::unique_ptr<Object>>m_Objects;
 	std::vector<std::unique_ptr<Object>> m_AddBuffer;
 	std::string m_SelectedChart = "beam_2";
+	std::map<std::string, int> m_BestScores;	//曲名->その曲の自己べ
 
 	bool m_AutoMode = false;
 	bool m_Paused = false;
@@ -65,6 +67,23 @@ public:
 
 	static void SetResultData(const ResultData& data) { m_Instance->m_LastResult = data; }
 	static const ResultData& GetResultData() { return m_Instance->m_LastResult; }
+
+	//曲のスコアを記録
+	static bool RecordScore(const std::string& chartName, int score)
+	{
+		auto& best = m_Instance->m_BestScores;
+		auto it = best.find(chartName);
+		if (it != best.end() && it->second >= score) return false;
+		best[chartName] = score;
+		return true;
+	}
+
+	//その曲の自己ベスト。未プレイなら-1
+	static int GetBestScore(const std::string& chartName)
+	{
+		auto it = m_Instance->m_BestScores.find(chartName);
+		return (it != m_Instance->m_BestScores.end()) ? it->second : -1;
+	}
 
 	static Game* GetInstance();
 	Camera* GetCamera() { return &m_Camera; }

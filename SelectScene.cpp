@@ -32,6 +32,47 @@ SelectScene::~SelectScene()
 }
 
 
+void SelectScene::RefreshOptionButtons()
+{
+	m_AutoButton->SetTexture(m_AutoModeSelected ? "assets/texture/on.png" : "assets/texture/off.png");
+	m_NoiseButton->SetTexture(m_NoiseModeSelected ? "assets/texture/on.png" : "assets/texture/off.png");
+}
+
+void SelectScene::UpdateOptionCursor(float dt)
+{
+	m_FrameY += (OptionRowY(m_OptionCursor) - m_FrameY) * 0.25f;
+	m_FrameAnimTime += dt;
+	m_OptionFrame->SetPosition(kOptionLabelX, m_FrameY, 10.0f);
+	m_Tab->SetPosition(kTabX, m_FrameY + kOptionButtonDY, 0.0f);
+	m_OptionFrame->SetAlpha(0.65f + 0.35f * sinf(m_FrameAnimTime * 5.0f));
+
+	float autoA = (m_OptionCursor == 0) ? 1.0f : kDimAlpha;
+	float noiseA = (m_OptionCursor == 1) ? 1.0f : kDimAlpha;
+	m_AutoTexture->SetAlpha(autoA);
+	m_AutoButton->SetAlpha(autoA);
+	m_Noise->SetAlpha(noiseA);
+	m_NoiseButton->SetAlpha(noiseA);
+
+	//矢印の画像は、選んでいる行が変わった時だけ差し替える（毎フレーム読み込むと重いため）
+	bool up = (m_OptionCursor == 0);	//オート選択中->ノイズの行に上矢印
+	if (m_ArrowShownFor != m_OptionCursor)
+	{
+		m_OptionArrow->SetTexture(up ? "assets/texture/yazirusi_up.png" : "assets/texture/yazirusi_down.png");
+		m_ArrowShownFor = m_OptionCursor;
+	}
+
+	//枠と反対の行の高さ（2つの行の高さの合計から枠の高さを引く。枠が下りると矢印は上る）
+	float otherY = OptionRowY(0) + OptionRowY(1) - m_FrameY;
+
+	//三角が画像の上か下に寄っているので、その分ずらして ON/OFF と高さを合わせる
+	float fix = kOptionArrowSize * kArrowCenterFix * (up ? -1.0f : 1.0f);
+
+	//指している向きへ小さくぴょこぴょこ（|sin| で、向きの方にだけ跳ねる）
+	float bob = kArrowBob * fabsf(sinf(m_FrameAnimTime * 4.0f)) * (up ? 1.0f : -1.0f);
+
+	m_OptionArrow->SetPosition(kTabX, otherY + kOptionButtonDY + fix + bob, 0.0f);
+}
+
 void SelectScene::UpdateSongInfo()
 {
 	if (m_SongNames.empty()) return;
@@ -107,16 +148,57 @@ void SelectScene::Init()
 	pt->SetScale(1280.0f, 720.0f, 0.0f);
 	m_MySceneObjects.emplace_back(pt);
 
+	// ── オプション（上：オート / 下：ノイズ）──
+	m_AutoModeSelected = Game::GetInstance()->IsAutoMode();		// 前に選んだ設定をそのまま表示する
+	m_NoiseModeSelected = Game::GetInstance()->IsNoiseMode();
+	m_OptionCursor = 0;
+	m_FrameY = OptionRowY(0);
 
-	// オートモード切替ボタン
-	m_AutoModeSelected = false;
+	// 枠は文字より先に作る（先に描いて、文字の後ろに出すため。z も少し奥にする）
+	m_OptionFrame = Game::GetInstance()->AddObject<Texture2D>();
+	m_OptionFrame->SetTexture("assets/texture/option_frame.png");
+	m_OptionFrame->SetPosition(kOptionLabelX, m_FrameY, 10.0f);
+	m_OptionFrame->SetScale(kFrameW, kFrameH, 0.0f);
+	m_MySceneObjects.emplace_back(m_OptionFrame);
+
+	//上の行：オート
+	m_AutoTexture = Game::GetInstance()->AddObject<Texture2D>();
+	m_AutoTexture->SetTexture("assets/texture/automode.png");
+	m_AutoTexture->SetPosition(kOptionLabelX, OptionRowY(0) + kOptionLabelDY, 0.0f);
+	m_AutoTexture->SetScale(400.0f, 100.0f, 0.0f);
+	m_MySceneObjects.emplace_back(m_AutoTexture);
+
 	m_AutoButton = Game::GetInstance()->AddObject<Texture2D>();
-	m_AutoButton->SetTexture("assets/texture/Auto_off.png");
-	m_AutoButton->SetPosition(430.0f, 200.0f, 0.0f);
-	m_AutoButton->SetScale(80.0f, 80.0f, 0.0f);
+	m_AutoButton->SetPosition(kOptionButtonX, OptionRowY(0) + kOptionButtonDY, 0.0f);
+	m_AutoButton->SetScale(80.0f, 60.0f, 0.0f);
 	m_MySceneObjects.emplace_back(m_AutoButton);
 
-	// ハイスピ表示（コンボと同じ数字画像を流用。小数点の絵は無いので2桁を隙間を空けて並べる）
+	//下の行：ノイズ
+	m_Noise = Game::GetInstance()->AddObject<Texture2D>();
+	m_Noise->SetTexture("assets/texture/noisemode.png");
+	m_Noise->SetPosition(kOptionLabelX, OptionRowY(1) + kOptionLabelDY, 0.0f);
+	m_Noise->SetScale(400.0f, 100.0f, 0.0f);
+	m_MySceneObjects.emplace_back(m_Noise);
+
+	m_NoiseButton = Game::GetInstance()->AddObject<Texture2D>();
+	m_NoiseButton->SetPosition(kOptionButtonX, OptionRowY(1) + kOptionButtonDY, 0.0f);
+	m_NoiseButton->SetScale(80.0f, 60.0f, 0.0f);
+	m_MySceneObjects.emplace_back(m_NoiseButton);
+
+	RefreshOptionButtons();	//ON/OFF の画像を今の設定に合わせる
+
+	m_Tab = Game::GetInstance()->AddObject<Texture2D>();
+	m_Tab->SetTexture("assets/texture/tab.png");
+	m_Tab->SetPosition(kTabX, m_FrameY + kOptionButtonDY, 0.0f);
+	m_Tab->SetScale(80.0f, 60.0f, 0.0f);
+	m_MySceneObjects.emplace_back(m_Tab);
+
+	m_OptionArrow = Game::GetInstance()->AddObject<Texture2D>();
+	m_OptionArrow->SetScale(kOptionArrowSize, kOptionArrowSize, 0.0f);
+	m_MySceneObjects.emplace_back(m_OptionArrow);
+	m_ArrowShownFor = -1;	//最初の UpdateOptionCursor で画像を読み込ませる
+
+	//ハイスピ表示（コンボと同じ数字画像を流用。小数点の絵は無いので2桁を隙間を空けて並べる）
 	for (int i = 0; i < 2; i++)
 	{
 		m_HighSpeedDigits[i] = Game::GetInstance()->AddObject<Texture2D>();
@@ -262,12 +344,12 @@ void SelectScene::Update()
 	}
 
 	// Sキーで前の曲へ
-	if (Input::GetKeyTrigger(VK_S) || Input::GetKeyTrigger(VK_LEFT) || Input::GetKeyTrigger(VK_UP))
+	if (Input::GetKeyTrigger(VK_S) || Input::GetKeyTrigger(VK_LEFT))
 	{
 		ShiftJackets(-1);
 	}
 	// Dキーで次の曲へ
-	if (Input::GetKeyTrigger(VK_F) || Input::GetKeyTrigger(VK_RIGHT) || Input::GetKeyTrigger(VK_DOWN))
+	if (Input::GetKeyTrigger(VK_F) || Input::GetKeyTrigger(VK_RIGHT))
 	{
 		ShiftJackets(1);
 	}
@@ -294,14 +376,18 @@ void SelectScene::Update()
 		m_HighSpeedDigits[1]->SetUV((float)(decPart + 1), 1.0f, 10.0f, 1.0f);
 	}
 
-	//TABでオート切替
+	//上下でオプションの行を選ぶ（2行なので、端まで行ったら反対側へ）
+	if (Input::GetKeyTrigger(VK_UP))   m_OptionCursor = (m_OptionCursor + kOptionCount - 1) % kOptionCount;
+	if (Input::GetKeyTrigger(VK_DOWN)) m_OptionCursor = (m_OptionCursor + 1) % kOptionCount;
+
+	//TABで今選んでいる行の ON/OFF を切り替え
 	if (Input::GetKeyTrigger(VK_TAB))
 	{
-		m_AutoModeSelected = !m_AutoModeSelected;
-		m_AutoButton->SetTexture(
-			m_AutoModeSelected ? "assets/texture/Auto_on.png" : "assets/texture/Auto_off.png"
-		);
+		if (m_OptionCursor == 0) m_AutoModeSelected = !m_AutoModeSelected;
+		else                     m_NoiseModeSelected = !m_NoiseModeSelected;
+		RefreshOptionButtons();
 	}
+	UpdateOptionCursor(dt);
 
 	UpdateJacketLayout(); // 毎フレーム補間を進める
 
@@ -323,6 +409,7 @@ void SelectScene::Update()
 
 		Game::SetSelectedChart(m_SongNames[m_SelectedIndex]);
 		Game::SetAutoMode(m_AutoModeSelected);
+		Game::SetNoiseMode(m_NoiseModeSelected);
 		Game::GetInstance()->ChangeScene(STAGE1);
 	}
 }

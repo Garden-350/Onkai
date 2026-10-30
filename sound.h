@@ -22,6 +22,9 @@ typedef enum
 	SOUND_CLAMPU,
 	SOUND_CHARGE,
 	SOUND_FINGERSNAP,
+	SOUND_MIRROR_BREAK_SMALL,
+	SOUND_MIRROR_BREAK_BIG,
+	SOUND_NOISE,
 
 	SOUND_LABEL_BGM001,
 	SOUND_LABEL_BGM002,
@@ -60,6 +63,9 @@ private:
 		{"assets/se/clampu.wav",false},
 		{"assets/se/charge.wav",false},
 		{"assets/se/fingersnap.wav",false},
+		{"assets/se/Break_small.wav",false},
+		{"assets/se/Break.wav",false},
+		{"assets/se/noise.wav",true},
 
 		{"assets/bgm/mirror.wav", true},
 		{"assets/bgm/maou_bgm_piano39.wav", true},
@@ -124,6 +130,7 @@ public:
 	void SetPlayPositionSecondsDynamic(float seconds);
 	void SeekSecondsDynamic(float seconds);
 	void SetVolumeDynamic(float volume);
+	void SetLowPassDynamic(float cutoffHz);
 	float GetDynamicDurationSeconds() const;
 	//曲選択画面のオーディオスペクトラム用
 	//beginSec~lenghtSecの間をループ

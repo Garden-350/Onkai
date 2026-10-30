@@ -21,7 +21,10 @@ private:
 	void ApplyCamera();
 
 	ChartObject* m_Chart = nullptr;
-	class SpotlightRow* m_Spotlights = nullptr;	//ランウェイ風なスポットライトを追加したい
+	class SpotlightRow* m_Spotlights = nullptr;	//ランウェイ風なスポットライトを追加
+	class OuterEdge* m_OuterEdge = nullptr;		//観客のペンライト
+	class WireShapeSpawner* m_Spawner = nullptr;	//流れてくる四角
+
 	bool m_AudioFinished = false;
 	float m_FinishWaitTimer = 0.0f;
 	static constexpr float kResultDelaySeconds = 2.0f;	//曲が終わってから何秒待つか

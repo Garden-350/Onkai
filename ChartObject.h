@@ -34,6 +34,8 @@
 #include "WeakPoint.h"
 #include "AttackOrbs.h"
 #include "ImpactFx.h"
+#include "LongShield.h"
+#include "HypeMeter.h"
 
 class Player;
 class Enemy;
@@ -90,6 +92,13 @@ struct ChartNote
 	float nextTickTime = 0.0f;	// 次に「継続判定(tick)」を加算すべき時刻
 
 	int nextTurnIndex = 0;		//次に音を鳴らす曲がり点
+
+	//盾用
+	bool shieldStarted = false;	//始まった
+	bool shieldDone = false;	//終わった
+	bool shieldLastHeld = false;	//前のフレームで押せてたか
+	int shieldTurnIndex = 0;	//次に成否を調べる曲がり角
+
 
 	//t秒の時点で線があるレーン
 	int LaneAt(float t) const
@@ -198,6 +207,7 @@ public:
 	}
 	float GetMusicTime() const { return m_MusicTime; }	// 曲の再生時刻(秒)
 	float GetBpm() const { return m_Bpm; }
+	float GetHype01() const { return m_Hype.Get01(); }
 	//曲が最後まで再生したか
 	bool IsAudioFinish() const
 	{
@@ -313,6 +323,7 @@ private:
 	HomingBeamSystem m_BeamSystem;
 
 	bool m_AutoMode = false;
+	bool m_NoiseMode = false;
 
 
 	// ===================
@@ -394,4 +405,17 @@ private:
 	int m_LastPressedLane = 2;	//最後に押したレーン（必殺技の狙いに使う）
 	float m_LastOrbTime[6] = { -100.0f, -100.0f, -100.0f, -100.0f, -100.0f, -100.0f };	//レーンごとに最後に光を飛ばした時刻
 	static constexpr float kOrbMinInterval = 0.12f;	//同じレーンから光を飛ばす最短の間隔
+
+	//盾用
+	LongShield m_LongShield;	//ロング中に敵が張る盾
+	void UpdateLongShield();	//盾に知らせる
+
+	//音楽用
+	HypeMeter m_Hype;				//コンボから作る盛り上がり
+	float m_LastLowPass = -100.0f;	//最後に送ったフィルターの値
+	bool m_NoisePlaying = false;	//ノイズを鳴らすか
+	static constexpr float kNoiseVolume = 0.35f;	//盛り上がり時に消す
+	static constexpr float kLowPassMinHz = 300.0f;	//盛り上がり０の時、これより高い音を削る
+	static constexpr float kLowPassOpenHz = 7000.0f;	//最大の少し手前でここまで開く（最大でフィルターなし）
+	static constexpr bool kUseLowPass = false;	//trueの場合籠るも実行
 };

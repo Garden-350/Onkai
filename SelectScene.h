@@ -36,9 +36,45 @@ private:
 	int m_SelectedIndex = 0;
 
 	Texture2D* m_JacketTexture = nullptr;
+	Texture2D* m_AutoTexture = nullptr;
+	Texture2D* m_Noise = nullptr;
 	Texture2D* m_AutoButton = nullptr;
 	Texture2D* m_HighSpeedDigits[2] = { nullptr, nullptr }; // [0]=整数部, [1]=小数第一位
 	bool m_AutoModeSelected = false;
+	bool m_NoiseModeSelected = true;
+
+	//矢印（TAB が無い方の行に出す）
+	Texture2D* m_OptionArrow = nullptr;
+	int   m_ArrowShownFor = -1;		//今の矢印の画像を、どの行を選んでいる時用に読み込んだか
+	static constexpr float kOptionArrowSize = 70.0f;	//矢印の大きさ
+	static constexpr float kArrowCenterFix = 0.19f;		//画像の中で三角が上下に寄っている分（大きさに対する割合）
+	static constexpr float kArrowBob = 4.0f;			//矢印がぴょこぴょこ動く幅
+
+	//オプション（上：オート / 下：ノイズ）
+	Texture2D* m_NoiseButton = nullptr;		//ノイズの ON/OFF
+	Texture2D* m_OptionFrame = nullptr;		//今選んでいる行を囲む枠
+	int   m_OptionCursor = 0;				//0 = オート（上）、1 = ノイズ（下）
+	float m_FrameY = 0.0f;					//枠の今の高さ（なめらかに動かす）
+	float m_FrameAnimTime = 0.0f;			//枠の点滅用
+
+	//TABのテクスチャ
+	Texture2D* m_Tab = nullptr;
+
+	static constexpr int   kOptionCount = 2;
+	static constexpr float kOptionLabelX = 500.0f;		//文字（automode / noisemode）の中心X
+	static constexpr float kOptionButtonX = 430.0f;		//ON/OFF の中心X
+	static constexpr float kOptionRowY0 = 170.0f;		//1行目（オート）の真ん中の高さ
+	static constexpr float kOptionRowGap = 150.0f;		//行と行の間
+	static constexpr float kOptionLabelDY = 30.0f;		//行の真ん中から文字までのずれ
+	static constexpr float kOptionButtonDY = -35.0f;	//行の真ん中から ON/OFF までのずれ
+	static constexpr float kFrameW = 280.0f;			//枠の大きさ
+	static constexpr float kFrameH = 150.0f;
+	static constexpr float kDimAlpha = 0.45f;			//選んでいない行の濃さ
+	static constexpr float kTabX = 550.0f;	//TAB の画像の中心X（ON/OFF の右）
+	static float OptionRowY(int i) { return kOptionRowY0 - kOptionRowGap * i; }	//i 行目の真ん中の高さ
+
+	void RefreshOptionButtons();	//ON/OFFの画像を今の設定に合わせる
+	void UpdateOptionCursor(float dt);	//枠と行の濃さを毎フレーム更新
 
 	//遷移アニメーション
 	MagicCircleTransitionEffect* m_TransitionEffect = nullptr;
@@ -83,7 +119,7 @@ private:
 	static constexpr float kTitleY = 262.0f;
 	static constexpr float kTitleW = 520.0f;	//曲の画像サイズが違う場合はここを調整
 	static constexpr float kTitleH = 85.0f;
-	static constexpr float kJacketX = 235.0f;
+	static constexpr float kJacketX = 220.0f;
 	static constexpr float kJacketY = 105.0f;
 	static constexpr float kJacketSize = 210.0f;
 	static constexpr float kInfoSlide = 40.0f;		//右からどれぐらい滑り込むか

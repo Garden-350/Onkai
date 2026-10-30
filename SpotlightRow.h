@@ -22,7 +22,7 @@ public:
 
 	// 曲の再生時刻(秒)とBPM。渡されている間は拍に合わせて光が走る
 	void SetBeat(float musicTime, float bpm) { m_MusicTime = musicTime; m_Bpm = bpm; m_HasBeat = true; }
-
+	void SetHype(float hype01) { m_Hype = hype01; }
 private:
 	struct SpotlightParams
 	{
@@ -45,6 +45,7 @@ private:
 
 	float m_MusicTime = 0.0f;
 	float m_Bpm = 0.0f;
+	float m_Hype = 1.0f;	//盛り上がり部分
 	bool  m_HasBeat = false;
 	float m_Time = 0.0f;	// 自前の経過時間（ゆらゆら揺らす用）
 	std::chrono::steady_clock::time_point m_LastClock;

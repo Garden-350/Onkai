@@ -378,7 +378,7 @@ HRESULT Sound::LoadDynamic(const std::string& path, bool loop)
 		m_dynamicBuffer.LoopCount = loop ? XAUDIO2_LOOP_INFINITE : 0;
 	}
 
-	hr = m_pXAudio2->CreateSourceVoice(&m_pDynamicVoice, &(m_dynamicWfx.Format));
+	hr = m_pXAudio2->CreateSourceVoice(&m_pDynamicVoice, &(m_dynamicWfx.Format), XAUDIO2_VOICE_USEFILTER);
 	if (FAILED(hr))
 	{
 		OutputDebugStringA(("[Sound] LoadDynamic: CreateSourceVoice failed: " + path + "\n").c_str());
@@ -466,6 +466,30 @@ void Sound::SetVolumeDynamic(float volume)
 {
 	if (!m_pDynamicVoice) return;
 	m_pDynamicVoice->SetVolume(volume);
+}
+
+//曲にロウパスフィルターをかける
+//cutoffHz:この周波数より高い音を削る。0以下ならフィルターなし
+void Sound::SetLowPassDynamic(float cutoffHz)
+{
+	if (!m_pDynamicVoice) return;
+	XAUDIO2_FILTER_PARAMETERS fp = {};
+	fp.Type = LowPassFilter;
+	fp.OneOverQ = 1.0f;
+
+	if (cutoffHz <= 0.0f)
+	{
+		fp.Frequency = XAUDIO2_MAX_FILTER_FREQUENCY;	//フィルターなしと同じ
+	}
+	else
+	{
+		//XAudio2はHzではなく「2 * sin(π*Hz / サンプリング周波数)」で指定する
+		const float sampleRate = (float)m_dynamicWfx.Format.nSamplesPerSec;
+		float f = 2.0f * sinf(3.14158265f * cutoffHz / sampleRate);
+		if (f > XAUDIO2_MAX_FILTER_FREQUENCY) f = XAUDIO2_MAX_FILTER_FREQUENCY;
+		fp.Frequency = f;
+	}
+	m_pDynamicVoice->SetFilterParameters(&fp);
 }
 
 float Sound::GetDynamicDurationSeconds() const

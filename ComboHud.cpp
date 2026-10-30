@@ -31,32 +31,35 @@ void ComboHud::Init()
 	initDigitRow(m_MissDigits);
 
 	Renderer::SetBlendState(BS_ADDITIVE);
+	//横のスコア用
 	m_BreakdownLabelPerfect.Init();
-	m_BreakdownLabelPerfect.SetTexture("assets/texture/PER.png");
+	m_BreakdownLabelPerfect.SetTexture("assets/texture/weak.png");
 	m_BreakdownLabelPerfect.SetScale(70.0f, 18.0f, 1.0f);
 
 	m_BreakdownLabelGreat.Init();
-	m_BreakdownLabelGreat.SetTexture("assets/texture/GRE.png");
+	m_BreakdownLabelGreat.SetTexture("assets/texture/hit.png");
 	m_BreakdownLabelGreat.SetScale(70.0f, 18.0f, 1.0f);
 
 	m_BreakdownLabelGood.Init();
-	m_BreakdownLabelGood.SetTexture("assets/texture/GOO.png");
+	m_BreakdownLabelGood.SetTexture("assets/texture/graze.png");
 	m_BreakdownLabelGood.SetScale(70.0f, 18.0f, 1.0f);
 
 	m_BreakdownLabelMiss.Init();
-	m_BreakdownLabelMiss.SetTexture("assets/texture/MIS.png");
+	m_BreakdownLabelMiss.SetTexture("assets/texture/miss_1.png");
 	m_BreakdownLabelMiss.SetScale(70.0f, 18.0f, 1.0f);
+	//=================================================================
 
+	//叩いたときに出るやつ
 	m_JudgeRankPerfect.Init();
-	m_JudgeRankPerfect.SetTexture("assets/texture/PER.png");
+	m_JudgeRankPerfect.SetTexture("assets/texture/weak.png");
 	m_JudgeRankPerfect.SetScale(200.0f, 50.0f, 1.0f);
 
 	m_JudgeRankGreat.Init();
-	m_JudgeRankGreat.SetTexture("assets/texture/GRE.png");
+	m_JudgeRankGreat.SetTexture("assets/texture/hit.png");
 	m_JudgeRankGreat.SetScale(200.0f, 50.0f, 1.0f);
 
 	m_JudgeRankGood.Init();
-	m_JudgeRankGood.SetTexture("assets/texture/GOO.png");
+	m_JudgeRankGood.SetTexture("assets/texture/graze.png");
 	m_JudgeRankGood.SetScale(200.0f, 50.0f, 1.0f);
 
 	m_BarrierQuad.Init();
@@ -74,6 +77,9 @@ void ComboHud::TriggerRankPop(int laneIndex, int rank)
 	m_JudgeRankEffects[laneIndex].active = true;
 	m_JudgeRankEffects[laneIndex].rank = rank;
 	m_JudgeRankEffects[laneIndex].timer = kJudgeRankPopDuration;
+
+	std::uniform_real_distribution<float> dist(-kJudgeRankMaxAngle, kJudgeRankMaxAngle);
+	m_JudgeRankEffects[laneIndex].angle = dist(m_Rng);
 }
 
 void ComboHud::TriggerBarrier(int laneIndex)
@@ -140,6 +146,7 @@ void ComboHud::Draw(Camera* cam, const Matrix& view,
 			screenPos.y += 150.0f;
 
 			target->SetPosition(screenPos);
+			target->SetRotation(0.0f, 0.0f, m_JudgeRankEffects[i].angle);
 			target->Draw(cam);
 		}
 		Renderer::SetBlendState(BS_NONE);

@@ -164,6 +164,7 @@
     <ClCompile Include="LakeGrass.cpp" />
     <ClCompile Include="LakeParticles.cpp" />
     <ClCompile Include="LongBeamRibbon.cpp" />
+    <ClCompile Include="LongShield.cpp" />
     <ClCompile Include="MagicCircleTransitionEffect.cpp" />
     <ClCompile Include="NotePath.cpp" />
     <ClCompile Include="ChartLoader.cpp" />
@@ -235,6 +236,7 @@
     <ClInclude Include="ComboHud.h" />
     <ClInclude Include="HexHpGauge.h" />
     <ClInclude Include="HitPillarEffect.h" />
+    <ClInclude Include="HypeMeter.h" />
     <ClInclude Include="ImpactFx.h" />
     <ClInclude Include="JudgeLineGuide.h" />
     <ClInclude Include="JudgeSystem.h" />
@@ -242,6 +244,7 @@
     <ClInclude Include="LakeParms.h" />
     <ClInclude Include="LakeParticles.h" />
     <ClInclude Include="LongBeamRibbon.h" />
+    <ClInclude Include="LongShield.h" />
     <ClInclude Include="MagicCircleTransitionEffect.h" />
     <ClInclude Include="NotePath.h" />
     <ClInclude Include="ChartLoader.h" />

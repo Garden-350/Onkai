@@ -139,6 +139,7 @@ void ChartObject::Init()
 {
 
 	m_AutoMode = Game::GetInstance()->IsAutoMode();
+	m_NoiseMode = Game::GetInstance()->IsNoiseMode();
 	m_JudgeSystem.SetOnJudge([this](int laneIndex, int rank) { OnJudge(laneIndex, rank); });
 	m_JudgeSystem.SetOnChargeHit([this](int rank) { m_Special.AddHit(rank, true); });
 	static bool s_AuraInited = false;
@@ -254,6 +255,25 @@ void ChartObject::Init()
 	m_AttackOrbs.Init();
 	m_ImpactFx.Init();
 
+	//敵が張るシールド
+	m_LongShield.Init();
+	m_LongShield.SetOnCrack([this](int, int)
+		{
+			sound.Play(SOUND_MIRROR_BREAK_SMALL);	//ちょっと割れる音
+		});
+	//盾が割れた：ロングの分のダメージと、割れた演出
+	m_LongShield.SetOnBreak([this](int longCount, const Vector3& center)
+		{
+			if (m_EnemyRef && m_LongCount > 0) m_EnemyRef->Damage(40.0f / m_LongCount * longCount);
+			if (m_EnemyRef) m_EnemyRef->Flash(Vector3(0.6f, 0.85f, 1.0f), 0.8f, 0.25f);
+			m_ImpactFx.SpawnCritical(center, Vector3(0.45f, 0.75f, 1.0f), 0.6f);
+			m_ScreenEffects.TriggerScreenShake(0.25f, 8.0f);
+			m_ScreenEffects.TriggerFlash(0.12f);
+			m_GazeKickTime = m_MusicTime;	//世界側のカメラを一瞬見上げる（今まで押し切りでやっていたもの）
+			sound.Play(SOUND_MIRROR_BREAK_BIG);	//割れた音
+		});
+
+
 	//必殺技の本命の帯が当たった瞬間
 	m_SpecialBeam.SetOnHit([this](float ratio, bool critical, const Vector3& hitPos)
 		{
@@ -289,6 +309,12 @@ void ChartObject::Init()
 	//普段の攻撃の光が着いた時
 	m_AttackOrbs.SetOnArrive([this](int, const Vector3& pos, const Vector3& color, bool critical)
 		{
+			if (m_LongShield.IsUp())
+			{
+				m_LongShield.Ripple(pos);	// 盾にはじかれた
+				return;
+			}
+
 			if (critical) m_ImpactFx.SpawnWeakHit(pos, color);
 			else          m_ImpactFx.SpawnSmallHit(pos, color);
 
@@ -462,7 +488,7 @@ bool ChartObject::LoadChart(const std::string& name)
 	if (!m_AudioFile.empty())
 	{
 		std::string fullPath = "assets/bgm/" + m_AudioFile; //曲を読み込んだ際は絶対にエディターで使ってる曲を入れること
-		HRESULT hr = sound.LoadDynamic(fullPath, true);
+		HRESULT hr = sound.LoadDynamic(fullPath, false);
 		if (FAILED(hr))
 			OutputDebugStringA(("[ChartObject] Failed to load audio: " + fullPath + "\n").c_str());
 	}
@@ -487,7 +513,11 @@ bool ChartObject::LoadChart(const std::string& name)
 	m_WeakPoint.Reset();
 	m_AttackOrbs.Clear();
 	m_ImpactFx.Clear();
+	m_LongShield.Reset();
+	m_Hype.Reset();
+	m_LastLowPass = -100.0f;
 	m_LastPressedLane = 2;
+	m_NoisePlaying = false;
 
 	for (auto& t : m_LastOrbTime) t = -100.0f;
 
@@ -858,6 +888,41 @@ void ChartObject::Update()
 	}
 	m_ComboHud.Update(deltaTime);
 
+	//音の盛り上げ
+	m_Hype.Update(deltaTime, m_JudgeSystem.GetComboCount());
+	const float h = m_Hype.Get01();
+	{
+		//盛り上がるほど曲の高い音が聞こえる
+		float hz = 0.0f;	//0=フィルターなし
+		if (h < 0.999f) hz = kLowPassMinHz * std::pow(kLowPassOpenHz / kLowPassMinHz, h);
+		if (std::fabs(hz - m_LastLowPass) > 1.0f)
+		{
+			sound.SetLowPassDynamic(hz);
+			m_LastLowPass = hz;
+		}
+	}
+
+	if (m_NoiseMode)
+	{
+		//ノイズ
+		{
+			bool musicOn = m_NoiseMode && m_AudioStarted && !m_AudioFile.empty() && !IsAudioFinish();
+			if (musicOn && !m_NoisePlaying)
+			{
+				sound.Play(SOUND_NOISE);
+				m_NoisePlaying = true;
+			}
+			else if (!musicOn && m_NoisePlaying)
+			{
+				sound.Stop(SOUND_NOISE);
+				m_NoisePlaying = false;
+			}
+			float quiet = 1.0f - h;	//盛り上がってない度合い1->0
+			sound.SetVolume(SOUND_NOISE, kNoiseVolume * quiet * quiet);
+		}
+	}
+
+
 	m_ScoreDisplay.SetValue(ScoreRule::Calc(
 		m_JudgeSystem.GetPerfectCount(), m_JudgeSystem.GetGreatCount(), m_JudgeSystem.GetGoodCount(), m_TotalNote
 	));
@@ -968,6 +1033,9 @@ void ChartObject::Update()
 	//ロングノーツの音を鳴らしたりするところ
 	UpdateLongSounds();
 
+	//ロングノーツの盾に始まり、曲がり、終点を知らせる
+	UpdateLongShield();
+
 	//必殺技発動
 	//最後に押したレーンを覚える（チャージ中でロック前なら、狙いもそのレーンへ動く）
 	for (int lane = 0; lane < 6; lane++)
@@ -1001,6 +1069,7 @@ void ChartObject::Update()
 	for (int i = 0; i < 6 && i < (int)m_JudgeCircles.size(); i++)
 		m_WeakPoint.SetLaneAnchor(i, m_JudgeCircles[i].GetPosition(m_MusicTime));
 	if (m_EnemyRef) m_WeakPoint.Update(deltaTime, m_MusicTime, m_Bpm, m_BeatsPerBar, m_EnemyRef->GetPosition());
+	if (m_EnemyRef) m_LongShield.Update(deltaTime, m_EnemyRef->GetPosition());
 	m_AttackOrbs.Update(deltaTime);
 	m_ImpactFx.Update(deltaTime);
 	m_SpGauge.Update(deltaTime, m_Special);
@@ -1048,8 +1117,8 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 	m_ComboHud.TriggerRankPop(laneIndex, rank);
 	m_ComboHud.TriggerComboPop();
 
-	//叩くたびに少しダメージを与える　ロングで4割り削るのであとの6割り分
-	if (m_EnemyRef && m_TotalNote > 0) m_EnemyRef->Damage(60.0f / m_TotalNote);
+	//叩くたびに少しダメージを与える　ロングの盾が張られている間はダメージなし
+	if (m_EnemyRef && m_TotalNote > 0 && !m_LongShield.IsUp()) m_EnemyRef->Damage(60.0f / m_TotalNote);
 
 	if (laneIndex < 0 || laneIndex >= 6) return;
 	m_LaneGlow[laneIndex] = 1.0f;	//判定したレーンのバッドを光らせる
@@ -1059,8 +1128,8 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 	bool perfect = (rank == 0);
 	if (m_EnemyRef && m_MusicTime - m_LastOrbTime[laneIndex] >= kOrbMinInterval)
 	{
-		m_AttackOrbs.Launch(laneIndex, pos, m_WeakPoint.GetRandomBodyPos(), GetLaneColor(laneIndex), perfect);
-		m_LastOrbTime[laneIndex] = m_MusicTime;
+		Vector3 target = m_LongShield.IsUp() ? m_LongShield.GetRandomSurfacePos() : m_WeakPoint.GetRandomBodyPos();
+		m_AttackOrbs.Launch(laneIndex, pos, target, GetLaneColor(laneIndex), perfect);
 	}
 
 	for (int i = 0; i < 100; i++)
@@ -1160,6 +1229,49 @@ void ChartObject::DrawLightEffects(Camera* cam)
 			color, le.intensity * envelope, kLampSize * envelope);
 	}
 	Renderer::SetBlendState(BS_NONE);
+}
+
+void ChartObject::UpdateLongShield()
+{
+	for (auto& n : m_Notes)
+	{
+		if (!n.IsLong() || n.shieldDone) continue;
+
+		//先端が判定ラインに届いたら展開
+		if (!n.shieldStarted)
+		{
+			if (m_MusicTime < n.arrivalTime) continue;
+			n.shieldStarted = true;
+			m_LongShield.BeginLong((int)n.turns.size() + 1);
+		}
+		//このフレームで終わったか
+		bool ending = n.judged || m_MusicTime >= n.time;
+
+		//曲がり角：曲がってからkTurnGrace秒たったら新しいレーンを押してるか調べる
+		while (n.shieldTurnIndex < (int)n.turns.size())
+		{
+			const LaneTurn& tr = n.turns[n.shieldTurnIndex];
+			bool onNewLane = m_AutoMode || Input::GetKeyPress(kLaneKeys[tr.lane]);	//新しいレーンを押しているか
+
+			if (!ending)
+			{
+				if (m_MusicTime < tr.time)break;	//まだ曲がり角に来ていない
+				if (!onNewLane && m_MusicTime < tr.time + JudgeSystem::kTurnGrace)break;	//まだ押し変えていないが猶予がある
+			}
+			bool ok = ending ? n.shieldLastHeld : onNewLane;
+			m_LongShield.Checkpoint(ok);
+			n.shieldTurnIndex++;
+		}
+		//終点：最後のフレームで押せていたか
+		if (ending)
+		{
+			m_LongShield.Checkpoint(n.shieldLastHeld);
+			m_LongShield.EndLong();
+			n.shieldDone = true;
+			continue;
+		}
+		n.shieldLastHeld = IsHoldingLong(n);	//次のフレームのために今押せてるかを覚えておく
+	}
 }
 
 
@@ -1710,6 +1822,7 @@ void ChartObject::Draw(Camera* cam)
 	}
 
 	//戦闘の演出：HUDより先に描いて上に来るように
+	m_LongShield.Draw(cam);
 	m_WeakPoint.Draw(cam);
 	m_AttackOrbs.Draw(cam);
 	m_SpecialBeam.Draw(cam);

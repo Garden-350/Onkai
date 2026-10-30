@@ -146,7 +146,8 @@ void SpotlightRow::Draw(Camera* cam)
 			// 明るさ：普段の明るさ + 走る光 + 拍頭のフラッシュ
 			float d = (t - pulseHead) / kPulseWidth;
 			float pulse = expf(-d * d);
-			float intensity = m_BaseIntensity + m_PulseIntensity * pulse + flash;
+			float intensity = (m_BaseIntensity + m_PulseIntensity * pulse + flash)
+				* (0.35f + 0.65f * m_Hype);
 
 			const Vector3 color = (i % 2 == 0) ? kColorA : kColorB;
 
@@ -155,7 +156,7 @@ void SpotlightRow::Draw(Camera* cam)
 			//   m_ScreenUpBlend=0 のとき「ワールドの真上」方向（見下ろしカメラだと手前に倒れて見える）
 			Vector3 upDir = Vector3::Up * (1.0f - m_ScreenUpBlend) + camUp * m_ScreenUpBlend;
 			upDir.Normalize();
-			float sway = sinf(m_Time * 0.7f + i * 0.6f + side * 1.3f) * m_SwayDeg;
+			float sway = sinf(m_Time * 0.7f + i * 0.6f + side * 1.3f) * m_SwayDeg * (0.5f + 0.5f * m_Hype);
 			float lean = (m_LeanDeg + sway) * kDegToRad;
 			Vector3 axis = upDir * cosf(lean) + camRight * (outward * sinf(lean));
 			axis.Normalize();

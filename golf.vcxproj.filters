@@ -312,6 +312,9 @@
     <ClCompile Include="WeakPoint.cpp">
       <Filter>ソースファイル\Chart</Filter>
     </ClCompile>
+    <ClCompile Include="LongShield.cpp">
+      <Filter>ソースファイル\Chart</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -571,6 +574,12 @@
     </ClInclude>
     <ClInclude Include="WeakPoint.h">
       <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="LongShield.h">
+      <Filter>ヘッダーファイル\Chart</Filter>
+    </ClInclude>
+    <ClInclude Include="HypeMeter.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

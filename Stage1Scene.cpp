@@ -59,6 +59,7 @@ void Stage1Scene::Init()
 	m_Spotlights = spotlights;
 	auto* outeredge = Game::GetInstance()->AddObject<OuterEdge>();
 	m_MySceneObjects.emplace_back(outeredge);
+	m_OuterEdge = outeredge;
 
 	auto* enemy = Game::GetInstance()->AddObject<Enemy>();
 	m_MySceneObjects.emplace_back(enemy);
@@ -76,12 +77,13 @@ void Stage1Scene::Init()
 	WireShapeSpawner* spaen = Game::GetInstance()->AddObject<WireShapeSpawner>();
 	spaen->SetSceneObjects(&m_MySceneObjects);
 	m_MySceneObjects.emplace_back(spaen);
+	m_Spawner = spaen;
 
 	auto* pause = Game::GetInstance()->AddObject<PauseOverlay>();
 	m_MySceneObjects.emplace_back(pause);
 
-	Game::GetInstance()->GetCamera()->SetWorldOffset(0.0f,
-		DirectX::XMConvertToRadians(0.0f), 0.0f);	//確認用
+	//Game::GetInstance()->GetCamera()->SetWorldOffset(0.0f,
+	//	DirectX::XMConvertToRadians(0.0f), 0.0f);	//確認用
 }
 
 
@@ -121,6 +123,16 @@ void Stage1Scene::Update()
 
 	//スポットライトを曲の拍に合わせる
 	if (m_Spotlights) m_Spotlights->SetBeat(m_Chart->GetMusicTime(), m_Chart->GetBpm());
+
+	//音の盛り上がりを背景に渡す
+	const float hype = m_Chart->GetHype01();
+	if (m_Spotlights) m_Spotlights->SetHype(hype);
+	if (m_OuterEdge)
+	{
+		m_OuterEdge->SetBeat(m_Chart->GetMusicTime(), m_Chart->GetBpm());
+		m_OuterEdge->SetHype(hype);
+	}
+	if (m_Spawner) m_Spawner->SetInterval(1.2f - 0.85f * hype);	//コンボを繋ぐほど四角がいっぱい流れる
 
 	auto now = std::chrono::steady_clock::now();
 	if (!m_ClockInitialized)

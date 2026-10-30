@@ -46,6 +46,7 @@ private:
 	std::map<std::string, int> m_BestScores;	//‹È–¼->‚»‚Ì‹È‚ÌŽ©ŒÈ‚×
 
 	bool m_AutoMode = false;
+	bool m_NoiseMode = false;
 	bool m_Paused = false;
 	std::chrono::steady_clock::time_point m_PauseStartClock{};
 	float m_HighSpeed = 1.0f;
@@ -64,6 +65,9 @@ public:
 
 	static void SetAutoMode(bool enable) { m_Instance->m_AutoMode = enable; }
 	bool IsAutoMode() { return m_Instance->m_AutoMode; }
+
+	static void SetNoiseMode(bool enable) { m_Instance->m_NoiseMode = enable; }
+	bool IsNoiseMode() { return m_Instance->m_NoiseMode; }
 
 	static void SetResultData(const ResultData& data) { m_Instance->m_LastResult = data; }
 	static const ResultData& GetResultData() { return m_Instance->m_LastResult; }

@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "Texture2D.h"
 #include "BarrierQuad.h"
+#include <random>
 #include <SimpleMath.h>
 
 class Camera;
@@ -9,6 +10,14 @@ struct BarrierEffect
 {
 	bool active = false;
 	float timer = 0.0f;
+};
+
+struct JudgeRankEffect
+{
+	bool active = false;
+	float timer = 0.0f;
+	float angle = 0.0f;
+	int rank = 0;
 };
 
 // ============================================================
@@ -38,12 +47,6 @@ public:
 		const DirectX::SimpleMath::Vector3 laneColors[6]);
 
 private:
-	struct JudgeRankEffect
-	{
-		bool active = false;
-		float timer = 0.0f;
-		int rank = 0; // 0=PERFECT, 1=GREAT, 2=GOOD
-	};
 
 	Texture2D m_ComboDigits[4];	// コンボ数の3桁表示
 	Texture2D m_PerfectDigits[4];
@@ -60,7 +63,10 @@ private:
 	Texture2D m_JudgeRankGreat;
 	Texture2D m_JudgeRankGood;
 	JudgeRankEffect m_JudgeRankEffects[6];
-	static constexpr float kJudgeRankPopDuration = 0.6f; // 表示継続時間（秒）
+	static constexpr float kJudgeRankPopDuration = 0.2f; // 表示継続時間（秒）
+
+	static constexpr float kJudgeRankMaxAngle = 12.0f;	//傾きの最大度
+	std::mt19937 m_Rng{ std::random_device{}() };
 
 	BarrierEffect m_BarrierEffects[6];
 	BarrierQuad m_BarrierQuad;

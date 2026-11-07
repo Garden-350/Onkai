@@ -84,7 +84,7 @@ void LongShield::Checkpoint(bool success)
 		}
 		return;
 	}
-	if (m_Failed) return;	//¸”s‚µ‚½Œã‚Í“úX‚ğ“ü‚ê‚È‚¢
+	if (m_Failed) return;	//¸”s‚µ‚½Œã‚Í‚Ğ‚Ñ‚ğ“ü‚ê‚È‚¢
 
 	m_Done++;
 	AddCrack();
@@ -464,7 +464,9 @@ void LongShield::Draw(Camera* cam)
 			q.color = RibbonShapes::MakeColor(Vector3(0.8f, 0.92f, 1.0f), fade * VerticalFade(y));
 			m_Pts.push_back(q);
 		}
-		Flush(cam, 3.5f, 1.5f, kShieldColor);
+		float w = kShaderFilled ? s.size * 0.2f : 300.5f;			// “h‚è‚Â‚Ô‚µ•—F•Ó‚Ìü‚ğ‘¾‚­‚µ‚Ä’†‚ğ–„‚ß‚é
+		float lightI = kShaderFilled ? 0.8f : 1.5f;			// ‘¾‚¢‚Æ–¾‚é‚·‚¬‚é‚Ì‚Å­‚µ‰º‚°‚é
+		Flush(cam, w, lightI, kShieldColor);
 	}
 
 	Renderer::SetBlendState(BS_NONE);

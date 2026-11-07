@@ -279,6 +279,25 @@ void JudgeSystem::ResetJudgeCounts()
 	m_MissFreeEnd = -1.0f;
 }
 
+void JudgeSystem::AddHit(ChartNote& note, int rank, Sound& sound)
+{
+	if (rank == 0)m_Perfect++;
+	else if(rank==1)m_Great++;
+	else if (rank == 2)m_Good++;
+	sound.Play(rank == 2 ? SOUND_METAL_1 : SOUND_CLAMPU);
+	NotifyCharge(note, rank);
+	note.judged = true;
+	RegisterHit(note.lane, rank);	//コンボ関連はここでまとめる
+}
+
+void JudgeSystem::AddMiss(ChartNote& note)
+{
+	note.judged = true;
+	if (note.chargeShot) return;	//チャージノーツは取り逃してもミスにしない
+	m_Miss++;
+	RegisterMiss();
+}
+
 void JudgeSystem::RegisterHit(int laneIndex, int rank)
 {
 	m_Combo++;

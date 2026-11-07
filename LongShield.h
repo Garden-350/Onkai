@@ -55,6 +55,7 @@ public:
 	static constexpr int kShardCount = 18;	//割れた時の破片の数
 	static constexpr int kCrackSegments = 6;//ヒビ一本のぎざぎざの数
 	static constexpr float kShardGravity = 350.0f;
+	static constexpr bool kShaderFilled = true;	//比べるために記述
 
 private:
 	enum class State

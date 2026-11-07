@@ -15,6 +15,7 @@
 #include "ResultData.h"
 #include "ChargeAura.h"
 #include "ScoreRule.h"
+#include "NoteBehavior.h"
 #include <algorithm>
 #include <cmath>
 #undef min
@@ -137,6 +138,7 @@ DirectX::SimpleMath::Vector3 ChartObject::GetJudgeLineCenter() const
 // ============================================================
 void ChartObject::Init()
 {
+	NoteRegistry::RegisterAll();	//新しい種類のノーツを登録
 
 	m_AutoMode = Game::GetInstance()->IsAutoMode();
 	m_NoiseMode = Game::GetInstance()->IsNoiseMode();
@@ -192,7 +194,7 @@ void ChartObject::Init()
 
 	//  TAPノーツ本体モデルのロード（これは必須。無いと何も表示されない）
 	StaticMesh staticmesh;
-	std::string modelFile = "assets/model/note/tap.fbx";
+	std::string modelFile = "assets/model/note/tap_3.fbx";
 	std::string texDirectory = "assets/model/maru";
 
 	staticmesh.Load(modelFile, texDirectory);
@@ -208,6 +210,9 @@ void ChartObject::Init()
 		m->Create(materials[i]);
 		m_Materials.push_back(std::move(m));
 	}
+
+	//タップのテクスチャをコードで貼る
+	ModelUtil::ApplyTexture(m_Materials, m_Textures, "assets/model/note/note_tap.png");
 
 	// ── ロングノーツ：先端(sentan)モデルのロード ──
 	// エディター側の kusari_sentan_2.fbx に相当するアセットを想定。
@@ -383,6 +388,8 @@ void ChartObject::Init()
 	}
 	m_ComboHud.Init();
 
+	m_keyt.Init();
+
 	m_ScoreDisplay.Init();
 	m_ScoreDisplay.SetUp("assets/texture/allnumber_new.png", 7);
 	m_ScoreDisplay.SetDigitSize(72.0f, 72.0f);
@@ -518,12 +525,17 @@ bool ChartObject::LoadChart(const std::string& name)
 	m_LastLowPass = -100.0f;
 	m_LastPressedLane = 2;
 	m_NoisePlaying = false;
+	m_FinishChecked = false;
 
 	for (auto& t : m_LastOrbTime) t = -100.0f;
 
 	OutputDebugStringA(("[ChartPlayObject] Loaded: charts/" + name + ".json notes=" +
 		std::to_string(m_Notes.size()) + " beams=" + std::to_string(m_BeamSystem.GetBeamCount()) + "\n").c_str());
 	return true;
+}
+bool ChartObject::IsEnemyDefeated() const
+{
+	return m_EnemyRef && m_EnemyRef->IsDefeated();
 }
 void ChartObject::DrawLaneGuideLines(Camera* cam)
 {
@@ -1024,6 +1036,19 @@ void ChartObject::Update()
 		{
 			m_JudgeSystem.JudgeLane(kLaneKeys[lane], lane, m_Notes, m_MusicTime, sound);
 		}
+		{
+			NoteJudgeContext ctx;
+			ctx.musicTime = m_MusicTime;
+			ctx.autoMode = m_AutoMode;
+			ctx.judge = &m_JudgeSystem;
+			ctx.sound = &sound;
+			ctx.isLaneHeld = [](int lane)->bool {return Input::GetKeyPress(kLaneKeys[lane]); };
+			for (auto& n : m_Notes)
+			{
+				if (n.judged) continue;
+				if (NoteBehavior* b = NoteRegistry::Find(n.type))b->Judge(n, ctx);
+			}
+		}
 
 		// フリック・ロングノーツの判定
 		m_JudgeSystem.JudgeFlickNotes(m_Notes, m_MusicTime, playerSideForFlick, sound);
@@ -1081,6 +1106,14 @@ void ChartObject::Update()
 		std::remove_if(m_Notes.begin(), m_Notes.end(),
 			[](const ChartNote& n) { return n.judged; }),
 		m_Notes.end());
+
+	//全部のノーツの判定が終わったら最後のノーツをとどめノーツにする
+	if (!m_FinishChecked && m_AudioStarted && m_TotalNote > 0 && m_Notes.empty())
+	{
+		m_FinishChecked = true;
+		if (m_EnemyRef && m_EnemyRef->IsDying()) m_EnemyRef->Finish();
+		else;	//瀕死まで行けなかった時の演出追加用
+	}
 
 	UpdateLightEffects(deltaTime);
 	// ホーミングビームの状態遷移とプレイヤー移動の更新
@@ -1272,6 +1305,35 @@ void ChartObject::UpdateLongShield()
 		}
 		n.shieldLastHeld = IsHoldingLong(n);	//次のフレームのために今押せてるかを覚えておく
 	}
+}
+
+void ChartObject::SetupEnemyEvents()
+{
+	if (!m_EnemyRef) return;
+
+	//瀕死になった瞬間
+	m_EnemyRef->SetOnDying([this]()
+		{
+			m_ScreenEffects.TriggerScreenShake(0.2f, 6.0f);
+			sound.Play(SOUND_MIRROR_BREAK_SMALL);
+		});
+
+	//とどめ
+	m_EnemyRef->SetOnDefeated([this]()
+		{
+			m_ScreenEffects.TriggerFlash(0.1f);
+			sound.Play(SOUND_MIRROR_BREAK_SMALL);
+		});
+
+	//爆発した瞬間
+	m_EnemyRef->SetOnExploded([this]()
+		{
+			Vector3 c = m_EnemyRef->GetPosition();
+			m_ImpactFx.SpawnCritical(c, Vector3(1.0f, 0.85f, 0.4f), 1.0f);
+			m_ScreenEffects.TriggerScreenShake(0.5f, 16.0f);
+			m_ScreenEffects.TriggerFlash(0.2f);
+			sound.Play(SOUND_MIRROR_BREAK_SMALL);
+		});
 }
 
 
@@ -1577,6 +1639,7 @@ void ChartObject::Draw(Camera* cam)
 		m_JudgeGuide.Draw(cam, gf);
 	}
 
+
 	// ── ノーツ到達ガイド：左右から伸びて判定時刻ちょうどで円になるリング ──
 	// 判定が一番近いノーツのリングが必ず一番手前に見えるよう、
 	// 判定が遅い順に描いてから、判定が速いものを最後に描く。
@@ -1585,6 +1648,8 @@ void ChartObject::Draw(Camera* cam)
 		for (auto& note : m_Notes)
 		{
 			if (note.judged) continue;
+			if (const NoteBehavior* b = NoteRegistry::Find(note.type))
+				if (!b->Look(note).approachRing) continue;
 
 			float st = note.GetSpawnTime();
 			float et = note.IsLong() ? note.arrivalTime : note.time;
@@ -1645,29 +1710,57 @@ void ChartObject::Draw(Camera* cam)
 	m_Shader.SetGPU();
 	m_MeshRenderer.BeforeDraw();
 
+	// ── ノーツ本体の描画 ──
+	// ノーツ 1 つの、位置・色・大きさを出す（下の 2 つのループで使う）
+	auto noteVisual = [&](const ChartNote& note, const NoteLook& look, NoteDrawContext& out) -> bool
+		{
+			if (note.judged) return false;
+			float st = note.GetSpawnTime();
+			float et = note.time;
+			if (m_MusicTime < st || m_MusicTime > et) return false;	// 表示範囲外
+
+			Vector3 c = note.chargeShot ? Vector3(1.0f, 0.8f, 0.25f) : GetLaneColor(note.lane);
+			out.pos = NotePath::EvaluateNotePosition(note, m_MusicTime);	// Long ではない方
+			out.color = c + (Vector3(1.0f, 1.0f, 1.0f) - c) * look.whiteMix;	// 白を混ぜる
+			out.scale = m_NoteScale * look.scale;
+			out.musicTime = m_MusicTime;	// 足す
+			return true;
+		};
+
+	// 自分の形を持つ種類（トレースなど）を先に描く
+	std::vector<const ChartNote*> drawnSelf;
 	for (auto& note : m_Notes)
 	{
-		if (!note.IsTap()) continue;
-		if (note.judged) continue;
+		NoteBehavior* behavior = NoteRegistry::Find(note.type);
+		if (!behavior) continue;
+		NoteDrawContext dc;
+		if (!noteVisual(note, behavior->Look(note), dc)) continue;
+		if (behavior->Draw(note, dc)) drawnSelf.push_back(&note);
+	}
 
-		float st = note.GetSpawnTime();
-		float et = note.time;
-		if (m_MusicTime < st || m_MusicTime > et) continue;
+	//タップと、自分の形を持たない種類を、タップのモデルで描く
+	m_Shader.SetGPU();
+	m_MeshRenderer.BeforeDraw();
+	for (auto& note : m_Notes)
+	{
+		const NoteBehavior* behavior = NoteRegistry::Find(note.type);
+		if (!note.IsTap() && !behavior) continue;	// タップと登録されたノーツだけ
+		if (std::find(drawnSelf.begin(), drawnSelf.end(), &note) != drawnSelf.end()) continue;
 
-		Vector3 pos = NotePath::EvaluateNotePosition(note, m_MusicTime);
-		Vector3 laneColor = note.chargeShot ? Vector3(1.0f, 0.8f, 0.25f) : GetLaneColor(note.lane);
+		NoteLook look = behavior ? behavior->Look(note) : NoteLook();
+		NoteDrawContext dx;
+		if (!noteVisual(note, look, dx)) continue;
+
+		// 本体
 		{
-			Matrix world = Matrix::CreateScale(m_NoteScale) * Matrix::CreateTranslation(pos);
+			Matrix world = Matrix::CreateScale(dx.scale) * Matrix::CreateTranslation(dx.pos);
 			Renderer::SetWorldMatrix(&world);
-
 			for (size_t i = 0; i < m_Subsets.size(); i++)
 			{
 				m_Materials[m_Subsets[i].MaterialIdx]->SetDiffuse(
-					DirectX::XMFLOAT4(laneColor.x, laneColor.y, laneColor.z, 1.0f)
-				);
+					DirectX::XMFLOAT4(dx.color.x, dx.color.y, dx.color.z, 1.0f));
 				m_Materials[m_Subsets[i].MaterialIdx]->SetEmission(
-					DirectX::XMFLOAT4(laneColor.x, laneColor.y, laneColor.z, 1.0f)
-				);
+					DirectX::XMFLOAT4(dx.color.x, dx.color.y, dx.color.z, 1.0f));
 				m_Materials[m_Subsets[i].MaterialIdx]->Update();
 
 				m_Materials[m_Subsets[i].MaterialIdx]->SetGPU();
@@ -1677,43 +1770,31 @@ void ChartObject::Draw(Camera* cam)
 				m_MeshRenderer.DrawSubset(
 					m_Subsets[i].IndexNum,
 					m_Subsets[i].IndexBase,
-					m_Subsets[i].VertexBase
-				);
+					m_Subsets[i].VertexBase);
 			}
 		}
-		// もやもやしたオーラ(ビルボード)
+
+		// グロー（本体より大きく、光だけを足して描く）
 		//{
 		//	Renderer::SetBlendState(BS_ADDITIVE);
-		//	float pulse = 0.85f + 0.15f * sinf(m_MusicTime * 1.0f + pos.x * 0.001f);
-		//	float auraScale = m_NoteScale * 5.5f * pulse; // 球本体よりだいぶ大きめに
-		//	Color auraColor(laneColor.x, laneColor.y, laneColor.z, 0.6f * pulse);
-		//	m_TapOrbAuraQuad.Draw(cam, pos, auraScale, auraColor);
+		//	Matrix world = Matrix::CreateScale(dx.scale * 1.6f) * Matrix::CreateTranslation(dx.pos);	// ← pos を dx.pos に
+		//	Renderer::SetWorldMatrix(&world);
+
+		//	for (size_t i = 0; i < m_Subsets.size(); i++)
+		//	{
+		//		m_Materials[m_Subsets[i].MaterialIdx]->SetDiffuse(
+		//			DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));	// 光源反射なし
+		//		m_Materials[m_Subsets[i].MaterialIdx]->SetEmission(
+		//			DirectX::XMFLOAT4(dx.color.x * 0.5f, dx.color.y * 0.5f, dx.color.z * 0.5f, 1.0f));	// ← laneColor を dx.color に
+		//		m_Materials[m_Subsets[i].MaterialIdx]->Update();
+		//		m_Materials[m_Subsets[i].MaterialIdx]->SetGPU();
+		//		m_MeshRenderer.DrawSubset(
+		//			m_Subsets[i].IndexNum,
+		//			m_Subsets[i].IndexBase,
+		//			m_Subsets[i].VertexBase);
+		//	}
 		//	Renderer::SetBlendState(BS_NONE);
 		//}
-
-
-		//グロー処理
-		{
-			Renderer::SetBlendState(BS_ADDITIVE);
-			Matrix world = Matrix::CreateScale(m_NoteScale * 1.6f) * Matrix::CreateTranslation(pos);
-			Renderer::SetWorldMatrix(&world);
-
-			for (size_t i = 0; i < m_Subsets.size(); i++)
-			{
-				m_Materials[m_Subsets[i].MaterialIdx]->SetDiffuse(
-					DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));	//光源反射なし
-				m_Materials[m_Subsets[i].MaterialIdx]->SetEmission(
-					DirectX::XMFLOAT4(laneColor.x * 0.5f, laneColor.y * 0.5f, laneColor.z * 0.5f, 1.0f));
-				m_Materials[m_Subsets[i].MaterialIdx]->Update();
-				m_Materials[m_Subsets[i].MaterialIdx]->SetGPU();
-				m_MeshRenderer.DrawSubset(
-					m_Subsets[i].IndexNum,
-					m_Subsets[i].IndexBase,
-					m_Subsets[i].VertexBase
-				);
-			}
-			Renderer::SetBlendState(BS_NONE);
-		}
 	}
 
 	Renderer::SetBlendState(BS_ADDITIVE);
@@ -1813,6 +1894,9 @@ void ChartObject::Draw(Camera* cam)
 		m_JudgeSystem.GetPerfectCount(), m_JudgeSystem.GetGreatCount(),
 		m_JudgeSystem.GetGoodCount(), m_JudgeSystem.GetMissCount(),
 		judgeCircleScreenPos, judgeCirclePos3D, laneColors);
+
+	//ステージの初めに左から順にイーズイン
+	if (m_Started) m_keyt.Draw(cam, m_MusicTime + m_CountInTime, judgeCircleScreenPos);
 
 	DrawLightEffects(cam);
 	// ── ホーミングビームの描画（他要素の最後に描くことで前面に出す）──

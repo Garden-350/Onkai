@@ -27,6 +27,10 @@ namespace ModelUtil
 		std::vector<std::unique_ptr<Material>>& materials,
 		std::vector<std::unique_ptr<Texture>>& textures);
 
+	//モデルの全部のマテリアルに1枚のテクスチャを貼る　これはfbxの設定は関係がない
+	bool ApplyTexture(std::vector<std::unique_ptr<Material>> & materials,
+		std::vector<std::unique_ptr<Texture>>& textures, const char* texturePath);
+
 	// DrawModel : 指定したモデル一式(subsets/materials/textures)を
 	//             指定ワールド行列で1回描画する共通処理。
 	//

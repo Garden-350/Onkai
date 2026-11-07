@@ -182,6 +182,7 @@ void Stage1Scene::SendResult()
 		result.totalNotes = m_Chart->GetTotalNoteCount();
 		result.isFullCombo = m_Chart->IsFullCombo();
 		result.chartName = Game::GetInstance()->GetSelectedChart();
+		result.defeated = m_Chart->IsEnemyDefeated();
 		Game::SetResultData(result);
 	}
 	Game::GetInstance()->ChangeScene(RESULT);

@@ -9,5 +9,6 @@ struct ResultData
 	int maxCombo = 0;
 	int totalNotes = 0;
 	bool isFullCombo = false;
+	bool defeated = false;
 	std::string chartName;
 };

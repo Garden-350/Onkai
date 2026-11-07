@@ -1,6 +1,7 @@
 ﻿#include "ModelUtil.h"
 #include "Renderer.h"
 #include "Shader.h"
+#include <filesystem>
 
 using namespace DirectX::SimpleMath;
 
@@ -13,6 +14,13 @@ namespace ModelUtil
 		std::vector<std::unique_ptr<Material>>& materials,
 		std::vector<std::unique_ptr<Texture>>& textures)
 	{
+		//ファイルがなければ読む前にfalseを返す
+		if (!std::filesystem::exists(modelPath))
+		{
+			OutputDebugStringA("[LoadOptionalModel] Model file does not exist\n");
+			return false;
+		}
+
 		StaticMesh mesh;
 		mesh.Load(modelPath, texDir);
 
@@ -35,6 +43,26 @@ namespace ModelUtil
 			mat->Create(m);
 			materials.push_back(std::move(mat));
 		}
+		return true;
+	}
+
+	bool ApplyTexture(std::vector<std::unique_ptr<Material>>& materials, std::vector<std::unique_ptr<Texture>>& textures, const char* texturePath)
+	{
+		if (!std::filesystem::exists(texturePath))
+		{
+			OutputDebugStringA("[ApplyTexture] Texture file does not exist\n");
+			return false;
+		}
+		textures.resize(materials.size());	//マテリアルの数だけテクスチャを確保
+		for (size_t i = 0; i < materials.size(); i++)
+		{
+			auto tex = std::make_unique<Texture>();
+			if (!tex->Load(texturePath)) return false;	//同じ画像は使いまわし
+			textures[i] = std::move(tex);
+			materials[i]->SetTextureEnable(true);
+			materials[i]->Update();
+		}
+
 		return true;
 	}
 

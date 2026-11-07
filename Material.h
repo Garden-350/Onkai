@@ -130,6 +130,11 @@ public:
 		m_Material.Shiness = shiness;
 	}
 
+	void SetTextureEnable(bool enable)
+	{
+		m_Material.TextureEnable = enable ? TRUE : FALSE;
+	}
+
 	bool isTextureEnable() {
 		return m_Material.TextureEnable == TRUE;
 	}

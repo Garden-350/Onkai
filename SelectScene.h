@@ -120,7 +120,7 @@ private:
 	static constexpr float kTitleW = 520.0f;	//曲の画像サイズが違う場合はここを調整
 	static constexpr float kTitleH = 85.0f;
 	static constexpr float kJacketX = 220.0f;
-	static constexpr float kJacketY = 105.0f;
+	static constexpr float kJacketY = 80.0f;
 	static constexpr float kJacketSize = 210.0f;
 	static constexpr float kInfoSlide = 40.0f;		//右からどれぐらい滑り込むか
 	static constexpr float kInfoAnimSec = 0.25f;	//滑り込みに掛ける秒数

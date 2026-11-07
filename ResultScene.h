@@ -21,6 +21,8 @@ public:
 	~ResultScene(); // デストラクタ
 
 	void Update(); // 更新
+
+	bool defeated = false;	//倒したか
 private:
 	std::vector<Object*> m_MySceneObjects; // このシーンのオブジェクト
 	Sound sound;

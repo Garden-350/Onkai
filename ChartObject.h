@@ -36,6 +36,7 @@
 #include "ImpactFx.h"
 #include "LongShield.h"
 #include "HypeMeter.h"
+#include "KeyTexture.h"
 
 class Player;
 class Enemy;
@@ -50,7 +51,8 @@ enum class ChartNoteType
 	TAP = 0,
 	LONGNOTE = 1,
 	FLICK_RIGHT = 2,
-	FLICK_LEFT = 3
+	FLICK_LEFT = 3,
+	TRACE = 4,
 };
 
 struct LaneTurn
@@ -188,7 +190,8 @@ public:
 	bool LoadChart(const std::string& name);
 
 	// ビームの発射元座標として Enemy を紐付ける（Stage1Sceneから呼ぶ）
-	void SetEnemyRef(Enemy* enemy) { m_EnemyRef = enemy; }
+	void SetEnemyRef(Enemy* enemy) { m_EnemyRef = enemy; SetupEnemyEvents(); }
+	bool IsEnemyDefeated() const;	//結果画面に渡す用
 
 	void SetPlayerRef(Player* player) { m_PlayerRef = player; }
 
@@ -265,7 +268,7 @@ private:
 	std::chrono::steady_clock::time_point m_LastUpdateClock;
 	std::vector<LongBeamRibbon::Point> m_LongPoints; //帯の点（毎フレーム作り直す）
 	std::string m_AudioFile;
-	float m_NoteScale = 80.0f;	// TAPモデルの表示スケール
+	float m_NoteScale = 55.0f;	// TAPモデルの表示スケール
 	float m_BarrierSparkleTimer[6] = { 0,0,0,0,0,0 };	//レーンごとのキラキラパーティクル生成タイマー
 	float m_LongAmbientParticleTimer[6] = { 0,0,0,0,0,0 };
 
@@ -389,6 +392,7 @@ private:
 	float m_GazeKickTime = -1000.0f;
 
 	ComboHud m_ComboHud;
+	KeyTexture m_keyt;
 
 	HexHpGauge m_EnemyHp;	//敵ゲージ
 	int m_LongCount = 0;	//ロングの本数(カウンターのダメージ計算に使用する)
@@ -409,6 +413,10 @@ private:
 	//盾用
 	LongShield m_LongShield;	//ロング中に敵が張る盾
 	void UpdateLongShield();	//盾に知らせる
+
+	//敵死亡時
+	void SetupEnemyEvents();	//敵の状態
+	bool m_FinishChecked = false;	//最後のノーツの後のとどめを済ませたか
 
 	//音楽用
 	HypeMeter m_Hype;				//コンボから作る盛り上がり

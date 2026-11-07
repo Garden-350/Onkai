@@ -315,6 +315,16 @@
     <ClCompile Include="LongShield.cpp">
       <Filter>ソースファイル\Chart</Filter>
     </ClCompile>
+    <ClCompile Include="KeyTexture.cpp" />
+    <ClCompile Include="NoteTypes.cpp">
+      <Filter>ソースファイル\NoteAdd</Filter>
+    </ClCompile>
+    <ClCompile Include="TraceNote.cpp">
+      <Filter>ソースファイル\Note</Filter>
+    </ClCompile>
+    <ClCompile Include="NoteMesh.cpp">
+      <Filter>ソースファイル\NoteAdd</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -581,6 +591,16 @@
     <ClInclude Include="HypeMeter.h">
       <Filter>ヘッダーファイル\Particle</Filter>
     </ClInclude>
+    <ClInclude Include="KeyTexture.h" />
+    <ClInclude Include="NoteBehavior.h">
+      <Filter>ヘッダーファイル\NoteAdd</Filter>
+    </ClInclude>
+    <ClInclude Include="TraceNote.h">
+      <Filter>ヘッダーファイル\Note</Filter>
+    </ClInclude>
+    <ClInclude Include="NoteMesh.h">
+      <Filter>ヘッダーファイル\NoteAdd</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">
@@ -651,6 +671,18 @@
     </Filter>
     <Filter Include="ソースファイル\Score">
       <UniqueIdentifier>{b902fcd2-c578-49a6-8e2a-a8c6ce4bf052}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\NoteAdd">
+      <UniqueIdentifier>{c3ea9eda-7fe4-496e-990a-5d47ce626412}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\NoteAdd">
+      <UniqueIdentifier>{18b18e12-e168-4053-8792-bdbbe74151b9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Note">
+      <UniqueIdentifier>{797f1a02-cfdb-4df6-8040-fe5f8a6113ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Note">
+      <UniqueIdentifier>{efcd8458-b440-4349-b243-04b18a9ec183}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

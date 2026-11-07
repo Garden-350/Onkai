@@ -1,6 +1,7 @@
 #include "Enemy.h"
 #include "Game.h"
 #undef max
+#undef min
 
 void Enemy::Init()
 {
@@ -35,13 +36,43 @@ void Enemy::Init()
 
 void Enemy::Update()
 {
-	m_Rotation.y += 0.01f;
-	if (m_HitTimer > 0.0f) m_HitTimer -= 1.0f / 60.0f;
-	if (m_FlashTime > 0.0f) m_FlashTime = std::max(0.0f, m_FlashTime - 1.0f / 60.0f);
+	const float dt = 1.0f / 60.0f;
+
+	//‰ñ“]F•m€E“|‚ê‚½Œã‚Í‚ä‚Á‚­‚è
+	m_Rotation.y += (m_State == State::Alive) ? 0.01f : 0.003f;
+
+	if (m_HitTimer > 0.0f) m_HitTimer -= dt;
+	if (m_FlashTime > 0.0f) m_FlashTime = std::max(0.0f, m_FlashTime - dt);
+
+	//•m€0.6s‚²‚Æ‚ÉÔ‚­“_–Å
+	if (m_State == State::Dying)
+	{
+		m_DyingBlink -= dt;
+		if (m_DyingBlink <= 0.0f)
+		{
+			Flash(Vector3(1.0f, 0.2f, 0.15f), 0.5f, 0.25f);
+			m_DyingBlink = 0.6f;
+		}
+	}
+
+	//‚Æ‚Ç‚ß‚Ì‚ ‚Æ”’‚­‚È‚Á‚Ä”š”­
+	if (m_State == State::Defeated && !m_Exploded)
+	{
+		m_DefeatTime += dt;
+		float k = std::min(m_DefeatTime / kExplodeTime, 1.0f);
+		Flash(Vector3(1.0f, 1.0f, 1.0f), 0.3f + 0.7f * k, 0.05f);	//‚¿‚å‚Á‚Æ‚¸‚Â”’‚­
+		if (m_DefeatTime >= kExplodeTime)
+		{
+			m_Exploded = true;
+			if (m_OnExploded) m_OnExploded();
+		}
+	}
+
 }
 
 void Enemy::Draw(Camera* cam)
 {
+	if (m_Exploded) return;
 	cam->SetCamera(0);
 
 	Renderer::SetBlendState(BS_NONE);
@@ -62,6 +93,11 @@ void Enemy::Draw(Camera* cam)
 	//UŒ‚‚ğó‚¯‚½’¼Œã‚Í¶‰E‚É×‚©‚­—h‚ç‚·
 	float k = std::max(0.0f, m_HitTimer / 0.25f);
 	Vector3 shake(sinf(m_HitTimer * 120.0f) * 12.0f * k, 0.0f, 0.0f);
+	if (m_State == State::Defeated)
+	{
+		float amp = 6.0f + 30.0f * std::min(m_DefeatTime / kExplodeTime, 1.0f);
+		shake = Vector3(sinf(m_DefeatTime * 90.0f) * amp, cosf(m_DefeatTime * 70.0f) * amp * 0.5f, 0.0f);
+	}
 	Matrix t = Matrix::CreateTranslation(m_Position + shake);
 	Matrix x = Matrix::CreateRotationX(m_Rotation.x);
 	Matrix y = Matrix::CreateRotationY(m_Rotation.y);
@@ -90,6 +126,16 @@ void Enemy::Draw(Camera* cam)
 
 void Enemy::Uninit()
 {
+}
+
+void Enemy::Finish()
+{
+	if (m_State == State::Defeated) return;	//2‰ñ–Ú‚Í‚È‚É‚à‚µ‚È‚¢
+	m_State = State::Defeated;
+	m_Hp = 0.0f;
+	m_DefeatTime = 0.0f;
+	Flash(Vector3(1.0f, 1.0f, 1.0f), 1.0f, 0.15f);	//‚Æ‚Ç‚ß‚ÌuŠÔ^‚Á”’
+	if (m_OnDefeated) m_OnDefeated();
 }
 
 void Enemy::Flash(const DirectX::SimpleMath::Vector3& color, float strength, float duration)

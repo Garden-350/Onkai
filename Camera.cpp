@@ -172,7 +172,7 @@ void Camera::SetCamera(int mode)
 
 		//プロジェクション行列の生成
 		float nearPlane = 1.0f; // ニアクリップ 0はダメ（0割りを起こす）
-		float farPlane = 1000.0f; // ファークリップ
+		float farPlane = 3000.0f; // ファークリップ
 
 		//プロジェクション行列の生成
 		Matrix projectionMatrix = DirectX::XMMatrixOrthographicLH(

@@ -45,6 +45,10 @@ public:
 	//チャージ中はロングを離してもミスにしない時間帯
 	void SetMissFressWindow(float start, float end) { m_MissFreeStart = start; m_MissFreeEnd = end; }
 
+	//新しい種類のノーツ用：判定の結果を記録する
+	void AddHit(ChartNote& note, int rank, Sound& sound);
+	void AddMiss(ChartNote& note);
+
 	int GetPerfectCount() const { return m_Perfect; }
 	int GetGreatCount()   const { return m_Great; }
 	int GetGoodCount()    const { return m_Good; }

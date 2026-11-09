@@ -31,7 +31,7 @@ public:
 		if (m_State == State::Alive && m_Hp <= kDyingHp)
 		{
 			m_State = State::Dying;	//•mŽ€
-			if (m_OnDying) m_OnDying;
+			if (m_OnDying) m_OnDying();
 		}
 	}
 	void Finish();	//‚Æ‚Ç‚ß@ÅŒã‚Ìƒm[ƒc‚ª‚±‚¢‚Â‚ðŒÄ‚Ô

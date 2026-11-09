@@ -4,6 +4,7 @@
 #include "sound.h"
 #include <chrono>
 #include "ChartObject.h"
+#include "CameraTrack.h"
 
 // Stage1Scenクラス
 class Stage1Scene : public Scene
@@ -37,6 +38,9 @@ private:
 	float m_CamHeight = 1165.0f;	//判定ラインからの高さ     (デバッグログの2つめの数値)-(-535)
 	float m_CamBack = 1090.0f;	//判定ラインから手前への距離	-210-(でばっブログの3つめの数値)
 	float m_CamLookAhead = 500.0f;	//判定ラインよりどれだけ奥を見るか
+
+	//今のカメラ
+	CameraPose DefaultCameraPose();
 public:
 	Stage1Scene(); // コンストラクタ
 	~Stage1Scene(); // デストラクタ

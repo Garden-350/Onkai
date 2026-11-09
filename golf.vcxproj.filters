@@ -315,7 +315,6 @@
     <ClCompile Include="LongShield.cpp">
       <Filter>ソースファイル\Chart</Filter>
     </ClCompile>
-    <ClCompile Include="KeyTexture.cpp" />
     <ClCompile Include="NoteTypes.cpp">
       <Filter>ソースファイル\NoteAdd</Filter>
     </ClCompile>
@@ -324,6 +323,21 @@
     </ClCompile>
     <ClCompile Include="NoteMesh.cpp">
       <Filter>ソースファイル\NoteAdd</Filter>
+    </ClCompile>
+    <ClCompile Include="LaneTrack.cpp">
+      <Filter>ソースファイル\Lane</Filter>
+    </ClCompile>
+    <ClCompile Include="CameraTrack.cpp">
+      <Filter>ソースファイル\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="GameEvent.cpp">
+      <Filter>ソースファイル\Event</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyTexture.cpp">
+      <Filter>ソースファイル\Event</Filter>
+    </ClCompile>
+    <ClCompile Include="HitSlashFx.cpp">
+      <Filter>ソースファイル\Particle</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -591,7 +605,6 @@
     <ClInclude Include="HypeMeter.h">
       <Filter>ヘッダーファイル\Particle</Filter>
     </ClInclude>
-    <ClInclude Include="KeyTexture.h" />
     <ClInclude Include="NoteBehavior.h">
       <Filter>ヘッダーファイル\NoteAdd</Filter>
     </ClInclude>
@@ -600,6 +613,21 @@
     </ClInclude>
     <ClInclude Include="NoteMesh.h">
       <Filter>ヘッダーファイル\NoteAdd</Filter>
+    </ClInclude>
+    <ClInclude Include="LaneTrack.h">
+      <Filter>ヘッダーファイル\Lane</Filter>
+    </ClInclude>
+    <ClInclude Include="CameraTrack.h">
+      <Filter>ヘッダーファイル\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="GameEvent.h">
+      <Filter>ヘッダーファイル\Event</Filter>
+    </ClInclude>
+    <ClInclude Include="KeyTexture.h">
+      <Filter>ヘッダーファイル\Event</Filter>
+    </ClInclude>
+    <ClInclude Include="HitSlashFx.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -683,6 +711,18 @@
     </Filter>
     <Filter Include="ヘッダーファイル\Note">
       <UniqueIdentifier>{efcd8458-b440-4349-b243-04b18a9ec183}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Lane">
+      <UniqueIdentifier>{e88f30d1-2ee6-4d56-a6a1-7c6b651dae52}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Lane">
+      <UniqueIdentifier>{c5ae54e6-1148-468a-94d4-a7004c798734}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Event">
+      <UniqueIdentifier>{8fa2e061-094d-4e4c-be08-2c3d83d52d82}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Event">
+      <UniqueIdentifier>{997b627a-255a-4915-be3d-a31dcdad193a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

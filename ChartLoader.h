@@ -1,5 +1,7 @@
 ﻿#pragma once
 #include "ChartObject.h" // ChartNote / ChartJudgeCircle / ChartHomingBeam の完全な定義を得るため
+#include "LaneTrack.h"
+#include "CameraTrack.h"
 #include <string>
 #include <vector>
 
@@ -16,8 +18,11 @@ struct ChartLoadResult
 	std::vector<ChartHomingBeam> homingBeams;
 
 	float bpm = 120.0f;
+	float offset = 0.0f;	//曲の最初の拍が何秒か　エディターのoffset
 	int   beatsPerBar = 4;
 	std::string audioFile;
+	std::vector<LaneTrack> tracks;	//レーンの区切り（常に6本）
+	std::vector<CameraKey> cameraKeys;
 };
 
 // ============================================================

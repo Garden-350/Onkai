@@ -37,6 +37,8 @@
 #include "LongShield.h"
 #include "HypeMeter.h"
 #include "KeyTexture.h"
+#include "LaneTrack.h"
+#include "CameraTrack.h"
 
 class Player;
 class Enemy;
@@ -84,6 +86,7 @@ struct ChartNote
 	//フィナーレ演出用：ロングノーツを螺旋状に描画するオプション（無指定なら従来通り直線）──
 	float spiralTurns = 0.0f;		// 螺旋の回転数（例:2.0で2回転）。0なら螺旋なし
 	float spiralRadius = 0.0f;		// 螺旋の半径(spawn時が最大、判定時刻に向けて0へ収束)
+	LaneDir flowDir = LaneDir::Back;	//どっちから流れてくるか　ApplyLaneDurationsで決定
 
 	//判定の進行状態
 	bool judged = false;			// true になったら以後描画・判定の対象から外す（Update末尾で一括削除される）
@@ -225,6 +228,8 @@ public:
 	void StopLongSounds();					// ポーズ時に Game から呼ぶ
 
 	Camera::Layer GetLayer() const override { return Camera::Layer::Playfield; }
+	//今の曲の時刻のカメラ
+	CameraPose GetCameraPose(const CameraPose& defaultPose) const;
 
 private:
 	// ===================
@@ -268,7 +273,7 @@ private:
 	std::chrono::steady_clock::time_point m_LastUpdateClock;
 	std::vector<LongBeamRibbon::Point> m_LongPoints; //帯の点（毎フレーム作り直す）
 	std::string m_AudioFile;
-	float m_NoteScale = 55.0f;	// TAPモデルの表示スケール
+	float m_NoteScale = 40.0f;	// TAPモデルの表示スケール
 	float m_BarrierSparkleTimer[6] = { 0,0,0,0,0,0 };	//レーンごとのキラキラパーティクル生成タイマー
 	float m_LongAmbientParticleTimer[6] = { 0,0,0,0,0,0 };
 
@@ -426,4 +431,15 @@ private:
 	static constexpr float kLowPassMinHz = 300.0f;	//盛り上がり０の時、これより高い音を削る
 	static constexpr float kLowPassOpenHz = 7000.0f;	//最大の少し手前でここまで開く（最大でフィルターなし）
 	static constexpr bool kUseLowPass = false;	//trueの場合籠るも実行
+
+	std::vector<LaneTrack> m_Tracks;	//レーンの区切り
+	float m_Offset = 0.0f;
+	void ApplyLaneDirections(float bpm, int beatsPerBar);	//方向に合わせてノーツの出現位置を決め直す
+	void ApplyTrackJudgePositions(float bpm, int beatsPerBar);	//区切りに合わせて判定円を動かす
+
+	LaneDir LaneDirAt(int lane, float time) const;	//その時刻のレーンの向き
+
+	long long m_LastBeatIndex = -1;	//最後に知らせた拍
+
+	std::vector<CameraKey> m_CameraKeys;
 };

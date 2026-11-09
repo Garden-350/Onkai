@@ -16,6 +16,7 @@
 #include "ChargeAura.h"
 #include "ScoreRule.h"
 #include "NoteBehavior.h"
+#include "GameEvent.h"
 #include <algorithm>
 #include <cmath>
 #undef min
@@ -181,8 +182,9 @@ void ChartObject::Init()
 			m_WeakPoint.EndSpecial(m_MusicTime);
 		});
 
-	m_JudgeSystem.SetOnLongEnd([this](int)
+	m_JudgeSystem.SetOnLongEnd([this](int lane)
 		{
+			GameEvent::OnLongEnd().Publish({ lane });
 			m_GazeKickTime = m_MusicTime;
 			//カウンター　HPの4割りをロングの本数で割った分のダメージにする
 			if (m_EnemyRef && m_LongCount > 0) m_EnemyRef->Damage(40.0f / m_LongCount);
@@ -269,6 +271,7 @@ void ChartObject::Init()
 	//盾が割れた：ロングの分のダメージと、割れた演出
 	m_LongShield.SetOnBreak([this](int longCount, const Vector3& center)
 		{
+			GameEvent::OnShieldBreak().Publish({ center });
 			if (m_EnemyRef && m_LongCount > 0) m_EnemyRef->Damage(40.0f / m_LongCount * longCount);
 			if (m_EnemyRef) m_EnemyRef->Flash(Vector3(0.6f, 0.85f, 1.0f), 0.8f, 0.25f);
 			m_ImpactFx.SpawnCritical(center, Vector3(0.45f, 0.75f, 1.0f), 0.6f);
@@ -435,6 +438,14 @@ bool ChartObject::LoadChart(const std::string& name)
 	}
 	m_JudgeCircles = result.judgeCircles;
 
+	//レーンの区切りを先に受け取る（判定円を動かすのに使用）
+	m_Tracks = result.tracks;
+	m_CameraKeys = result.cameraKeys;
+	m_Offset = result.offset;
+	//区切りに判定円の位置があればその区間だけ判定円をそこへ動かす
+	//奥からくるノーツも動いた判定円から決めたいからkHighwayModeより前で実行
+	ApplyTrackJudgePositions(result.bpm, result.beatsPerBar);
+
 	if (kHighwayMode)
 	{
 		for (auto& note : m_Notes)
@@ -486,6 +497,10 @@ bool ChartObject::LoadChart(const std::string& name)
 		m_TrackApproachSeconds = (approachCount > 0) ? (float)(approachSum / approachCount) : 1.0f;
 	}
 
+	//レーンの方向（上から横から）に合わせてノーツの出現位置を決め直す
+	//判定ガイドのトラックの向きは今まで通りにしたいのでその計算の後でやる
+	ApplyLaneDirections(result.bpm, result.beatsPerBar);
+
 	m_BeamSystem.SetBeams(result.homingBeams);
 	m_Bpm = result.bpm;
 	m_BeatsPerBar = result.beatsPerBar;
@@ -526,6 +541,7 @@ bool ChartObject::LoadChart(const std::string& name)
 	m_LastPressedLane = 2;
 	m_NoisePlaying = false;
 	m_FinishChecked = false;
+	m_LastBeatIndex = -1;
 
 	for (auto& t : m_LastOrbTime) t = -100.0f;
 
@@ -568,6 +584,41 @@ void ChartObject::AddPauseOffset(std::chrono::steady_clock::duration offset)
 void ChartObject::StopLongSounds()
 {
 	sound.Stop(SOUND_CHARGE);
+}
+
+//曲の時刻からカメラの位置を割り出す
+CameraPose ChartObject::GetCameraPose(const CameraPose& defaultPose) const
+{
+	if (m_CameraKeys.empty()) return defaultPose;
+
+	auto poseOf = [&](const std::string& name)
+		{
+			CameraPose p;
+			return CameraPresets::Find(name, p) ? p : defaultPose;
+		};
+
+	float beat = (m_Bpm > 0.0f) ? 60.0f / m_Bpm : 0.5f;	//1拍の秒数
+	float bar = beat * (float)m_BeatsPerBar;	//1小節の秒数
+
+	CameraPose cur = defaultPose;	//最初の区切りより前は今のカメラ
+	for (const auto& k : m_CameraKeys)
+	{
+		float endT = m_Offset + (k.fromMeasure - 1) * bar;	//この小節の頭で動き終わる
+		float startT = endT - k.blendBeats * beat;	//ここから動き始める
+		CameraPose next = poseOf(k.preset);
+
+		if (m_MusicTime >= endT) { cur = next; continue; }	//動き終わったなら次に
+		if (m_MusicTime > startT && endT - startT > 0.00001f)
+		{
+			float t = (m_MusicTime - startT) / (endT - startT);	//経過時間を01で
+			t = t * t * (3.0f - 2.0f * t);	//スムーズ
+			cur.eye = Vector3::Lerp(cur.eye, next.eye, t);
+			cur.target = Vector3::Lerp(cur.target, next.target, t);
+		}
+		break;	//まだ来ていない区切りから先は見ない
+	}
+
+	return cur;
 }
 
 //移動するロング　tau秒に判定ラインへ届く部分が今どこにあるか
@@ -750,6 +801,19 @@ void ChartObject::Update()
 		std::chrono::duration<float>(nowClock - m_LastUpdateClock).count();
 	m_LastUpdateClock = nowClock;
 	m_ScreenEffects.Update(deltaTime);
+
+	//拍の頭を知らせる　1フレームで何拍も進んだ時も飛ばさずに全部知らせるためにwhile
+	if (m_Bpm > 0.0f && m_MusicTime >= 0.0f)
+	{
+		float beatSec = 60.0f / m_Bpm;
+		long long beatNow = (long long)std::floor(m_MusicTime / beatSec);
+		while (m_LastBeatIndex < beatNow)
+		{
+			m_LastBeatIndex++;
+			bool isBar = (m_BeatsPerBar > 0) && (m_LastBeatIndex % m_BeatsPerBar == 0);
+			GameEvent::OnBeat().Publish({ m_LastBeatIndex, isBar });
+		}
+	}
 
 	//判定バッドの光具合
 	{
@@ -1157,6 +1221,9 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 	m_LaneGlow[laneIndex] = 1.0f;	//判定したレーンのバッドを光らせる
 	Vector3 pos = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
 
+	//イベントはここから呼び出す
+	GameEvent::OnJudge().Publish({ laneIndex,rank,pos,GetLaneColor(laneIndex) });
+
 	//判定円から、敵の体のランダムな位置へ光を飛ばす。PERFECT は太い金の光（同じレーンは kOrbMinInterval に1つまで）
 	bool perfect = (rank == 0);
 	if (m_EnemyRef && m_MusicTime - m_LastOrbTime[laneIndex] >= kOrbMinInterval)
@@ -1165,23 +1232,6 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 		m_AttackOrbs.Launch(laneIndex, pos, target, GetLaneColor(laneIndex), perfect);
 	}
 
-	for (int i = 0; i < 100; i++)
-	{
-		float deg = (float)(rand() % 360);
-		Particle p(
-			pos,
-			0.5f,                          // 寿命
-			50.0f,                         // 重力
-			Color(1, 1, 1, 1),				// 開始色
-			Color(1, 1, 1, 0),				// 終了色（透明にフェード）
-			0.7f,                          // フェード開始位置（終盤30%だけフェード）
-			60.0f,                         // 開始サイズ
-			20.0f,                         // 終了サイズ
-			Vector3(80, 120, 80),          // 初速
-			deg
-		);
-		m_Particle.push_back(p);
-	}
 	ChartKeyLightEffect le;
 	le.lane = laneIndex;
 	le.startTime = m_MusicTime;
@@ -1334,6 +1384,89 @@ void ChartObject::SetupEnemyEvents()
 			m_ScreenEffects.TriggerFlash(0.2f);
 			sound.Play(SOUND_MIRROR_BREAK_SMALL);
 		});
+}
+
+void ChartObject::ApplyLaneDirections(float bpm, int beatsPerBar)
+{
+	float secPerBar = (bpm > 0.0f ? 60.0f / bpm : 0.5f) * (float)beatsPerBar;	//1小節の時間
+
+	for (auto& n : m_Notes)
+	{
+		if (n.IsFlick() || n.IsLong()) continue;	//現在対応ノーツ以外はスルー
+		if (n.lane < 0 || n.lane >= (int)m_Tracks.size()) continue;
+
+		//判定の時刻が何小節目か（offsetの拍が1小節目の頭）
+		int measure = (int)std::floor((n.time - m_Offset) / secPerBar + 1);
+		LaneDir dir = m_Tracks[n.lane].SectionAt(measure).dir;
+		n.flowDir = dir;	//描くときに回す
+		if (dir == LaneDir::Back) continue;	//奥からは今の出現位置をキープ
+
+		Vector3 judge = m_JudgeCircles[n.lane].GetPosition(n.time);	//届く瞬間の判定円
+		n.spawnPos = judge + LaneDirUtil::SpawnOffset(dir);
+		n.controlPoints.clear();	//まっすぐ降ってくる
+	}
+}
+
+//区切りの一拍前から動き始めてその小節の頭で到着
+void ChartObject::ApplyTrackJudgePositions(float bpm, int beatsPerBar)
+{
+	float beat = (bpm > 0.0f) ? 60.0f / bpm : 0.5f;	//一拍の秒数
+	float bar = beat * (float)beatsPerBar;	//一小節の秒数
+	constexpr float kMoveBeats = 4.0f;		//何拍かけて動くか
+	float moveSec = beat * kMoveBeats;
+
+	for (int lane = 0; lane < (int)m_Tracks.size() && lane < (int)m_JudgeCircles.size(); lane++)
+	{
+		const LaneTrack& track = m_Tracks[lane];
+
+		bool any = false;	//このレーンに位置の指定があるか
+		for (const auto& s : track.sections) if (s.hasJudge) any = true;
+		if (!any) continue;
+
+		const ChartJudgeCircle original = m_JudgeCircles[lane];	//コピー
+		auto measureOf = [&](float t) { return (int)std::floor((t - m_Offset) / bar) + 1; };
+		//t秒の位置：その小節の区切りに位置があればそこに、なければ元の動きに
+		auto posAt = [&](float t)
+			{
+				TrackSection s = track.SectionAt(measureOf(t));
+				return s.hasJudge ? s.judge : original.GetPosition(t);
+			};
+
+		std::vector<ChartCircleKeyframe> keys;
+		auto push = [&](float t, const Vector3& p)
+			{
+				ChartCircleKeyframe k;
+				k.time = t;
+				k.x = p.x;
+				k.y = p.y;
+				k.z = p.z;
+				keys.push_back(k);
+			};
+
+		//元のキーフレームは位置の指定がない区間の物だけ残す
+		for (const auto& k : original.keyframe)
+			if (!track.SectionAt(measureOf(k.time)).hasJudge) keys.push_back(k);
+
+		//区切りのところ：一拍前->小節の頭
+		for (const auto& s : track.sections)
+		{
+			float T = m_Offset + (s.fromMeasure - 1) * bar;
+			push(T - moveSec, posAt(T - moveSec));
+			push(T, posAt(T + 0.001f));	//ちょうど境目だと前の小節と判断
+		}
+
+		std::sort(keys.begin(), keys.end(),
+			[](const ChartCircleKeyframe& a, const ChartCircleKeyframe& b) { return a.time < b.time; });
+		m_JudgeCircles[lane].keyframe = keys;
+	}
+}
+
+LaneDir ChartObject::LaneDirAt(int lane, float time) const
+{
+	if (lane < 0 || lane >= (int)m_Tracks.size()) return LaneDir::Back;
+	float bar = ((m_Bpm > 0.0f) ? 60.0f / m_Bpm : 0.5f) * (float)m_BeatsPerBar;
+	int measure = (int)std::floor((time - m_Offset) / bar) + 1;
+	return m_Tracks[lane].SectionAt(measure).dir;
 }
 
 
@@ -1627,8 +1760,12 @@ void ChartObject::Draw(Camera* cam)
 		float highSpeed = Game::GetInstance()->GetHighSpeed();	//ノーツと同じくハイスピで奥行を伸ばす
 		for (int i = 0; i < JudgeLineGuide::kLaneCount; i++)
 		{
+			LaneDir dir = LaneDirAt(i, m_MusicTime);
 			gf.judgePos[i] = m_JudgeCircles[i].GetPosition(m_MusicTime);
-			gf.trackOffset[i] = m_LaneTrackOffset[i] * highSpeed;
+			//奥からは今まで通り。横・上は、ノーツが来る方へ線を流す
+			gf.trackOffset[i] = (dir == LaneDir::Back ? m_LaneTrackOffset[i] : LaneDirUtil::SpawnOffset(dir)) * highSpeed;
+			gf.lateral[i] = LaneDirUtil::Lateral(dir);
+			gf.group[i] = (int)dir;
 			gf.laneColor[i] = GetLaneColor(i);
 			gf.laneGlow[i] = m_LaneGlow[i];
 		}
@@ -1724,6 +1861,7 @@ void ChartObject::Draw(Camera* cam)
 			out.color = c + (Vector3(1.0f, 1.0f, 1.0f) - c) * look.whiteMix;	// 白を混ぜる
 			out.scale = m_NoteScale * look.scale;
 			out.musicTime = m_MusicTime;	// 足す
+			out.rot = LaneDirUtil::NoteRotation(note.flowDir);	//向きに合わせて回転
 			return true;
 		};
 
@@ -1753,7 +1891,7 @@ void ChartObject::Draw(Camera* cam)
 
 		// 本体
 		{
-			Matrix world = Matrix::CreateScale(dx.scale) * Matrix::CreateTranslation(dx.pos);
+			Matrix world = Matrix::CreateScale(dx.scale) * dx.rot * Matrix::CreateTranslation(dx.pos);
 			Renderer::SetWorldMatrix(&world);
 			for (size_t i = 0; i < m_Subsets.size(); i++)
 			{
@@ -1897,6 +2035,24 @@ void ChartObject::Draw(Camera* cam)
 
 	//ステージの初めに左から順にイーズイン
 	if (m_Started) m_keyt.Draw(cam, m_MusicTime + m_CountInTime, judgeCircleScreenPos);
+
+	//奥から以外のレーンは、判定円の横にキーの画像を出す（どこを叩くかわかるように）
+	{
+		constexpr float kIconSize = 70.0f;
+		float beat = (m_Bpm > 0.0f) ? 60.0f / m_Bpm : 0.5f;
+		Renderer::SetBlendState(BS_ALPHABLEND);
+		for (int lane = 0; lane < 6; lane++)
+		{
+			LaneDir dir = LaneDirAt(lane, m_MusicTime + beat);	//判定円が動き始めた時から出す
+			if (dir == LaneDir::Back) continue;
+			Vector2 off = LaneDirUtil::IconOffset(dir);
+			m_LaneIcons[lane].SetPosition(judgeCircleScreenPos[lane] + Vector3(off.x, off.y, 0.0f));
+			m_LaneIcons[lane].SetScale(kIconSize, kIconSize, 1.0f);
+			m_LaneIcons[lane].SetAlpha(1.0f);
+			m_LaneIcons[lane].Draw(cam);
+		}
+		Renderer::SetBlendState(BS_NONE);
+	}
 
 	DrawLightEffects(cam);
 	// ── ホーミングビームの描画（他要素の最後に描くことで前面に出す）──

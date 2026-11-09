@@ -66,6 +66,59 @@ namespace ChartLoader
 		if (root.Has("beatsPerBar")) result.beatsPerBar = root["beatsPerBar"].AsInt(result.beatsPerBar);
 		else if (root.Has("meta") && root["meta"].Has("beatsPerBar")) result.beatsPerBar = root["meta"]["beatsPerBar"].AsInt(result.beatsPerBar);
 
+		//曲の最初の拍が何秒か
+		if (root.Has("offset")) result.offset = root["offset"].AsFloat(0.0f);
+		else if (root.Has("meta") && root["meta"].Has("offset")) result.offset = root["meta"]["offset"].AsFloat(0.0f);
+
+		//レーンの区切り（なければ6本ともずっと奥から）
+		result.tracks.resize(6);
+		for (int i = 0; i < 6; i++) result.tracks[i].key = i;
+		if (root.Has("tracks") && root["tracks"].IsArray())
+		{
+			for (const auto& t : root["tracks"].arrayValue)
+			{
+				int key = t["key"].AsInt(-1);
+				if (key < 0 || key >= 6) continue;
+				auto& track = result.tracks[key];
+				track.sections.clear();
+				if (t.Has("sections") && t["sections"].IsArray())
+				{
+					for (const auto& s : t["sections"].arrayValue)
+					{
+						TrackSection sec;
+						sec.fromMeasure = s["fromMeasure"].AsInt(1);
+						sec.dir = LaneDirUtil::FromString(s["dir"].AsString("back"));
+						//判定円の位置
+						if (s.Has("judge"))
+						{
+							sec.hasJudge = true;
+							sec.judge = Vector3(s["judge"]["x"].AsFloat(0.0f),
+								s["judge"]["y"].AsFloat(0.0f),
+								s["judge"]["z"].AsFloat(0.0f));
+						}
+						track.sections.push_back(sec);
+					}
+					std::sort(track.sections.begin(), track.sections.end(),
+						[](const TrackSection& a, const TrackSection& b) { return a.fromMeasure < b.fromMeasure; });
+				}
+			}
+		}
+
+		//カメラの区切り　なければ今のカメラを使用
+		if (root.Has("camera") && root["camera"].IsArray())
+		{
+			for (const auto& c : root["camera"].arrayValue)
+			{
+				CameraKey key;
+				key.fromMeasure = c["fromMeasure"].AsInt(1);
+				key.preset = c["preset"].AsString("default");
+				key.blendBeats = c["blendBeats"].AsFloat(2.0f);
+				result.cameraKeys.push_back(key);
+			}
+			std::sort(result.cameraKeys.begin(), result.cameraKeys.end(),
+				[](const CameraKey& a, const CameraKey& b) { return a.fromMeasure < b.fromMeasure; });
+		}
+
 		// ── 音声ファイル名の読み込み ──
 		if (root.Has("audioFile"))
 			result.audioFile = root["audioFile"].AsString("");

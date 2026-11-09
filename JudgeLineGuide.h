@@ -22,6 +22,8 @@ public:
 		float bpm;
 		int beatsPerBar;	//何拍ごとに太い線にするか
 		float approachSeconds;	//ノーツがトラックの奥から判定円まで来るのにかかる秒数
+		DirectX::SimpleMath::Vector3 lateral[kLaneCount];	//判定円が並ぶ向き（隣とつながらない時に使う）
+		int group[kLaneCount];	//同じ数字で隣り合うレーンだけ線でつなぐ（向きの番号）
 	};
 	void Init();
 	void Draw(Camera* cam, const Frame& f);

@@ -96,14 +96,14 @@ void JudgeLineGuide::Draw(Camera* cam, const Frame& f)
 	float spacing[kLaneCount];
 	for (int i = 0; i < n; i++)
 	{
-		int prev = (i > 0) ? i - 1 : i;
-		int next = (i < n - 1) ? i + 1 : i;
+		int prev = (i > 0 && f.group[i - 1] == f.group[i]) ? i - 1 : i;
+		int next = (i < n - 1 && f.group[i + 1] == f.group[i]) ? i + 1 : i;
 		Vector3 d = f.judgePos[next] - f.judgePos[prev];
 		float steps = (float)(next - prev);
 		float len = d.Length();
 		if (len < 0.001f || steps < 1.0f)
 		{
-			latelar[i] = Vector3::Right;
+			latelar[i] = (f.lateral[i].LengthSquared() > 0.5f) ? f.lateral[i] : Vector3::Right;
 			spacing[i] = 90.0f;
 		}
 		else
@@ -112,6 +112,23 @@ void JudgeLineGuide::Draw(Camera* cam, const Frame& f)
 			spacing[i] = len / steps;
 		}
 	}
+
+	//同じグループで隣り合うレーンごとに点をつないで両端を少し伸ばした線を描く
+	auto drawRuns = [&](const Vector3* p, float width, const GuideParams& gp)
+		{
+			int a = 0;
+			for (int i = 1; i <= n; i++)
+			{
+				if (i < n && f.group[i] == f.group[a]) continue;
+				int b = i - 1;	//aからbまでが1つのまとまり
+				Vector3 head = (b > a) ? (p[a + 1] - p[a]) * 0.5f : latelar[a] * 45.0f;
+				Vector3 tail = (b > a) ? (p[b] - p[b - 1]) * 0.5f : latelar[b] * 45.0f;
+				DrawRibbon(p[a] - head, p[a], width, camPos, gp);
+				for (int k = a; k < b; k++) DrawRibbon(p[k], p[k + 1], width, camPos, gp);
+				DrawRibbon(p[b], p[b] + tail, width, camPos, gp);
+				a = i;
+			}
+		};
 
 	//拍の位置
 	const bool hasBeat = (f.bpm > 0.0f);
@@ -164,25 +181,18 @@ void JudgeLineGuide::Draw(Camera* cam, const Frame& f)
 			if (intensity <= 0.001f) continue;
 			float width = isBar ? m_BarLineWidth : m_BeatLineWidth;
 
-			Vector3 pts[kLaneCount + 2];
-			for (int i = 0; i < n; i++) pts[i + 1] = f.judgePos[i] + f.trackOffset[i] * s;
-			pts[0] = pts[1] - (pts[2] - pts[1]) * 0.5f;				// 両端はレーン半分だけはみ出させる
-			pts[n + 1] = pts[n] + (pts[n] - pts[n - 1]) * 0.5f;
+			Vector3 pts[kLaneCount];
+			for (int i = 0; i < n; i++) pts[i] = f.judgePos[i] + f.trackOffset[i] * s;
 
 			GuideParams p = {};
 			p.color = Vector4(kBeatLineColor.x, kBeatLineColor.y, kBeatLineColor.z, intensity);
 			p.mode = 0.0f;
-			for (int i = 0; i < n + 1; i++) DrawRibbon(pts[i], pts[i + 1], width, camPos, p);
+			drawRuns(pts, width, p);
 		}
 	}
 
 	//ストライクライン（6つの判定円をつなぐ光ライン）
 	{
-		Vector3 pts[kLaneCount + 2];
-		for (int i = 0; i < n; i++) pts[i + 1] = f.judgePos[i];
-		pts[0] = pts[1] - (pts[2] - pts[1]) * 0.5f;
-		pts[n + 1] = pts[n] + (pts[n] - pts[n - 1]) * 0.5f;
-
 		float pulse = hasBeat ? expf(-beatFrac * 6.0f) * m_StrikeBeatPulse : 0.0f;	// 拍の頭で少し明るく
 		float strength = m_StrikeIntensity + pulse;
 
@@ -192,11 +202,9 @@ void JudgeLineGuide::Draw(Camera* cam, const Frame& f)
 		GuideParams coreP = glowP;
 		coreP.color.w = strength;
 
-		for (int i = 0; i < n + 1; i++)
-		{
-			DrawRibbon(pts[i], pts[i + 1], m_StrikeGlowWidth, camPos, glowP);
-			DrawRibbon(pts[i], pts[i + 1], m_StrikeCoreWidth, camPos, coreP);
-		}
+		drawRuns(f.judgePos, m_StrikeGlowWidth, glowP);
+		drawRuns(f.judgePos, m_StrikeCoreWidth, coreP);
+		
 	}
 
 	//判定円のバッド（押すと光）

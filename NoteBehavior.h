@@ -27,6 +27,7 @@ struct NoteDrawContext
 {
 	DirectX::SimpleMath::Vector3 pos;	//描画位置
 	DirectX::SimpleMath::Vector3 color;	//描画色
+	DirectX::SimpleMath::Matrix rot = DirectX::SimpleMath::Matrix::Identity;	//向きに合わせた回転
 	float scale = 1.0f;
 	float musicTime = 0.0f;	//曲の時間　アニメーションとかあったら使用
 };

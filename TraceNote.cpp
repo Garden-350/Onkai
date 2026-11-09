@@ -16,6 +16,7 @@ bool TraceNote::Draw(const ChartNote& note, const NoteDrawContext& ctx)
 	if (!m_Mesh.IsLoaded()) return false;	//“Ç‚ß‚È‚©‚Á‚½‚ç‚±‚ê‚ð•Ô‚·
 
 	Matrix world = Matrix::CreateScale(ctx.scale)
+		* ctx.rot
 		* Matrix::CreateTranslation(ctx.pos);
 	m_Mesh.Draw(world, ctx.color);
 

@@ -13,10 +13,21 @@
 #include "OuterEdge.h"
 #include "PauseOverlay.h"
 #include "CameraLayerMarker.h"
+#include "GameEvent.h"
+#include "HitSlashFx.h"
 
 using namespace DirectX::SimpleMath;
 
 
+
+CameraPose Stage1Scene::DefaultCameraPose()
+{
+	Vector3 c = m_Chart->GetJudgeLineCenter();
+	CameraPose p;
+	p.eye = kUseFixedEye ? m_FixedEye : c + Vector3(0.0f, m_CamHeight, -m_CamBack);
+	p.target = c + Vector3(0.0f, 0.0f, m_CamLookAhead);
+	return p;
+}
 
 // コンストラクタ
 Stage1Scene::Stage1Scene()
@@ -50,6 +61,9 @@ void Stage1Scene::Init()
 	//worldLayer->SetUp(Camera::Layer::World, false);
 	//m_MySceneObjects.emplace_back(worldLayer);
 
+	//イベントの初期化
+	GameEvent::ClearAll();
+
 	//背景画像
 	auto* backdrop = Game::GetInstance()->AddObject<StageBackdrop>();
 	m_MySceneObjects.emplace_back(backdrop);
@@ -70,6 +84,10 @@ void Stage1Scene::Init()
 	chart->LoadChart(Game::GetInstance()->GetSelectedChart());
 	m_MySceneObjects.emplace_back(chart);
 	m_Chart = chart;
+	//叩いたときの斬撃
+	auto* slash = Game::GetInstance()->AddObject<HitSlashFx>();
+	m_MySceneObjects.emplace_back(slash);
+
 	ApplyCamera();
 	chart->SetEnemyRef(enemy);
 	chart->SetPlayerRef(player);
@@ -124,6 +142,12 @@ void Stage1Scene::Update()
 	//スポットライトを曲の拍に合わせる
 	if (m_Spotlights) m_Spotlights->SetBeat(m_Chart->GetMusicTime(), m_Chart->GetBpm());
 
+	//譜面のカメラの区切りに合わせてカメラを動かす
+	{
+		CameraPose p = m_Chart->GetCameraPose(DefaultCameraPose());
+		Game::GetInstance()->GetCamera()->SetFixedPose(p.eye, p.target);
+	}
+
 	//音の盛り上がりを背景に渡す
 	const float hype = m_Chart->GetHype01();
 	if (m_Spotlights) m_Spotlights->SetHype(hype);
@@ -161,6 +185,8 @@ void Stage1Scene::Update()
 // 終了処理
 void Stage1Scene::Uninit()
 {
+	//イベントの初期化
+	GameEvent::ClearAll();
 	// このシーンのオブジェクトを削除する
 	for (auto& o : m_MySceneObjects) {
 		Game::GetInstance()->DeleteObject(o);

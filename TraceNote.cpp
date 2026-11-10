@@ -18,7 +18,16 @@ bool TraceNote::Draw(const ChartNote& note, const NoteDrawContext& ctx)
 	Matrix world = Matrix::CreateScale(ctx.scale)
 		* ctx.rot
 		* Matrix::CreateTranslation(ctx.pos);
-	m_Mesh.Draw(world, ctx.color);
+
+	const Vector3 kTraceColor(1.0f, 0.85f, 0.5f);
+	LIGHT saved = Renderer::GetLight();
+	LIGHT dark = saved;
+	dark.Diffuse = Color(0.0f, 0.0f, 0.0f, 1.0f);
+	dark.Ambient = Color(0.0f, 0.0f, 0.0f, 1.0f);
+	Renderer::SetLight(dark);
+
+	m_Mesh.Draw(world, kTraceColor);
+	Renderer::SetLight(saved);	//–ß‚·
 
 	return true;
 }

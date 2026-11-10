@@ -15,6 +15,8 @@
 #include "CameraLayerMarker.h"
 #include "GameEvent.h"
 #include "HitSlashFx.h"
+#include "HitBurstFx.h"
+#include "SongIntro.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -84,9 +86,10 @@ void Stage1Scene::Init()
 	chart->LoadChart(Game::GetInstance()->GetSelectedChart());
 	m_MySceneObjects.emplace_back(chart);
 	m_Chart = chart;
-	//叩いたときの斬撃
-	auto* slash = Game::GetInstance()->AddObject<HitSlashFx>();
-	m_MySceneObjects.emplace_back(slash);
+	//叩いたノーツの破片と、拍で飛ぶレーザー（「叩いた」「拍の頭」のイベントを聞いて出す）
+	auto* burst = Game::GetInstance()->AddObject<HitBurstFx>();
+	burst->SetTarget(enemy->GetPosition() + Vector3(0.0f, 50.0f, 0.0f));	//敵の真ん中の少し上へ
+	m_MySceneObjects.emplace_back(burst);
 
 	ApplyCamera();
 	chart->SetEnemyRef(enemy);
@@ -96,6 +99,12 @@ void Stage1Scene::Init()
 	spaen->SetSceneObjects(&m_MySceneObjects);
 	m_MySceneObjects.emplace_back(spaen);
 	m_Spawner = spaen;
+
+	//曲の初めにジャけと曲名を出す
+	auto* intro = Game::GetInstance()->AddObject<SongIntro>();
+	intro->SetSong(Game::GetInstance()->GetSelectedChart());
+	intro->SetLeaveTime(chart->GetCountInTime());
+	m_MySceneObjects.emplace_back(intro);
 
 	auto* pause = Game::GetInstance()->AddObject<PauseOverlay>();
 	m_MySceneObjects.emplace_back(pause);
@@ -167,7 +176,7 @@ void Stage1Scene::Update()
 	float dt = std::chrono::duration<float>(now - m_LastUpdateClock).count();
 	m_LastUpdateClock = now;
 
-	if (!m_AudioFinished && m_Chart->IsAudioFinish())
+	if (!m_AudioFinished && (m_Chart->IsAudioFinish() || m_Chart->IsChartDone(kAfterLastNote)))
 	{
 		m_AudioFinished = true;
 		m_FinishWaitTimer = 0.0f;

@@ -10,6 +10,8 @@
 class Stage1Scene : public Scene
 {
 private:
+	static constexpr float kAfterLastNote = 2.0f;	//最後のノーツが来てから何秒で待つか
+	static constexpr float kResultDelaySeconds = 2.0f;	//kAfterLastNote秒が過ぎてから何秒経過で遷移するか
 
 	Sound sound;
 	std::vector<Object*> m_MySceneObjects; // このシーンのオブジェクト
@@ -28,7 +30,6 @@ private:
 
 	bool m_AudioFinished = false;
 	float m_FinishWaitTimer = 0.0f;
-	static constexpr float kResultDelaySeconds = 2.0f;	//曲が終わってから何秒待つか
 
 	//カメラの位置を直接決める
 	static constexpr bool kUseFixedEye = true;

@@ -549,7 +549,7 @@ void SelectScene::LoadJacketTexture(JacketSlot& slot)
 	bool loaded = false;
 	for (const char* ext : exts)
 	{
-		std::string path = "assets/jacket/" + name + ext;
+		std::string path = "assets/jacket_left/" + name + ext;
 		if (fs::exists(path))
 		{
 			slot.tex->SetTexture(path.c_str());

@@ -10,7 +10,7 @@ void ComboHud::Init()
 	for (int i = 0; i < 4; i++)
 	{
 		m_ComboDigits[i].Init();
-		m_ComboDigits[i].SetTexture("assets/texture/number_3.png");
+		m_ComboDigits[i].SetTexture("assets/texture/allnumber_2.png");
 		m_ComboDigits[i].SetUV(1.0f, 1.0f, 10.0f, 1.0f); // ‰Šú•\Ž¦‚Í "0"
 		m_ComboDigits[i].SetScale(m_NuberSplite_Size, m_NuberSplite_Size, 1.0f);
 	}

@@ -339,6 +339,12 @@
     <ClCompile Include="HitSlashFx.cpp">
       <Filter>ソースファイル\Particle</Filter>
     </ClCompile>
+    <ClCompile Include="HitBurstFx.cpp">
+      <Filter>ソースファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="SongIntro.cpp">
+      <Filter>ソースファイル\Event</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -628,6 +634,12 @@
     </ClInclude>
     <ClInclude Include="HitSlashFx.h">
       <Filter>ヘッダーファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="HitBurstFx.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="SongIntro.h">
+      <Filter>ヘッダーファイル\Event</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

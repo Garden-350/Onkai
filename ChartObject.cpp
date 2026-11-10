@@ -143,7 +143,7 @@ void ChartObject::Init()
 
 	m_AutoMode = Game::GetInstance()->IsAutoMode();
 	m_NoiseMode = Game::GetInstance()->IsNoiseMode();
-	m_JudgeSystem.SetOnJudge([this](int laneIndex, int rank) { OnJudge(laneIndex, rank); });
+	m_JudgeSystem.SetOnJudge([this](int laneIndex, int rank, bool isLong) { OnJudge(laneIndex, rank, isLong); });
 	m_JudgeSystem.SetOnChargeHit([this](int rank) { m_Special.AddHit(rank, true); });
 	static bool s_AuraInited = false;
 	if (!s_AuraInited)
@@ -327,6 +327,24 @@ void ChartObject::Init()
 			else          m_ImpactFx.SpawnSmallHit(pos, color);
 
 			//敵を一瞬光らせる
+			if (m_EnemyRef)
+			{
+				if (critical) m_EnemyRef->Flash(Vector3(1.0f, 0.85f, 0.4f), 0.45f, 0.12f);
+				else          m_EnemyRef->Flash(Vector3(1.0f, 1.0f, 1.0f), 0.2f, 0.08f);
+			}
+		});
+
+	//破片のレーザーが敵に届いた
+	m_AttackHitSub = GameEvent::OnAttackHit().Subscribe([this](const GameEvent::AttackHit& e)
+		{
+			if (m_LongShield.IsUp())
+			{
+				m_LongShield.Ripple(e.pos);	//盾にはじかれた
+				return;
+			}
+			bool critical = (e.rank == 0);
+			if (critical) m_ImpactFx.SpawnWeakHit(e.pos, e.color);
+			else m_ImpactFx.SpawnSmallHit(e.pos, e.color);
 			if (m_EnemyRef)
 			{
 				if (critical) m_EnemyRef->Flash(Vector3(1.0f, 0.85f, 0.4f), 0.45f, 0.12f);
@@ -1007,7 +1025,7 @@ void ChartObject::Update()
 	if (m_EnemyRef) m_EnemyHp.SetRatio(m_EnemyRef->GetHpRatio());
 	m_EnemyHp.Update(deltaTime);
 
-	if(!m_FullCombo && IsAudioFinish() && IsFullCombo())
+	if(!m_FullCombo && m_FinishChecked && IsFullCombo())
 	{
 		m_ComboHud.TriggerFullCombo();
 		m_FullCombo = true;
@@ -1175,6 +1193,7 @@ void ChartObject::Update()
 	if (!m_FinishChecked && m_AudioStarted && m_TotalNote > 0 && m_Notes.empty())
 	{
 		m_FinishChecked = true;
+		m_FinishTime = m_MusicTime;
 		if (m_EnemyRef && m_EnemyRef->IsDying()) m_EnemyRef->Finish();
 		else;	//瀕死まで行けなかった時の演出追加用
 	}
@@ -1207,12 +1226,16 @@ void ChartObject::Update()
 // OnJudge : 判定がヒットした瞬間に呼ばれるフック。
 //   コンボを加算し、判定円の位置に花びらパーティクルを100個生成する。
 // ============================================================
-void ChartObject::OnJudge(int laneIndex, int rank)
+// ============================================================
+// OnJudge : 判定がヒットした瞬間に呼ばれる
+//   タップの演出は HitBurstFx（イベントを聞いて出す）。ロングの途中は今まで通り
+// ============================================================
+void ChartObject::OnJudge(int laneIndex, int rank, bool isLong)
 {
 	m_Special.AddHit(rank, false);
-	m_ComboHud.TriggerBarrier(laneIndex);
-	m_ComboHud.TriggerRankPop(laneIndex, rank);
 	m_ComboHud.TriggerComboPop();
+	if (isLong || kTapBarrier)  m_ComboHud.TriggerBarrier(laneIndex);
+	if (isLong || kTapRankText) m_ComboHud.TriggerRankPop(laneIndex, rank);
 
 	//叩くたびに少しダメージを与える　ロングの盾が張られている間はダメージなし
 	if (m_EnemyRef && m_TotalNote > 0 && !m_LongShield.IsUp()) m_EnemyRef->Damage(60.0f / m_TotalNote);
@@ -1221,25 +1244,20 @@ void ChartObject::OnJudge(int laneIndex, int rank)
 	m_LaneGlow[laneIndex] = 1.0f;	//判定したレーンのバッドを光らせる
 	Vector3 pos = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
 
-	//イベントはここから呼び出す
-	GameEvent::OnJudge().Publish({ laneIndex,rank,pos,GetLaneColor(laneIndex) });
+	//「叩いた」を知らせる（破片の演出は、これを聞いて HitBurstFx が出す）
+	GameEvent::OnJudge().Publish({ laneIndex, rank, pos, GetLaneColor(laneIndex), isLong });
 
-	//判定円から、敵の体のランダムな位置へ光を飛ばす。PERFECT は太い金の光（同じレーンは kOrbMinInterval に1つまで）
-	bool perfect = (rank == 0);
-	if (m_EnemyRef && m_MusicTime - m_LastOrbTime[laneIndex] >= kOrbMinInterval)
+	//判定円から伸びる光
+	if (isLong || kTapKeyLight)
 	{
-		Vector3 target = m_LongShield.IsUp() ? m_LongShield.GetRandomSurfacePos() : m_WeakPoint.GetRandomBodyPos();
-		m_AttackOrbs.Launch(laneIndex, pos, target, GetLaneColor(laneIndex), perfect);
+		ChartKeyLightEffect le;
+		le.lane = laneIndex;
+		le.startTime = m_MusicTime;
+		le.duration = 0.4f;
+		le.intensity = 2.5f;
+		le.origin = pos;
+		m_LightEffects.push_back(le);
 	}
-
-	ChartKeyLightEffect le;
-	le.lane = laneIndex;
-	le.startTime = m_MusicTime;
-	le.duration = 0.4f;
-	le.intensity = 2.5f;
-	le.origin = m_JudgeCircles[laneIndex].GetPosition(m_MusicTime);
-
-	m_LightEffects.push_back(le);
 }
 
 // ============================================================
@@ -2080,6 +2098,7 @@ void ChartObject::Draw(Camera* cam)
 // ============================================================
 void ChartObject::Uninit()
 {
+	GameEvent::OnAttackHit().Unsubscribe(m_AttackHitSub);
 	sound.StopDynamic();
 	StopLongSounds();
 	sound.Uninit();

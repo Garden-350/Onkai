@@ -60,7 +60,7 @@ void LongBeamRibbon::Draw(Camera* cam, const std::vector<Point>& points, float w
 		L.uv = Vector2(0.0f, v);
 		R.uv = Vector2(1.0f, v);
 	}
-	m_VertexBuffer.Modify(m_Vertices);
+	m_VertexBuffer.Modify(m_Vertices.data(), (size_t)n * 2);	// 使う分（点の数×2）だけ送る
 
 	// 頂点はもうワールド座標なので、World行列は単位行列
 	Matrix world = Matrix::Identity;

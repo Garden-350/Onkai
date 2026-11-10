@@ -109,19 +109,19 @@ private:
 	static constexpr float kWheelCenterY = 0.0f;
 	static constexpr float kWheelRadius = 300.0f;	//半径。選択中の曲は中心の真右に来る
 	static constexpr float kWheelStep = 0.40f;		//隣の曲との角度
-	static constexpr float kCardW = 320.0f;			//選択中のカードの横幅
-	static constexpr float kCardH = 140.0f;			//選択中のカードの高さ
+	static constexpr float kCardW = 524.0f;			//選択中のカードの横幅
+	static constexpr float kCardH = 295.0f;			//選択中のカードの高さ
 
 	//右側　曲情報表示するやつ
 	Texture2D* m_TitlePlate = nullptr;	//曲名の帯
 	float m_InfoAnim = 1.0f;			//曲を切り替えたときの滑り込み
 	static constexpr float kInfoX = 370.0f;	//曲名の帯の中心X
 	static constexpr float kTitleY = 262.0f;
-	static constexpr float kTitleW = 520.0f;	//曲の画像サイズが違う場合はここを調整
+	static constexpr float kTitleW = 520.0f;	//曲名の画像サイズが違う場合はここを調整
 	static constexpr float kTitleH = 85.0f;
 	static constexpr float kJacketX = 220.0f;
 	static constexpr float kJacketY = 80.0f;
-	static constexpr float kJacketSize = 210.0f;
+	static constexpr float kJacketSize = 210.0f;	//右のジャケットサイズ
 	static constexpr float kInfoSlide = 40.0f;		//右からどれぐらい滑り込むか
 	static constexpr float kInfoAnimSec = 0.25f;	//滑り込みに掛ける秒数
 	void UpdateSongInfo();				// 選択中の曲の曲名・ジャケットに差し替える

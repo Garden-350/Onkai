@@ -15,6 +15,7 @@ namespace GameEvent
 		int rank;	//0=weak 1=hit 2=graze
 		DirectX::SimpleMath::Vector3 pos;	//判定円の位置
 		DirectX::SimpleMath::Vector3 color;	//レーンの色
+		bool isLong;	//ロングの途中の判定？
 	};
 	struct Beat	//拍の頭
 	{
@@ -23,6 +24,13 @@ namespace GameEvent
 	};
 	struct LongEnd { int lane; };	//ロングを最後まで押し切った
 	struct ShieldBreak { DirectX::SimpleMath::Vector3 center; };	//ロングの盾が割れた
+
+	struct AttackHit	//攻撃が敵にヒット
+	{
+		DirectX::SimpleMath::Vector3 pos;	//当たった場所
+		DirectX::SimpleMath::Vector3 color;
+		int rank;
+	};
 
 	//知らせる
 	template<class T>
@@ -61,6 +69,7 @@ namespace GameEvent
 	inline Channel<Beat>& OnBeat() { static Channel<Beat> c; return c; }
 	inline Channel<LongEnd>& OnLongEnd() { static Channel<LongEnd> c; return c; }
 	inline Channel<ShieldBreak>& OnShieldBreak() { static Channel<ShieldBreak> c; return c; }
+	inline Channel<AttackHit>& OnAttackHit() { static Channel<AttackHit> c; return c; }
 
 	inline void ClearAll()
 	{
@@ -68,6 +77,7 @@ namespace GameEvent
 		OnBeat().Clear();
 		OnLongEnd().Clear();
 		OnShieldBreak().Clear();
+		OnAttackHit().Clear();
 	}
 }
 

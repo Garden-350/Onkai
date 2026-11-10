@@ -213,6 +213,7 @@ public:
 	}
 	float GetMusicTime() const { return m_MusicTime; }	// 曲の再生時刻(秒)
 	float GetBpm() const { return m_Bpm; }
+	float GetCountInTime() const { return m_CountInTime; }	//カウントイン一小節の秒数
 	float GetHype01() const { return m_Hype.Get01(); }
 	//曲が最後まで再生したか
 	bool IsAudioFinish() const
@@ -222,6 +223,8 @@ public:
 		if (duration <= 0.0f) return false;
 		return m_MusicTime >= duration;
 	}
+	//全部のノーツを判定し終わってから、after秒たったか
+	bool IsChartDone(float after) const { return m_FinishChecked && m_MusicTime >= m_FinishTime + after; }
 
 	void DrawLaneGuideLines(Camera* cam);
 	void AddPauseOffset(std::chrono::steady_clock::duration offset);
@@ -372,7 +375,7 @@ private:
 	void DrawFlickNotes(Camera* cam);
 
 	// ── 判定ヒット時のフック：コンボ加算＋パーティクル生成 ──
-	void OnJudge(int laneIndex, int rank); // rank: 0=PERFECT; 1=GREAT 2=GOOD
+	void OnJudge(int laneIndex, int rank, bool isLong); // rank: 0=PERFECT; 1=GREAT 2=GOOD
 	void OnEmptyLanePress(int laneIndex);  // 空押し時のライトエフェクト（元JudgeLane内の処理）
 	void UpdateLightEffects(float deltaTime);
 	void DrawLightEffects(Camera* cam);
@@ -423,6 +426,9 @@ private:
 	void SetupEnemyEvents();	//敵の状態
 	bool m_FinishChecked = false;	//最後のノーツの後のとどめを済ませたか
 
+	float m_FinishTime = 0.0f;	//全部のノーツを判定し終わった曲の時刻
+	//全部のノーツを判定し終わってから、after秒たったか
+
 	//音楽用
 	HypeMeter m_Hype;				//コンボから作る盛り上がり
 	float m_LastLowPass = -100.0f;	//最後に送ったフィルターの値
@@ -442,4 +448,12 @@ private:
 	long long m_LastBeatIndex = -1;	//最後に知らせた拍
 
 	std::vector<CameraKey> m_CameraKeys;
+
+	int m_AttackHitSub = 0;	//攻撃が当たったかを聞いている登録番号
+
+	//タップを叩いたときの演出の切替
+	static constexpr bool kTapRankText = true;	//判定の文字
+	static constexpr bool kTapBarrier = false;	//判定円のバリアの光
+	static constexpr bool kTapKeyLight = false;	//判定円から伸びる光
+	static constexpr bool kTapAttackOrbs = false;//今までの攻撃の光
 };

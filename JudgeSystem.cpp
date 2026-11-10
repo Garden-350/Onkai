@@ -138,7 +138,7 @@ void JudgeSystem::JudgeLongNoteHold(std::vector<ChartNote>& notes, float musicTi
 			if (isDown)
 			{
 				m_Perfect++;
-				RegisterHit(effectLane, 0);
+				RegisterHit(effectLane, 0,true);
 			}
 			else if (n.nextTickTime >= m_MissFreeStart && n.nextTickTime < m_MissFreeEnd)
 			{
@@ -217,7 +217,7 @@ void JudgeSystem::UpdateAutoJudgge(std::vector<ChartNote>& notes, float musicTim
 				bool isFinalTick = (note.nextTickTime >= note.time - kEps);
 
 				m_Perfect++;
-				RegisterHit(note.lane, 0);
+				RegisterHit(note.lane, 0, true);
 				sound.Play(isFinalTick ? SOUND_LONG_END : SOUND_SUZU);
 
 				if (isFinalTick)
@@ -298,11 +298,11 @@ void JudgeSystem::AddMiss(ChartNote& note)
 	RegisterMiss();
 }
 
-void JudgeSystem::RegisterHit(int laneIndex, int rank)
+void JudgeSystem::RegisterHit(int laneIndex, int rank, bool isLong)
 {
 	m_Combo++;
 	if (m_Combo > m_MaxCombo) m_MaxCombo = m_Combo;
-	if (m_OnJudge) m_OnJudge(laneIndex, rank);
+	if (m_OnJudge) m_OnJudge(laneIndex, rank, isLong);
 }
 
 void JudgeSystem::RegisterMiss()

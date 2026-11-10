@@ -159,6 +159,7 @@
     <ClCompile Include="ComboHud.cpp" />
     <ClCompile Include="GameEvent.cpp" />
     <ClCompile Include="HexHpGauge.cpp" />
+    <ClCompile Include="HitBurstFx.cpp" />
     <ClCompile Include="HitPillarEffect.cpp" />
     <ClCompile Include="HitSlashFx.cpp" />
     <ClCompile Include="ImpactFx.cpp" />
@@ -204,6 +205,7 @@
     <ClCompile Include="SelectScene.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="SkyBox.cpp" />
+    <ClCompile Include="SongIntro.cpp" />
     <ClCompile Include="sound.cpp" />
     <ClCompile Include="SpecialBeam.cpp" />
     <ClCompile Include="SpecialGaugeHud.cpp" />
@@ -245,6 +247,7 @@
     <ClInclude Include="ComboHud.h" />
     <ClInclude Include="GameEvent.h" />
     <ClInclude Include="HexHpGauge.h" />
+    <ClInclude Include="HitBurstFx.h" />
     <ClInclude Include="HitPillarEffect.h" />
     <ClInclude Include="HitSlashFx.h" />
     <ClInclude Include="HypeMeter.h" />
@@ -301,6 +304,7 @@
     <ClInclude Include="Shader.h" />
     <ClInclude Include="SimpleJson.h" />
     <ClInclude Include="SkyBox.h" />
+    <ClInclude Include="SongIntro.h" />
     <ClInclude Include="sound.h" />
     <ClInclude Include="SpecialBeam.h" />
     <ClInclude Include="SpecialGaugeHud.h" />

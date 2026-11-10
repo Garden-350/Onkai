@@ -15,7 +15,7 @@ class JudgeSystem
 {
 public:
 	// ヒット成立時に呼ばれる (laneIndex, rank: 0=PERFECT,1=GREAT,2=GOOD)
-	using OnJudgeFn = std::function<void(int laneIndex, int rank)>;
+	using OnJudgeFn = std::function<void(int laneIndex, int rank, bool isLong)>;
 	// TAPノーツが無いレーンを空押ししたときに呼ばれる
 	using OnEmptyPressFn = std::function<void(int laneIndex)>;
 	using OnLongEndFn = std::function<void(int laneIndex)>;
@@ -59,7 +59,7 @@ public:
 	static constexpr float kTurnGrace = 0.12f;
 
 private:
-	void RegisterHit(int laneIndex, int rank); // m_Combo++ / m_MaxCombo更新 + m_OnJudgeコールバック呼び出し
+	void RegisterHit(int laneIndex, int rank, bool isLong = false); // m_Combo++ / m_MaxCombo更新 + m_OnJudgeコールバック呼び出し
 	void RegisterMiss();	//コンボリセット
 	void NotifyCharge(const ChartNote& n, int rank);
 

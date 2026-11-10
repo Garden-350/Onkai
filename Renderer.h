@@ -130,6 +130,8 @@ private:
 
 	static HRESULT CreateRenderAndDepthResources();
 
+	static LIGHT m_Light;	//今のライト
+
 public:
 
 	static HRESULT Init();
@@ -170,6 +172,7 @@ public:
 	static bool CreateConstantBufferWrite(unsigned int bytesize, ID3D11Buffer** pConstantBuffer);
 
 	static void SetLight(LIGHT Light);
+	static LIGHT GetLight() { return m_Light; }	//今のライト
 	static void SetMaterial(MATERIAL Material);
 	static void SetUV(float u, float v, float uw, float vh);
 

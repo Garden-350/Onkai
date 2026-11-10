@@ -46,6 +46,8 @@ ID3D11BlendState* Renderer::m_pBlendStateATC{}; // “Á’è‚ÌƒAƒ‹ƒtƒ@ƒeƒXƒg‚ÆƒJƒoƒŒƒ
 
 ID3D11RasterizerState* Renderer::m_pRasterizerState[MAX_CULLMODE]; // ƒJƒŠƒ“ƒOƒ‚[ƒh•Ê‚Ìƒ‰ƒXƒ^ƒ‰ƒCƒUƒXƒe[ƒg”z—ñ
 
+LIGHT Renderer::m_Light{};
+
 //--------------------------------------------------------------------------------------
 //‰Šú‰»ˆ—
 //--------------------------------------------------------------------------------------
@@ -353,6 +355,7 @@ void Renderer::DrawEnd()
 //================================================================
 void Renderer::SetLight(LIGHT Light)
 {
+	m_Light = Light;
 	//ƒ‰ƒCƒg‚ÌÝ’è‚ðGPU‘¤‚Ö‘—‚é
 	m_pDeviceContext->UpdateSubresource(
 		m_pLightBuffer, 0, NULL, &Light, 0, 0);

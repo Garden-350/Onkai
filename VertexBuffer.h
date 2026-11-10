@@ -58,4 +58,16 @@ public:
 			Renderer::GetDeviceContext()->Unmap(m_VertexBuffer.Get(), 0);
 		}
 	}
+
+	// 頂点バッファの先頭から count 個だけ書き換える（使う分だけ送るので軽い）
+	void Modify(const T* data, size_t count)
+	{
+		D3D11_MAPPED_SUBRESOURCE msr;
+		HRESULT hr = Renderer::GetDeviceContext()->Map(
+			m_VertexBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+		if (SUCCEEDED(hr)) {
+			memcpy(msr.pData, data, count * sizeof(T));
+			Renderer::GetDeviceContext()->Unmap(m_VertexBuffer.Get(), 0);
+		}
+	}
 };

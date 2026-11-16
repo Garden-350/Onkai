@@ -10,7 +10,7 @@ void SpecialGaugeHud::Init()
 	m_Back.Init();  m_Back.SetTexture("assets/UI/hurasuko/flask_back.png");
 	m_Front.Init(); m_Front.SetTexture("assets/UI/hurasuko/flask_front.png");
 	m_Glow.Init();  m_Glow.SetTexture("assets/UI/hurasuko/flask_glow.png");
-	m_Go.Init();    m_Go.SetTexture("assets/UI/hurasuko/Go.png");
+	m_Go.Init();    m_Go.SetTexture("assets/UI/hurasuko/space.png");
 	const char* liquidPaths[2] = { "assets/UI/hurasuko/flask_liquid_teal.png",
 									"assets/UI/hurasuko/flask_liquid_gold.png" };
 

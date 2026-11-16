@@ -17,6 +17,8 @@
 #include "HitSlashFx.h"
 #include "HitBurstFx.h"
 #include "SongIntro.h"
+#include "JudgeSquareFx.h"
+#include "TestPlay.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -91,6 +93,9 @@ void Stage1Scene::Init()
 	burst->SetTarget(enemy->GetPosition() + Vector3(0.0f, 50.0f, 0.0f));	//敵の真ん中の少し上へ
 	m_MySceneObjects.emplace_back(burst);
 
+	auto* squares = Game::GetInstance()->AddObject<JudgeSquareFx>();
+	m_MySceneObjects.emplace_back(squares);
+
 	ApplyCamera();
 	chart->SetEnemyRef(enemy);
 	chart->SetPlayerRef(player);
@@ -100,11 +105,21 @@ void Stage1Scene::Init()
 	m_MySceneObjects.emplace_back(spaen);
 	m_Spawner = spaen;
 
-	//曲の初めにジャけと曲名を出す
-	auto* intro = Game::GetInstance()->AddObject<SongIntro>();
-	intro->SetSong(Game::GetInstance()->GetSelectedChart());
-	intro->SetLeaveTime(chart->GetCountInTime());
-	m_MySceneObjects.emplace_back(intro);
+	if (TestPlay::Get().enabled)
+	{
+		//テストプレイなら曲名とかは出さず即カウントイン
+		chart->SetStartDelay(0.3f);
+		chart->SetPlayFrom(TestPlay::Get().start);
+	}
+	else
+	{
+		//曲の初めにジャけと曲名を出す
+		auto* intro = Game::GetInstance()->AddObject<SongIntro>();
+		intro->SetSong(Game::GetInstance()->GetSelectedChart());
+		intro->SetLeaveTime(kIntroShowTime);
+		chart->SetStartDelay(intro->GetEndTime() + kIntroGap);
+		m_MySceneObjects.emplace_back(intro);
+	}
 
 	auto* pause = Game::GetInstance()->AddObject<PauseOverlay>();
 	m_MySceneObjects.emplace_back(pause);
@@ -119,11 +134,11 @@ void Stage1Scene::Init()
 void Stage1Scene::Update()
 {
 	// エンターキーを押してタイトルへ
-	if (Input::GetKeyTrigger(VK_RETURN))
-	{
-		SendResult();
-		return;
-	}
+	//if (Input::GetKeyTrigger(VK_RETURN))
+	//{
+	//	SendResult();
+	//	return;
+	//}
 
 	if (!m_Chart)return;
 

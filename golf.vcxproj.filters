@@ -85,6 +85,12 @@
     <FxCompile Include="shader\enemyFlash.hlsl">
       <Filter>リソースファイル</Filter>
     </FxCompile>
+    <FxCompile Include="shader\matcapPS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\matcapVS.hlsl">
+      <Filter>リソースファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChartObject.cpp">
@@ -345,6 +351,13 @@
     <ClCompile Include="SongIntro.cpp">
       <Filter>ソースファイル\Event</Filter>
     </ClCompile>
+    <ClCompile Include="JudgeSquareFx.cpp">
+      <Filter>ソースファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="FpsMeter.cpp">
+      <Filter>ソースファイル\FPS</Filter>
+    </ClCompile>
+    <ClCompile Include="Oto.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -641,6 +654,16 @@
     <ClInclude Include="SongIntro.h">
       <Filter>ヘッダーファイル\Event</Filter>
     </ClInclude>
+    <ClInclude Include="JudgeSquareFx.h">
+      <Filter>ヘッダーファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="FpsMeter.h">
+      <Filter>ヘッダーファイル\FPS</Filter>
+    </ClInclude>
+    <ClInclude Include="Oto.h" />
+    <ClInclude Include="TestPlay.h">
+      <Filter>ヘッダーファイル\Test</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">
@@ -735,6 +758,15 @@
     </Filter>
     <Filter Include="ヘッダーファイル\Event">
       <UniqueIdentifier>{997b627a-255a-4915-be3d-a31dcdad193a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\FPS">
+      <UniqueIdentifier>{19ce3c53-9087-4ada-a642-e631e93ec6df}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\FPS">
+      <UniqueIdentifier>{f0835b58-13f1-418e-8b6a-49a435ed54a4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Test">
+      <UniqueIdentifier>{84cf68c5-8486-4c4a-b4dd-24b4bcc87381}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

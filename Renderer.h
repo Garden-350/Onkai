@@ -35,7 +35,7 @@ enum EBlendState {
 	MAX_BLENDSTATE
 };
 
-enum ECullMode 
+enum ECullMode
 {
 	CULL_BACK = 0,
 	CULL_FRONT,
@@ -104,16 +104,16 @@ private:
 
 	static D3D_FEATURE_LEVEL       m_FeatureLevel;
 
-	static ID3D11Device*           m_pDevice;
-	static ID3D11DeviceContext*    m_pDeviceContext;
-	static IDXGISwapChain*         m_pSwapChain;
+	static ID3D11Device* m_pDevice;
+	static ID3D11DeviceContext* m_pDeviceContext;
+	static IDXGISwapChain* m_pSwapChain;
 	static ID3D11RenderTargetView* m_pRenderTargetView;
 	static ID3D11DepthStencilView* m_pDepthStencilView;
 	static ID3D11DepthStencilState* m_pDepthStateTestOnly;
 
-	static ID3D11Buffer*			m_pWorldBuffer;
-	static ID3D11Buffer*			m_pViewBuffer;
-	static ID3D11Buffer*			m_pProjectionBuffer;
+	static ID3D11Buffer* m_pWorldBuffer;
+	static ID3D11Buffer* m_pViewBuffer;
+	static ID3D11Buffer* m_pProjectionBuffer;
 
 	static ID3D11Buffer* m_pLightBuffer;
 	static ID3D11Buffer* m_MaterialBuffer;
@@ -123,14 +123,16 @@ private:
 	static ID3D11DepthStencilState* m_pDepthStateDisable;
 	static ID3D11DepthStencilState* m_pDepthStateOverlay;
 
-	static ID3D11BlendState*		m_pBlendState[MAX_BLENDSTATE]; // ブレンド ステート;
-	static ID3D11BlendState*		m_pBlendStateATC;
+	static ID3D11BlendState* m_pBlendState[MAX_BLENDSTATE]; // ブレンド ステート;
+	static ID3D11BlendState* m_pBlendStateATC;
 
 	static ID3D11RasterizerState* m_pRasterizerState[MAX_CULLMODE]; // ラスタライザ ステート;
 
 	static HRESULT CreateRenderAndDepthResources();
 
 	static LIGHT m_Light;	//今のライト
+
+	static D3D11_VIEWPORT m_BackBufferViewport;	//バックバッファに描くときのビューポート（窓に合わせた16:9。余りは黒帯）
 
 public:
 
@@ -140,7 +142,8 @@ public:
 	static void DrawEnd();
 
 	static HRESULT ResizeWindow(int width, int height);
-		
+	static void SetBackBufferTarget();	//バックバッファを描画先にする（深度なし・黒でクリア・16:9のビューポート）
+
 	static void SetDepthEnable(bool Enable);
 	static void SetDepthOverlayEnable(bool Enable);	// trueで常に最前面、falseで通常の深度有効に戻す
 
@@ -151,8 +154,8 @@ public:
 	static void SetViewMatrix(DirectX::SimpleMath::Matrix* ViewMatrix);
 	static void SetProjectionMatrix(DirectX::SimpleMath::Matrix* ProjectionMatrix);
 
-	static ID3D11Device* GetDevice( void ){ return m_pDevice; }
-	static ID3D11DeviceContext* GetDeviceContext( void ){ return m_pDeviceContext; }
+	static ID3D11Device* GetDevice(void) { return m_pDevice; }
+	static ID3D11DeviceContext* GetDeviceContext(void) { return m_pDeviceContext; }
 	static ID3D11RenderTargetView* GetBackBufferRTV() { return m_pRenderTargetView; }
 	static ID3D11DepthStencilView* GetDepthStencilView() { return m_pDepthStencilView; }
 	static void SetRenderTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv)

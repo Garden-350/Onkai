@@ -1,0 +1,108 @@
+// ─────────────────────────────────────────────
+// SetupEditorCommands : ツールバー・メニュー・ショートカットの「操作の表」
+//   新しい操作は add(...) を 1 行足すだけ。メニューにも、ツールバーにも、ショートカットにも出る
+//   add(id, 画面の名前, アイコン, メニュー, ショートカット, ツールバーに出すか, 前に区切り, すること, 選択中か)
+// ─────────────────────────────────────────────
+void Game::SetupEditorCommands()
+{
+    auto add = [](const char* id, const char* label, const char* icon, const char* menu,
+        ImGuiKeyChord key, bool toolbar, bool separatorBefore,
+        std::function<void()> run, std::function<bool()> isOn = nullptr)
+        {
+            EditorCommand c;
+            c.id = id;
+            c.label = label;
+            c.icon = icon;
+            c.menu = menu;
+            c.key = key;
+            c.toolbar = toolbar;
+            c.separatorBefore = separatorBefore;
+            c.run = std::move(run);
+            c.isOn = std::move(isOn);
+            EditorShell::AddCommand(c);
+        };
+
+    // テストプレイ用：保存して、ゲームのフォルダへコピー（成功したら true）
+    auto saveToGame = [this]() -> bool
+        {
+            if (mirrorMode) mirrorMode = false;
+            SaveChart(filename);
+            if (g_chartStatusIsError) return false;
+            CopyChartToGame(filename);
+            return !g_chartStatusIsError;
+        };
+    // 今のエディターの時間（テストプレイを始める小節を決めるため）
+    auto timeInfo = [this]()
+        {
+            EditorTimeInfo t;
+            t.bpm = bpm;
+            t.offset = m_BaseOffset;
+            t.beatsPerMeasure = beatsPerMeasure;
+            t.now = (bgmstate == BGMstate::play) ? musicTime : m_EditorScrollTime;
+            return t;
+        };
+
+    // ---- ファイル ----
+    add("file.save", u8"保存", "save", u8"ファイル", ImGuiMod_Ctrl | ImGuiKey_S, true, false, [this]()
+        {
+            if (mirrorMode) mirrorMode = false;
+            SaveChart(filename);
+            if (m_SaveToGameToo && !g_chartStatusIsError) CopyChartToGame(filename);
+        });
+    add("file.load", u8"読み込み", "load", u8"ファイル", ImGuiMod_Ctrl | ImGuiKey_O, true, false,
+        [this]() { LoadChart(filename); });
+
+    // ---- 再生 ----
+    add("play.toggle", u8"再生 / 一時停止", "play", u8"再生", 0, true, true, [this]()
+        {
+            switch (bgmstate)
+            {
+            case BGMstate::stop:  StartPlayback();  break;
+            case BGMstate::play:  PausePlayback();  break;
+            case BGMstate::pause: ResumePlayback(); break;
+            }
+        },
+        [this]() { return bgmstate == BGMstate::play; });
+    add("test.here", u8"テストプレイ（ここから）", "test_here", u8"再生", ImGuiKey_F5, true, false,
+        [timeInfo, saveToGame]() { ChartExtras::PlayFromHere(timeInfo(), filename, kGameRoot, saveToGame); });
+    add("test.top", u8"テストプレイ（最初から）", "test_top", u8"再生", ImGuiMod_Shift | ImGuiKey_F5, true, false,
+        [saveToGame]() { ChartExtras::PlayFromTop(filename, kGameRoot, saveToGame); });
+
+    // ---- 画面 ----
+    add("view.2d", u8"2D の譜面", "view2d", u8"画面", ImGuiKey_F2, true, true, [this]()
+        {
+            m_GameMode = GameMode::Edit2D;
+            ViewMode = false;
+        },
+        [this]() { return m_GameMode == GameMode::Edit2D; });
+    add("view.3d", u8"3D ビュー", "view3d", u8"画面", ImGuiKey_F3, true, false, [this]()
+        {
+            m_GameMode = GameMode::Play3D;
+            ViewMode = true;
+            cameraPos = { 0.0f, 0.0f, -500.0f };
+            m_EditorState = EditorState::IDLE;     // 配置途中だった場合は中断
+            selectedNoteIndex = -1;
+        },
+        [this]() { return m_GameMode == GameMode::Play3D; });
+
+    // ---- ツール（今の配置の仕組みをそのまま切り替える） ----
+    add("tool.place", u8"置く", "place", u8"ツール", ImGuiKey_B, true, true,
+        []() { g_GhostMode = kGhostNone; g_HasBox = false; g_BoxDragging = false; },
+        []() { return g_GhostMode != kGhostSelect; });
+    add("tool.box", u8"範囲を選ぶ（コピー用）", "box_select", u8"ツール", ImGuiKey_M, true, false,
+        []() { g_GhostMode = kGhostSelect; g_HasBox = false; g_BoxDragging = false; },
+        []() { return g_GhostMode == kGhostSelect; });
+
+    // ---- ノーツ（絵で選ぶ。数字キー 1〜5 でも） ----
+    NotePalette::Register(&currentNoteType);
+
+    // ---- 最初の窓の並べ方（「表示 → 窓の並べ方を元に戻す」でもこの形に戻る） ----
+    EditorShell::DefaultDock(u8"ノーツ", EditorDock::Left);
+    EditorShell::DefaultDock(u8"設定###LeftPanel", EditorDock::LeftBottom);
+    EditorShell::DefaultDock(u8"譜面###NoteEditor", EditorDock::Center);
+    EditorShell::DefaultDock(u8"ノーツ一覧###Note Hierarchy", EditorDock::Right);
+    EditorShell::DefaultDock(u8"判定円###Judge Circle Timeline", EditorDock::Right);
+    EditorShell::DefaultDock("Grid Tools", EditorDock::Right);
+    EditorShell::DefaultDock("Pattern Tools", EditorDock::Right);
+    EditorShell::DefaultDock(u8"再生###BottomBar", EditorDock::Bottom);
+}

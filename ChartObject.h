@@ -229,6 +229,8 @@ public:
 	void DrawLaneGuideLines(Camera* cam);
 	void AddPauseOffset(std::chrono::steady_clock::duration offset);
 	void StopLongSounds();					// ポーズ時に Game から呼ぶ
+	void SetStartDelay(float seconds) { m_StartDelay = seconds; }	//曲名の表示が終わるまで譜面の時計を止めておく秒数
+	void SetPlayFrom(float sec);	//テストプレイ時に何秒から始めるか
 
 	Camera::Layer GetLayer() const override { return Camera::Layer::Playfield; }
 	//今の曲の時刻のカメラ
@@ -360,6 +362,8 @@ private:
 	float m_MusicTime = 0.0f;		// 現在の楽曲内時刻（カウントイン中は負の値）
 	float m_Bpm = 120.0f;			// メタデータから読み込むBPM
 	float m_CountInTime = 0.0f;	// カウントインの長さ（1小節分の秒数）
+	float m_StartDelay = 0.0f;	//カウントインの前に待つ秒数
+	float m_PlayFrom = 0.0f;	//何秒から始めるか　0が最初
 	int m_CountInNextBeat = 0;		// 次に鳴らすべきカウントインの拍番号
 
 	int m_BeatsPerBar = 4;	// 拍子（メタデータから読み込み）
@@ -452,7 +456,7 @@ private:
 	int m_AttackHitSub = 0;	//攻撃が当たったかを聞いている登録番号
 
 	//タップを叩いたときの演出の切替
-	static constexpr bool kTapRankText = true;	//判定の文字
+	static constexpr bool kTapRankText = false;	//判定の文字
 	static constexpr bool kTapBarrier = false;	//判定円のバリアの光
 	static constexpr bool kTapKeyLight = false;	//判定円から伸びる光
 	static constexpr bool kTapAttackOrbs = false;//今までの攻撃の光

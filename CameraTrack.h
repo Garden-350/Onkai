@@ -16,6 +16,9 @@ struct CameraKey
 	int fromMeasure = 1;
 	std::string preset = "default";	//カメラの名前(下の表に記述あり)
 	float blendBeats = 2.0f;	//何拍かけて動くか（小節の終わりで終わる）
+	bool hasCustom = false;	//presetの代わりに位置を直接決めるか（エディターにcustomがあるよ）
+	DirectX::SimpleMath::Vector3 eye;	//custom時のカメラの位置
+	DirectX::SimpleMath::Vector3 target;//custom時の見る先
 };
 
 namespace CameraPresets

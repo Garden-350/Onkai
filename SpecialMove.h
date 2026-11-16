@@ -51,7 +51,7 @@ public:
 	// ---- 調整用 ----
 	static constexpr int kChargeBars = 4;
 	static constexpr float kFillRatio = 0.4f;			// 総ノーツの何割を叩いたら満タンか
-	static constexpr bool  kDebugAlwaysReady = true;	// 仮：ゲージ無しでいつでも発動（ゲージを作ったら false）
+	static constexpr bool  kDebugAlwaysReady = false;	// 仮：ゲージ無しでいつでも発動（ゲージを作ったら false）
 	static constexpr float kFireDuration = 0.6f;		// 発射してから溜め中に戻るまでの秒数（ビームの長さに合わせる）
 
 private:

@@ -41,9 +41,9 @@ void SongIntro::Init()
 void SongIntro::Update()
 {
 	auto now = std::chrono::steady_clock::now();
-	if (!m_ClockStarted) { m_LastClock = now; m_ClockStarted = true; }
-	float dt = std::chrono::duration<float>(now - m_LastClock).count();
-	m_LastClock = now;
+	if (!m_ClockStarted) { m_StartClock = now; m_ClockStarted = true; }
+	float dt = std::chrono::duration<float>(now - m_StartClock).count();
+	m_StartClock = now;
 	m_Time += std::min(dt, 0.1f);
 }
 

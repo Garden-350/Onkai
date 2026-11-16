@@ -18,6 +18,8 @@ public:
 	void SetSong(const std::string& name);	//譜面の名前から探索
 	void SetLeaveTime(float seconds) { m_LeaveTime = seconds; }	//消え始める時刻
 
+	float GetEndTime() const { return m_LeaveTime + kLeaveDuration; }
+
 private:
 	//画面のcx,cyを中心に幅、高さの四角をcolorでぬる
 	void DrawRect(float cx, float cy, float w, float h, const DirectX::SimpleMath::Vector4& color);
@@ -31,7 +33,7 @@ private:
 
 	float m_Time = 0.0f;	//シーンが始まってからの秒数
 	float m_LeaveTime = 1.5f;	//消え始める時間
-	std::chrono::steady_clock::time_point m_LastClock;
+	std::chrono::steady_clock::time_point m_StartClock;
 	bool m_ClockStarted = false;
 
 	//調整用

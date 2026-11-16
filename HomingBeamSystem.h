@@ -30,6 +30,14 @@ public:
 	void SetBeams(std::vector<ChartHomingBeam> beams) { m_HomingBeams = std::move(beams); }
 	size_t GetBeamCount() const { return m_HomingBeams.size(); }
 
+	void DropBefore(float t) 
+	{
+		std::erase_if(m_HomingBeams, [t](const ChartHomingBeam& b) 
+			{ 
+				return b.chargeTime < t; 
+			}); 
+	}	//テストプレイ：t 秒より前に始まるビームを消す
+
 	// 毎フレーム呼ぶ：状態遷移の更新（探索→ロック→発射→解決）
 	//   musicTime        : 現在の楽曲内時刻
 	//   playerSide       : プレイヤーの左右入力サイド(-1/0/1)

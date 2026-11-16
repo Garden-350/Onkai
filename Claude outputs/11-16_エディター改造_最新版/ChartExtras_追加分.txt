@@ -1,0 +1,28 @@
+==============================
+ChartExtras.h に足す（「// ---- カメラ ----」の行の上に）
+==============================
+
+	//   ツールバー・ショートカットから呼ぶ用（パネルのボタンと同じこと）
+	void PlayFromHere(const EditorTimeInfo& t, const std::string& chartName,
+		const std::filesystem::path& gameRoot, const std::function<bool()>& saveToGame);
+	void PlayFromTop(const std::string& chartName,
+		const std::filesystem::path& gameRoot, const std::function<bool()>& saveToGame);
+
+
+==============================
+ChartExtras.cpp に足す（namespace ChartExtras の中、DrawTestPlayPanel 関数の上に）
+==============================
+
+	//ツールバー・F5 から：今見ている小節の少し前から
+	void PlayFromHere(const EditorTimeInfo& t, const std::string& chartName,
+		const fs::path& gameRoot, const std::function<bool()>& saveToGame)
+	{
+		int bar = std::max(1, MeasureAt(t, t.now));
+		LaunchTestPlay(gameRoot, chartName, StartSecForBar(t, bar), saveToGame);
+	}
+
+	//ツールバー・Shift+F5 から：最初から
+	void PlayFromTop(const std::string& chartName, const fs::path& gameRoot, const std::function<bool()>& saveToGame)
+	{
+		LaunchTestPlay(gameRoot, chartName, 0.0f, saveToGame);
+	}

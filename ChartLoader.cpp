@@ -113,6 +113,12 @@ namespace ChartLoader
 				key.fromMeasure = c["fromMeasure"].AsInt(1);
 				key.preset = c["preset"].AsString("default");
 				key.blendBeats = c["blendBeats"].AsFloat(2.0f);
+				if (c.Has("eye") && c.Has("target"))
+				{
+					key.hasCustom = true;
+					key.eye = Vector3(c["eye"]["x"].AsFloat(0.0f), c["eye"]["y"].AsFloat(0.0f), c["eye"]["z"].AsFloat(0.0f));
+					key.target = Vector3(c["target"]["x"].AsFloat(0.0f), c["target"]["y"].AsFloat(0.0f), c["target"]["z"].AsFloat(0.0f));
+				}
 				result.cameraKeys.push_back(key);
 			}
 			std::sort(result.cameraKeys.begin(), result.cameraKeys.end(),

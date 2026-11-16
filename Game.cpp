@@ -3,7 +3,7 @@
 #include "Input.h"
 #include "main.h"
 #include "ChartObject.h"
-
+#include "TestPlay.h"
 
 Game* Game::m_Instance;
 
@@ -37,6 +37,19 @@ void Game::Init()
 	//ポストエフェクト初期か
 	m_Instance->m_PostFlash.Init(SCREEN_WIDTH, SCREEN_HEIGHT);
 
+	m_Instance->m_Fps.Init();
+
+	//エディターの方でテストプレイが実行されたらタイトルとセレクトを飛ばして譜面を実行
+	TestPlay::ParseCommandLine();
+	const TestPlaySettings& test = TestPlay::Get();
+	if (test.enabled)
+	{
+		SetSelectedChart(test.chart);
+		SetAutoMode(test.autoMode);
+		m_Instance->m_Scene = new Stage1Scene;
+		return;
+	}
+
 	//最初のシーンを読み込む
 	m_Instance->m_Scene = new TitleScene;
 }
@@ -44,8 +57,13 @@ void Game::Init()
 // 更新
 void Game::Update()
 {
+	m_Instance->m_Fps.BeginFrame();
+
 	//入力処理更新
 	Input::Update();
+
+	//FPS表示の切替
+	if (Input::GetKeyTrigger(FpsMeter::kToggleKey)) m_Instance->m_Fps.Toggle();
 
 	//ポーズ切替
 	if (Input::GetKeyTrigger(VK_TAB) && dynamic_cast<Stage1Scene*>(m_Instance->m_Scene))
@@ -153,7 +171,10 @@ void Game::Draw()
 		}
 	}
 	m_Instance->m_PostFlash.EndSceneAndApply(flashAlpha);
-	//new
+
+	m_Instance->m_Fps.Draw(cam);
+	m_Instance->m_Fps.EndFrame();
+
 	// 描画後処理
 	Renderer::DrawEnd();
 }
@@ -224,10 +245,9 @@ void Game::DeleteObject(Object* pt)
 	pt->Uninit();
 
 	//要素を削除
-	erase_if(m_Instance->m_Objects,
-		[pt](const std::unique_ptr<Object>& element) {
-			return element.get() == pt;
-		});
+	auto same = [pt](const std::unique_ptr<Object>& element) { return element.get() == pt; };
+	erase_if(m_Instance->m_Objects, same);
+	erase_if(m_Instance->m_AddBuffer, same);
 	m_Instance->m_Objects.shrink_to_fit();
 }
 

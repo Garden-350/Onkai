@@ -17,7 +17,7 @@ float4 main(in PS_IN input)  : SV_Target
           color = input.col * Material.Diffuse;
     }
 
-  
+    //return float4(input.tex, 0.0f, 1.0f);
 
     //ここでエラーが出る場合はlitTexturePSのプロパティからシェーダーの種類をピクセルに変える
     return color;

@@ -6,6 +6,12 @@
 #include "Stage1Scene.h"
 #include "Collision.h"
 #include "ScreenFade.h"
+#include "Oto.h"
+
+namespace
+{
+	float s_LogoAngle = 0.0f;	//ロゴのy角度
+}
 
 // コンストラクタ
 TitleScene::TitleScene()
@@ -23,54 +29,26 @@ TitleScene::~TitleScene()
 void TitleScene::Init()
 {
 	Renderer::SetDepthEnable(true);
-	//背景：湖のほとり
-	//m_Lake = Game::GetInstance()->AddObject<TitleLake>();
-	//m_MySceneObjects.emplace_back(m_Lake);
-	//Texture2D* title = Game::GetInstance()->AddObject<Texture2D>();
-	//title->SetTexture("assets/texture/saiba-.jpg");
-	//title->SetPosition(0.0f, 0.0f, 10.0f);
-	//title->SetScale(1920.0f, 1080.0f, 0.0f);
-	//m_MySceneObjects.emplace_back(title);
 
-	Texture2D* en = Game::GetInstance()->AddObject<Texture2D>();
-	en->SetTexture("assets/titleText/en_w.png");
-	en->SetPosition(0.0f, 0.0f, 485.0f);
-	en->SetRotation(0.0f, 0.0f, 0.0f);
-	en->SetScale(300.0f, 300.0f, 0.0f);
-	m_MySceneObjects.emplace_back(en);
-	m_Logo.emplace_back(en);
+	Oto::SetLogoPosition(Vector3(0.0f, 0.0f, 0.0f));
+	Oto::SetLogoScale(30.0f);
+	Oto::SetLogoAxis(Vector3(0.0f, 0.0f, 0.0f));
+	Oto::SetLogoRotation(Vector3(0.0f, 0.0f, 0.0f));
+	s_LogoAngle = 0.0f;
+	auto addPart = [&](const char* file, const Vector3& spin, const char* tex)
+		{
+			auto* part = Game::GetInstance()->AddObject<Oto>();
+			part->Load(file, "assets/model/title");
+			if (tex) part->SetTexture(tex);
+			else part->SetMatcap("assets/texture/matcap_gold.png");
+			part->SetSpinSpeed(spin);
+			m_MySceneObjects.emplace_back(part);
+		};
+	addPart("assets/model/title/oto.fbx", Vector3(0.0f, 0.0f, 0.0f), nullptr);	//音
+	addPart("assets/model/title/ennyo.fbx", Vector3(0.0f, 0.0f, 0.0f),nullptr);	//延繞
+	addPart("assets/model/title/kai_soto.fbx", Vector3(0.0f, 0.0f, -0.6f),nullptr);	//廻の外の円：ゆっくり右回り
+	addPart("assets/model/title/kai_uti.fbx", Vector3(0.0f, 0.0f, 1.2f),nullptr);	//廻の内の円：逆向きに少し速く
 
-	Texture2D* oto = Game::GetInstance()->AddObject<Texture2D>();
-	oto->SetTexture("assets/titleText/oto_w.png");
-	oto->SetPosition(-100.0f, 0.0f, 0.0f);
-	oto->SetRotation(0.0f, 0.0f, 0.0f);
-	oto->SetScale(200.0f, 200.0f, 0.0f);
-	m_MySceneObjects.emplace_back(oto);
-	m_Logo.emplace_back(oto);
-
-	Texture2D* nyo = Game::GetInstance()->AddObject<Texture2D>();
-	nyo->SetTexture("assets/titleText/ennyo_w.png");
-	nyo->SetPosition(120.0f, 0.0f, 0.0f);
-	nyo->SetRotation(0.0f, 0.0f, 0.0f);
-	nyo->SetScale(200.0f, 200.0f, 0.0f);
-	m_MySceneObjects.emplace_back(nyo);
-	m_Logo.emplace_back(nyo);
-
-	kai_in = Game::GetInstance()->AddObject<Texture2D>();
-	kai_in->SetTexture("assets/titleText/kai_in_w.png");
-	kai_in->SetPosition(140.0f, 50.0f, 0.0f);
-	kai_in->SetRotation(0.0f, 0.0f, m_kai_in_z);
-	kai_in->SetScale(75.0f, 75.0f, 0.0f);
-	m_MySceneObjects.emplace_back(kai_in);
-	m_Logo.emplace_back(kai_in);
-
-	kai_out = Game::GetInstance()->AddObject<Texture2D>();
-	kai_out->SetTexture("assets/titleText/kai_out_w.png");
-	kai_out->SetPosition(140.0f, 50.0f, 0.0f);
-	kai_out->SetRotation(0.0f, 0.0f, m_kai_out_z);
-	kai_out->SetScale(140.0f, 140.0f, 0.0f);
-	m_MySceneObjects.emplace_back(kai_out);
-	m_Logo.emplace_back(kai_out);
 
 	//画面全体のフェード
 	m_Fade = Game::GetInstance()->AddObject<ScreenFade>();
@@ -86,14 +64,12 @@ void TitleScene::Update()
 	auto now = std::chrono::steady_clock::now();
 	if (!m_ClockStarted) { m_LastClock = now; m_ClockStarted = true; }
 	float dt = std::chrono::duration<float>(now - m_LastClock).count();
+	Game::GetInstance()->GetCamera()->SetFixedPose(Vector3(0.0f, 0.0f, -600.0f), Vector3(0.0f, 0.0f, 0.0f));
 	m_LastClock = now;
 	if (dt > 0.1f) dt = 0.1f;   // 読み込み直後などで大きく飛ばないように
 
-	// 廻の回転（秒基準にすると PC の速さで回転速度が変わらない）
-	m_kai_in_z += 18.0f * dt;  // 今の「1フレーム 0.3」を 60fps で換算した値
-	m_kai_out_z -= 18.0f * dt;
-	kai_in->SetRotation(0.0f, 0.0f, m_kai_in_z);
-	kai_out->SetRotation(0.0f, 0.0f, m_kai_out_z);
+	s_LogoAngle += DirectX::XM_PIDIV2 * dt;
+	Oto::SetLogoRotation(Vector3(0.0f, s_LogoAngle, 0.0f));
 
 	if (!m_Leaving)
 	{
@@ -110,7 +86,7 @@ void TitleScene::Update()
 		if (m_FadeAlpha >= 1.0f)
 		{
 			Game::GetInstance()->ChangeScene(SELECT);
-			return;   // このシーンはもう消えているので、この後は何も触らない
+			return;
 		}
 	}
 	m_Fade->SetAlpha(m_FadeAlpha);

@@ -11,6 +11,7 @@
 #include "PostFlashEffect.h"
 #include "ResultData.h"
 #include "sound.h"
+#include "FpsMeter.h"
 
 enum SceneName {
 	TITLE,
@@ -36,6 +37,8 @@ private:
 	Sound sound;
 
 	ResultData m_LastResult;
+
+	FpsMeter m_Fps;
 
 	float m_DeltaTime = 0.0f;
 

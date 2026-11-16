@@ -105,7 +105,8 @@ void PostFlashEffect::EndSceneAndApply(float flashAlpha)
 	context->Unmap(m_FlashCB.Get(), 0);
 
 	// ── 描画先をバックバッファへ戻す ──
-	Renderer::SetRenderTarget(Renderer::GetBackBufferRTV(), Renderer::GetDepthStencilView());
+	//（深度なし・黒でクリア・窓に合わせた16:9のビューポート。窓の大きさが変わっても映るように）
+	Renderer::SetBackBufferTarget();
 
 	// フラッシュ無し(alpha<=0)ならシーンテクスチャをそのまま転送するだけでもOKだが、
 	// シェーダ側でalpha=0なら素通しになるようにしているのでそのまま呼んでよい

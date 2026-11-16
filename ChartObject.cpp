@@ -604,6 +604,35 @@ void ChartObject::StopLongSounds()
 	sound.Stop(SOUND_CHARGE);
 }
 
+void ChartObject::SetPlayFrom(float sec)
+{
+	if (sec <= 0.0f) return;
+	m_PlayFrom = sec;
+
+	//ロングは先端が来る自国で見る（途中のやつは消す）
+	std::erase_if(m_Notes, [sec](const ChartNote& n)
+		{
+			return (n.IsLong() ? n.arrivalTime : n.time) < sec - 0.001f;
+		});
+	//スコアとかフルコンとか必殺ゲージを数えなおす
+	m_TotalNote = 0;
+	m_LongCount = 0;
+	for (const auto& note : m_Notes)
+	{
+		if (note.IsLong())
+		{
+			m_TotalNote += CountLongNoteCheckPoint(note.arrivalTime, note.time);
+			m_LongCount++;
+		}
+		else
+		{
+			m_TotalNote++;
+		}
+	}
+	m_Special.Reset(m_TotalNote);
+	m_BeamSystem.DropBefore(sec);
+}
+
 //曲の時刻からカメラの位置を割り出す
 CameraPose ChartObject::GetCameraPose(const CameraPose& defaultPose) const
 {
@@ -623,7 +652,7 @@ CameraPose ChartObject::GetCameraPose(const CameraPose& defaultPose) const
 	{
 		float endT = m_Offset + (k.fromMeasure - 1) * bar;	//この小節の頭で動き終わる
 		float startT = endT - k.blendBeats * beat;	//ここから動き始める
-		CameraPose next = poseOf(k.preset);
+		CameraPose next = k.hasCustom ? CameraPose{ k.eye, k.target } : poseOf(k.preset);
 
 		if (m_MusicTime >= endT) { cur = next; continue; }	//動き終わったなら次に
 		if (m_MusicTime > startT && endT - startT > 0.00001f)
@@ -635,30 +664,32 @@ CameraPose ChartObject::GetCameraPose(const CameraPose& defaultPose) const
 		}
 		break;	//まだ来ていない区切りから先は見ない
 	}
-
+	  
 	return cur;
 }
 
 //移動するロング　tau秒に判定ラインへ届く部分が今どこにあるか
-DirectX::SimpleMath::Vector3 ChartObject::LongPointAt(const ChartNote& n, float tau) const
+DirectX::SimpleMath::Vector3 ChartObject::LongPointAt(const ChartNote& n, float tau) const			
+
+
+   
 {
 	constexpr float kTurnBlend = 0.06f;	//曲がりにかける秒数
-	float x = m_JudgeCircles[n.lane].GetPosition(m_MusicTime).x;
+	Vector3 p = m_JudgeCircles[n.lane].GetPosition(tau);
 	int ln = n.lane;
 	for (const auto& tr : n.turns)
 	{
 		if (tau < tr.time) break;
-		float from = m_JudgeCircles[ln].GetPosition(m_MusicTime).x;
-		float to = m_JudgeCircles[tr.lane].GetPosition(m_MusicTime).x;
+		Vector3 from = m_JudgeCircles[ln].GetPosition(tau);
+		Vector3 to = m_JudgeCircles[tr.lane].GetPosition(tau);
 		float k = std::clamp((tau - tr.time) / kTurnBlend, 0.0f, 1.0f);
 		k = k * k * (3.0f - 2.0f * k);
-		x = from + (to - from) * k;
+		p = Vector3::Lerp(from, to, k);
 		ln = tr.lane;
 	}
-	Vector3 base = m_JudgeCircles[n.lane].GetPosition(m_MusicTime);
 	float hs = Game::GetInstance()->GetHighSpeed();
 	float z = (tau - m_MusicTime) / m_HighwayApproach * m_HighwayDepth * hs;   // 届くのが先ほど奥
-	return DirectX::SimpleMath::Vector3(x, base.y, base.z + z);
+	return DirectX::SimpleMath::Vector3(p.x, p.y, p.z + z);
 }
 
 void ChartObject::DrawHighwayLongNotes(Camera* cam)
@@ -802,15 +833,19 @@ void ChartObject::Update()
 	const float elapsed =
 		std::chrono::duration<float>(nowClock - m_StartClock).count();
 
-	// カウントイン中は-m_CountInTime〜0秒になり、0秒が譜面再生開始時刻
-	m_MusicTime = elapsed - m_CountInTime;
+	m_MusicTime = elapsed - m_StartDelay - m_CountInTime + m_PlayFrom;
+
+	if (m_PlayFrom > 0.0f && m_LastBeatIndex < 0 && m_Bpm > 0.0f && m_MusicTime >= 0.0f)
+		m_LastBeatIndex = (long long)std::floor(m_MusicTime / (60.0f / m_Bpm)) - 1;
 
 	//m_MusicTime >= 0 に音楽再生を開始
-	if (!m_AudioStarted && m_MusicTime >= 0.0f)
+	if (!m_AudioStarted && m_MusicTime >= m_PlayFrom)
 	{
 		m_AudioStarted = true;
 		if (!m_AudioFile.empty())
 		{
+			if (m_PlayFrom > 0.0f)
+				sound.SetPlayPositionSecondsDynamic(m_PlayFrom);
 			sound.PlayDynamic();
 		}
 	}
@@ -1038,7 +1073,7 @@ void ChartObject::Update()
 		float secondsPerBeat = 60.0f / m_Bpm;
 		while (m_CountInNextBeat < m_BeatsPerBar)
 		{
-			float beatTime = -m_CountInTime + m_CountInNextBeat * secondsPerBeat;
+			float beatTime = m_PlayFrom - m_CountInTime + m_CountInNextBeat * secondsPerBeat;
 			if (m_MusicTime < beatTime) break; // まだこの拍のタイミングに来ていない
 
 			bool isLastBeat = (m_CountInNextBeat == m_BeatsPerBar - 1);
@@ -1235,7 +1270,7 @@ void ChartObject::OnJudge(int laneIndex, int rank, bool isLong)
 	m_Special.AddHit(rank, false);
 	m_ComboHud.TriggerComboPop();
 	if (isLong || kTapBarrier)  m_ComboHud.TriggerBarrier(laneIndex);
-	if (isLong || kTapRankText) m_ComboHud.TriggerRankPop(laneIndex, rank);
+	if (kTapRankText) m_ComboHud.TriggerRankPop(laneIndex, rank);
 
 	//叩くたびに少しダメージを与える　ロングの盾が張られている間はダメージなし
 	if (m_EnemyRef && m_TotalNote > 0 && !m_LongShield.IsUp()) m_EnemyRef->Damage(60.0f / m_TotalNote);
@@ -2052,7 +2087,7 @@ void ChartObject::Draw(Camera* cam)
 		judgeCircleScreenPos, judgeCirclePos3D, laneColors);
 
 	//ステージの初めに左から順にイーズイン
-	if (m_Started) m_keyt.Draw(cam, m_MusicTime + m_CountInTime, judgeCircleScreenPos);
+	if (m_Started) m_keyt.Draw(cam, m_MusicTime - m_PlayFrom + m_CountInTime, judgeCircleScreenPos);
 
 	//奥から以外のレーンは、判定円の横にキーの画像を出す（どこを叩くかわかるように）
 	{

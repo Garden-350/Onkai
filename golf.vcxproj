@@ -157,6 +157,7 @@
     <ClCompile Include="CityBuildings.cpp" />
     <ClCompile Include="ClosingRingGuide.cpp" />
     <ClCompile Include="ComboHud.cpp" />
+    <ClCompile Include="FpsMeter.cpp" />
     <ClCompile Include="GameEvent.cpp" />
     <ClCompile Include="HexHpGauge.cpp" />
     <ClCompile Include="HitBurstFx.cpp" />
@@ -164,6 +165,7 @@
     <ClCompile Include="HitSlashFx.cpp" />
     <ClCompile Include="ImpactFx.cpp" />
     <ClCompile Include="JudgeLineGuide.cpp" />
+    <ClCompile Include="JudgeSquareFx.cpp" />
     <ClCompile Include="JudgeSystem.cpp" />
     <ClCompile Include="KeyTexture.cpp" />
     <ClCompile Include="LakeGrass.cpp" />
@@ -178,6 +180,7 @@
     <ClCompile Include="ModelUtil.cpp" />
     <ClCompile Include="NoteTypes.cpp" />
     <ClCompile Include="NumberDisplay.cpp" />
+    <ClCompile Include="Oto.cpp" />
     <ClCompile Include="OuterEdge.cpp" />
     <ClCompile Include="PauseOverlay.cpp" />
     <ClCompile Include="ScreenEffects.cpp" />
@@ -245,6 +248,7 @@
     <ClInclude Include="CityBuildings.h" />
     <ClInclude Include="ClosingRingGuide.h" />
     <ClInclude Include="ComboHud.h" />
+    <ClInclude Include="FpsMeter.h" />
     <ClInclude Include="GameEvent.h" />
     <ClInclude Include="HexHpGauge.h" />
     <ClInclude Include="HitBurstFx.h" />
@@ -253,6 +257,7 @@
     <ClInclude Include="HypeMeter.h" />
     <ClInclude Include="ImpactFx.h" />
     <ClInclude Include="JudgeLineGuide.h" />
+    <ClInclude Include="JudgeSquareFx.h" />
     <ClInclude Include="JudgeSystem.h" />
     <ClInclude Include="KeyTexture.h" />
     <ClInclude Include="LakeGrass.h" />
@@ -269,6 +274,7 @@
     <ClInclude Include="ChartHomingBeam.h" />
     <ClInclude Include="ModelUtil.h" />
     <ClInclude Include="NumberDisplay.h" />
+    <ClInclude Include="Oto.h" />
     <ClInclude Include="OuterEdge.h" />
     <ClInclude Include="PauseOverlay.h" />
     <ClInclude Include="RibbonShapes.h" />
@@ -318,6 +324,7 @@
     <ClInclude Include="TestCube.h" />
     <ClInclude Include="TestModel.h" />
     <ClInclude Include="TestPlane.h" />
+    <ClInclude Include="TestPlay.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="TitleLake.h" />
@@ -370,6 +377,8 @@
     <FxCompile Include="shader\enemyFlash.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
     <FxCompile Include="shader\judgeGuidePS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
@@ -415,6 +424,18 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="shader\matcapPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="shader\matcapVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="shader\screenFadePS.hlsl">

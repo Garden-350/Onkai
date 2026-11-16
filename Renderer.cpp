@@ -27,6 +27,8 @@ IDXGISwapChain* Renderer::m_pSwapChain{};
 ID3D11RenderTargetView* Renderer::m_pRenderTargetView{};
 // デプスバッファ
 ID3D11DepthStencilView* Renderer::m_pDepthStencilView{};
+// バックバッファに描くときのビューポート
+D3D11_VIEWPORT Renderer::m_BackBufferViewport{};
 
 ID3D11Buffer* Renderer::m_pWorldBuffer{}; // ワールド行列
 ID3D11Buffer* Renderer::m_pViewBuffer{}; // ビュー行列
@@ -84,9 +86,7 @@ HRESULT Renderer::Init()
 		&m_pDeviceContext); // 作成されたデバイスコンテキストを受け取るポインタ
 	if (FAILED(hr)) return hr;
 
-	hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, NULL, 0, 
-		D3D11_SDK_VERSION, &swapChainDesc, &m_pSwapChain, &m_pDevice, &m_FeatureLevel, &m_pDeviceContext);
-	if (FAILED(hr)) return hr;
+	// ※ここにあった2回目の D3D11CreateDeviceAndSwapChain は消した（1回目のデバイスとスワップチェインが解放されずに残っていた）
 
 	// レンダーターゲットビュー・デプスステンシルバッファ・デプスステンシルビュー作成
 	hr = CreateRenderAndDepthResources();
@@ -101,6 +101,7 @@ HRESULT Renderer::Init()
 	viewport.TopLeftX = 0;                             // ビューポートの左上隅のX座標
 	viewport.TopLeftY = 0;                             // ビューポートの左上隅のY座標）
 	m_pDeviceContext->RSSetViewports(1, &viewport);
+	m_BackBufferViewport = viewport;	//最初は窓とバックバッファが同じ大きさ
 
 
 	// ラスタライザステート設定
@@ -367,7 +368,7 @@ void Renderer::SetLight(LIGHT Light)
 void Renderer::SetMaterial(MATERIAL Material)
 {
 	m_pDeviceContext->UpdateSubresource(m_MaterialBuffer,
-							0, NULL, &Material, 0, 0);
+		0, NULL, &Material, 0, 0);
 }
 
 //--------------------------------------------------------------------------------------
@@ -409,7 +410,7 @@ void Renderer::SetCullMode(int mode)
 //--------------------------------------------------------------------------------------
 void Renderer::SetDepthEnable(bool Enable)
 {
-	if (Enable) 
+	if (Enable)
 	{
 		// 深度テストを有効にするステンシルステートをセット
 		m_pDeviceContext->OMSetDepthStencilState(m_pDepthStateEnable, NULL);
@@ -448,7 +449,7 @@ void Renderer::SetATCEnable(bool Enable)
 		// アルファテストとカバレッジ (ATC) を有効にするブレンドステートをセット
 		m_pDeviceContext->OMSetBlendState(m_pBlendStateATC, blendFactor, 0xffffffff);
 	}
-	else 
+	else
 	{
 		// 通常のブレンドステートをセット
 		m_pDeviceContext->OMSetBlendState(m_pBlendState[0], blendFactor, 0xffffffff);
@@ -525,24 +526,23 @@ HRESULT Renderer::ResizeWindow(int width, int height)
 {
 	// スワップチェインが存在しない場合は処理しない
 	if (!m_pSwapChain)return S_FALSE;
+	// 大きさ0（最小化など）は何もしない
+	if (width <= 0 || height <= 0) return S_FALSE;
 
-	// 既存のレンダーターゲットビューを解放
-	if (m_pRenderTargetView) {
-		m_pRenderTargetView->Release();
-		m_pRenderTargetView = nullptr;
-	}
+	// 描画先を外す（バックバッファがつながったままだと ResizeBuffers が失敗する）
+	m_pDeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
 
-	// 既存のデプスステンシルビューを解放
-	if (m_pDepthStencilView) {
-		m_pDepthStencilView->Release();
-		m_pDepthStencilView = nullptr;
-	}
+	// 既存のレンダーターゲットビュー・デプスステンシルビューを解放
+	SAFE_RELEASE(m_pRenderTargetView);
+	SAFE_RELEASE(m_pDepthStencilView);
 
 	// スワップチェインのバッファサイズを新しいウィンドウサイズに合わせて変更
-	m_pSwapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
+	HRESULT hr = m_pSwapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
+	if (FAILED(hr)) OutputDebugStringA("[Renderer] ResizeBuffers failed\n");
 
 	// レンダーターゲットビュー・デプスステンシルバッファ・デプスステンシルビュー作成
-	HRESULT hr = CreateRenderAndDepthResources();
+	// ※深度バッファは今まで通り 1280x720（シーンを描く PostFlash のテクスチャと同じ大きさ）
+	hr = CreateRenderAndDepthResources();
 	if (FAILED(hr)) return hr;
 
 	// ウィンドウとターゲットのアスペクト比を比較してビューポートを調整
@@ -568,10 +568,25 @@ HRESULT Renderer::ResizeWindow(int width, int height)
 	vi.MinDepth = 0.0f;
 	vi.MaxDepth = 1.0f;
 
-	// ビューポートを設定
+	// バックバッファに描くときに使う（PostFlash の最後の貼り付けで使う）
+	m_BackBufferViewport = vi;
 	m_pDeviceContext->RSSetViewports(1, &vi);
 
 	return S_OK;
+}
+
+//--------------------------------------------------------------------------------------
+// バックバッファを描画先にする（シーンの絵を窓に貼るとき）
+//  ・深度はつながない：深度バッファは 1280x720 のままなので、窓の大きさが違うと
+//    「大きさが合わない」で OMSetRenderTargets が無視され、何も映らなくなる
+//  ・16:9 からはみ出す所は黒で塗る
+//--------------------------------------------------------------------------------------
+void Renderer::SetBackBufferTarget()
+{
+	m_pDeviceContext->OMSetRenderTargets(1, &m_pRenderTargetView, nullptr);
+	float black[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	m_pDeviceContext->ClearRenderTargetView(m_pRenderTargetView, black);
+	m_pDeviceContext->RSSetViewports(1, &m_BackBufferViewport);
 }
 
 //--------------------------------------------------------------------------------------
@@ -592,7 +607,7 @@ HRESULT Renderer::CompileShader(const char* szFileName, LPCSTR szEntryPoint, LPC
 		return S_OK;
 	}
 	OutputDebugStringA(("[Shader] compile:" + cacheKey + "\n").c_str());
-	
+
 	//拡張子csoのファイル名を作成
 	char csoFileName[256];
 	const char* dot = strrchr(szFileName, '.');  // 最後の '.' を探す

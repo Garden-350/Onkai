@@ -1,6 +1,7 @@
 ﻿#include "Game.h"
 #include "NotePath.h"
 #include "ChartObject.h" // ChartNoteの定義を得るため
+#include "Gimmick.h"	//速さの演出（低速・止める・逆走）
 #include <algorithm>
 #include <cmath>
 #undef min
@@ -23,8 +24,15 @@ namespace NotePath
 		if (duration < 0.0001f) duration = 0.0001f; // ゼロ除算防止
 
 		float t = (now - startTime) / duration;
+		float tMax = 1.0f;
+		if (!note.IsFlick())	//フリックは敵の方へ飛ぶので今まで通り
+		{
+			//速さの演出：「進んだ量」で進み具合を出す。逆走中は 1 を越えて判定円より手前（下）にも出る
+			t = Gimmick::Progress(startTime, endTime, now);
+			tMax = 1.0f + Gimmick::kBelowLimit;
+		}
 		if (t < 0.0f) t = 0.0f;
-		if (t > 1.0f) t = 1.0f;
+		if (t > tMax) t = tMax;
 
 		float highSpeed = Game::GetInstance()->GetHighSpeed();
 		//const auto& p0 = note.spawnPos;
@@ -70,7 +78,7 @@ namespace NotePath
 		const Vector3& judgePos = note.judgePos;
 		Vector3 spawnPos = judgePos + (note.spawnPos - judgePos) * highSpeed;
 
-		float t = (now - startTime) / duration; // クランプしない
+		float t = Gimmick::Progress(startTime, arriveTime, now); // クランプしない（速さの演出も考える。演出なしなら今までと同じ）
 		Vector3 basePos = Vector3::Lerp(spawnPos, judgePos, t);
 
 		if (note.spiralRadius > 0.0001f)

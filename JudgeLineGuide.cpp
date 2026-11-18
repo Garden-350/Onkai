@@ -1,5 +1,6 @@
 #include "JudgeLineGuide.h"
 #include "Camera.h"
+#include "Gimmick.h"	//速さの演出：拍の線もノーツと同じ速さで流す
 #include <cmath>
 #undef min
 #undef max
@@ -159,14 +160,15 @@ void JudgeLineGuide::Draw(Camera* cam, const Frame& f)
 	//拍の線
 	if (hasBeat && f.approachSeconds > 0.01f)
 	{
+		//速さの演出があると、遠くの拍まで見えたり（速い）、近くしか見えなかったり（遅い）するので広めに見る
+		const float nowScroll = Gimmick::Scroll(f.musicTime);
 		long long k0 = (long long)ceilf(f.musicTime / secPerBeat);
-		long long k1 = (long long)floorf((f.musicTime + f.approachSeconds) / secPerBeat);
-		if (k1 - k0 > 64) k1 = k0 + 64;	// 念のための上限
+		long long k1 = k0 + 64;	//念のための上限
 
 		for (long long k = k0; k <= k1; k++)
 		{
-			float s = ((float)k * secPerBeat - f.musicTime) / f.approachSeconds;	// 0=判定ライン, 1=奥の端
-			if (s < 0.0f || s > 1.0f) continue;
+			float s = (Gimmick::Scroll((float)k * secPerBeat) - nowScroll) / f.approachSeconds;	// 0=判定ライン, 1=奥の端, マイナス=判定ラインより手前（逆走）
+			if (s < -Gimmick::kBelowLimit || s > 1.0f) continue;
 
 			bool isBar = false;
 			if (f.beatsPerBar > 0)
@@ -176,7 +178,8 @@ void JudgeLineGuide::Draw(Camera* cam, const Frame& f)
 				isBar = (m == 0);
 			}
 
-			float fade = (1.0f - SmoothStep(0.7f, 1.0f, s)) * (0.4f + 0.6f * (1.0f - s));	// 奥はうっすら、近いほどはっきり
+			float fade = (1.0f - SmoothStep(0.7f, 1.0f, s)) * (0.4f + 0.6f * (1.0f - s));	//奥はうっすら、近いほどはっきり
+			if (s < 0.0f) fade = SmoothStep(-Gimmick::kBelowLimit, 0.0f, s);	//判定ラインより手前は、手前ほど薄く
 			float intensity = (isBar ? m_BarLineIntensity : m_BeatLineIntensity) * fade;
 			if (intensity <= 0.001f) continue;
 			float width = isBar ? m_BarLineWidth : m_BeatLineWidth;
@@ -204,7 +207,7 @@ void JudgeLineGuide::Draw(Camera* cam, const Frame& f)
 
 		drawRuns(f.judgePos, m_StrikeGlowWidth, glowP);
 		drawRuns(f.judgePos, m_StrikeCoreWidth, coreP);
-		
+
 	}
 
 	//判定円のバッド（押すと光）

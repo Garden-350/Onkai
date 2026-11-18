@@ -125,6 +125,27 @@ namespace ChartLoader
 				[](const CameraKey& a, const CameraKey& b) { return a.fromMeasure < b.fromMeasure; });
 		}
 
+		//演出("gimmicks")時刻は秒、入り・抜けは拍で書いてある
+		if (root.Has("gimmicks") && root["gimmicks"].IsArray())
+		{
+			const float spb = (result.bpm > 0.0f) ? 60.0f / result.bpm : 0.5f;	//1拍の秒数
+			for (const auto& g : root["gimmicks"].arrayValue)
+			{
+				GimmickEvent e;
+				std::string type = g["type"].AsString("");
+				if (type == "speed") e.type = GimmickType::Speed;
+				else continue;	//まだ作っていない種類は読み飛ばす
+
+				e.start = g["start"].AsFloat(0.0f);
+				e.end = g["end"].AsFloat(0.0f);
+				e.easeIn = g["easeIn"].AsFloat(0.0f) * spb;
+				e.easeOut = g["easeOut"].AsFloat(0.0f) * spb;
+				e.speed = g["speed"].AsFloat(1.0f);
+				if (e.end <= e.start) continue;
+				result.gimmicks.push_back(e);
+			}
+		}
+
 		// ── 音声ファイル名の読み込み ──
 		if (root.Has("audioFile"))
 			result.audioFile = root["audioFile"].AsString("");

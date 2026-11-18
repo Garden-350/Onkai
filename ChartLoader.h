@@ -2,6 +2,7 @@
 #include "ChartObject.h" // ChartNote / ChartJudgeCircle / ChartHomingBeam の完全な定義を得るため
 #include "LaneTrack.h"
 #include "CameraTrack.h"
+#include "Gimmick.h"
 #include <string>
 #include <vector>
 
@@ -23,6 +24,7 @@ struct ChartLoadResult
 	std::string audioFile;
 	std::vector<LaneTrack> tracks;	//レーンの区切り（常に6本）
 	std::vector<CameraKey> cameraKeys;
+	std::vector<GimmickEvent> gimmicks;
 };
 
 // ============================================================

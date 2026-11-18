@@ -358,6 +358,15 @@
       <Filter>ソースファイル\FPS</Filter>
     </ClCompile>
     <ClCompile Include="Oto.cpp" />
+    <ClCompile Include="PlayerSettings.cpp">
+      <Filter>ソースファイル\Appli</Filter>
+    </ClCompile>
+    <ClCompile Include="SettingsOverlay.cpp">
+      <Filter>ソースファイル\Appli</Filter>
+    </ClCompile>
+    <ClCompile Include="Gimmick.cpp">
+      <Filter>ソースファイル\Gimmick</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChartObject.h">
@@ -664,6 +673,18 @@
     <ClInclude Include="TestPlay.h">
       <Filter>ヘッダーファイル\Test</Filter>
     </ClInclude>
+    <ClInclude Include="AudioSettings.h">
+      <Filter>ヘッダーファイル\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerSettings.h">
+      <Filter>ヘッダーファイル\Appli</Filter>
+    </ClInclude>
+    <ClInclude Include="SettingsOverlay.h">
+      <Filter>ヘッダーファイル\Appli</Filter>
+    </ClInclude>
+    <ClInclude Include="Gimmick.h">
+      <Filter>ヘッダーファイル\Gimmick</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ソースファイル">
@@ -767,6 +788,15 @@
     </Filter>
     <Filter Include="ヘッダーファイル\Test">
       <UniqueIdentifier>{84cf68c5-8486-4c4a-b4dd-24b4bcc87381}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Audio">
+      <UniqueIdentifier>{dba4dc6a-48ba-4a32-af8c-85cbe6f841da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Gimmick">
+      <UniqueIdentifier>{0d54d2fb-fad8-4b9f-b705-179bb9ac1b9d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダーファイル\Gimmick">
+      <UniqueIdentifier>{5d61e1af-6979-49cf-a751-166ff611cd28}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

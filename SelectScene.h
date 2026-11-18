@@ -12,6 +12,7 @@ class Sound;
 class MagicCircleTransitionEffect;
 class SpectrumRing;
 class NumberDisplay;
+class SettingsOverlay;
 class SelectScene : public Scene
 {
 private:
@@ -39,7 +40,6 @@ private:
 	Texture2D* m_AutoTexture = nullptr;
 	Texture2D* m_Noise = nullptr;
 	Texture2D* m_AutoButton = nullptr;
-	Texture2D* m_HighSpeedDigits[2] = { nullptr, nullptr }; // [0]=整数部, [1]=小数第一位
 	bool m_AutoModeSelected = false;
 	bool m_NoiseModeSelected = true;
 
@@ -56,6 +56,9 @@ private:
 	int   m_OptionCursor = 0;				//0 = オート（上）、1 = ノイズ（下）
 	float m_FrameY = 0.0f;					//枠の今の高さ（なめらかに動かす）
 	float m_FrameAnimTime = 0.0f;			//枠の点滅用
+
+	//設定の画面（Space で開く。背景の明るさ・スピード・タイミング調整）
+	SettingsOverlay* m_Settings = nullptr;
 
 	//TABのテクスチャ
 	Texture2D* m_Tab = nullptr;

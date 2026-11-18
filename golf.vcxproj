@@ -159,6 +159,7 @@
     <ClCompile Include="ComboHud.cpp" />
     <ClCompile Include="FpsMeter.cpp" />
     <ClCompile Include="GameEvent.cpp" />
+    <ClCompile Include="Gimmick.cpp" />
     <ClCompile Include="HexHpGauge.cpp" />
     <ClCompile Include="HitBurstFx.cpp" />
     <ClCompile Include="HitPillarEffect.cpp" />
@@ -183,6 +184,7 @@
     <ClCompile Include="Oto.cpp" />
     <ClCompile Include="OuterEdge.cpp" />
     <ClCompile Include="PauseOverlay.cpp" />
+    <ClCompile Include="PlayerSettings.cpp" />
     <ClCompile Include="ScreenEffects.cpp" />
     <ClCompile Include="HomingBeamSystem.cpp" />
     <ClCompile Include="Collision.cpp" />
@@ -206,6 +208,7 @@
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="ScreenFade.cpp" />
     <ClCompile Include="SelectScene.cpp" />
+    <ClCompile Include="SettingsOverlay.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="SkyBox.cpp" />
     <ClCompile Include="SongIntro.cpp" />
@@ -236,6 +239,7 @@
     <ClInclude Include="Application.h" />
     <ClInclude Include="AssimpPerse.h" />
     <ClInclude Include="AttackOrbs.h" />
+    <ClInclude Include="AudioSettings.h" />
     <ClInclude Include="AudioSpectrum.h" />
     <ClInclude Include="BarrierPlate.h" />
     <ClInclude Include="BarrierQuad.h" />
@@ -250,6 +254,7 @@
     <ClInclude Include="ComboHud.h" />
     <ClInclude Include="FpsMeter.h" />
     <ClInclude Include="GameEvent.h" />
+    <ClInclude Include="Gimmick.h" />
     <ClInclude Include="HexHpGauge.h" />
     <ClInclude Include="HitBurstFx.h" />
     <ClInclude Include="HitPillarEffect.h" />
@@ -277,6 +282,7 @@
     <ClInclude Include="Oto.h" />
     <ClInclude Include="OuterEdge.h" />
     <ClInclude Include="PauseOverlay.h" />
+    <ClInclude Include="PlayerSettings.h" />
     <ClInclude Include="RibbonShapes.h" />
     <ClInclude Include="ScoreRule.h" />
     <ClInclude Include="ScreenEffects.h" />
@@ -307,6 +313,7 @@
     <ClInclude Include="Scene.h" />
     <ClInclude Include="ScreenFade.h" />
     <ClInclude Include="SelectScene.h" />
+    <ClInclude Include="SettingsOverlay.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="SimpleJson.h" />
     <ClInclude Include="SkyBox.h" />

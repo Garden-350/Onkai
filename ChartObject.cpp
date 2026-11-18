@@ -17,6 +17,8 @@
 #include "ScoreRule.h"
 #include "NoteBehavior.h"
 #include "GameEvent.h"
+#include "AudioSettings.h"	//音ズレ測定で決めた「判定のずらし」
+#include "Gimmick.h"	//演出（速さ：低速・止める・逆走）
 #include <algorithm>
 #include <cmath>
 #undef min
@@ -232,7 +234,7 @@ void ChartObject::Init()
 		m_LongDouRenderer, m_LongDouShader, m_LongDouSubsets, m_LongDouMaterials, m_LongDouTextures);
 	if (!m_LongDouLoaded)
 		OutputDebugStringA("[ChartObject] Long dou model not found. Fallback to TAP model.\n");
-	if(!m_LongDouGlowTexture.Load("assets/texture/dou_glow.png"))
+	if (!m_LongDouGlowTexture.Load("assets/texture/dou_glow.png"))
 		OutputDebugStringA("[ChartObject] dou glow texture not found.\n");
 	m_LongDouGlowShader.Create("shader/unlitTextureVS.hlsl", "shader/unlitTexturePS.hlsl");
 
@@ -460,6 +462,13 @@ bool ChartObject::LoadChart(const std::string& name)
 	m_Tracks = result.tracks;
 	m_CameraKeys = result.cameraKeys;
 	m_Offset = result.offset;
+
+	//演出（速さなど）を読む。速さの表は最後のノーツ＋30秒まで作る
+	{
+		float last = 0.0f;
+		for (const auto& n : m_Notes) last = std::max(last, n.time);
+		Gimmick::Load(result.gimmicks, last + 30.0f);
+	}
 	//区切りに判定円の位置があればその区間だけ判定円をそこへ動かす
 	//奥からくるノーツも動いた判定円から決めたいからkHighwayModeより前で実行
 	ApplyTrackJudgePositions(result.bpm, result.beatsPerBar);
@@ -581,7 +590,7 @@ void ChartObject::DrawLaneGuideLines(Camera* cam)
 
 		float st = note.GetSpawnTime();
 		float et = note.IsLong() ? note.arrivalTime : note.time;
-		if (m_MusicTime < st || m_MusicTime > et) continue;
+		if (!Gimmick::InView(st, et, m_MusicTime)) continue;
 
 		Vector3 color = GetLaneColor(note.lane);
 
@@ -664,15 +673,15 @@ CameraPose ChartObject::GetCameraPose(const CameraPose& defaultPose) const
 		}
 		break;	//まだ来ていない区切りから先は見ない
 	}
-	  
+
 	return cur;
 }
 
 //移動するロング　tau秒に判定ラインへ届く部分が今どこにあるか
-DirectX::SimpleMath::Vector3 ChartObject::LongPointAt(const ChartNote& n, float tau) const			
+DirectX::SimpleMath::Vector3 ChartObject::LongPointAt(const ChartNote& n, float tau) const
 
 
-   
+
 {
 	constexpr float kTurnBlend = 0.06f;	//曲がりにかける秒数
 	Vector3 p = m_JudgeCircles[n.lane].GetPosition(tau);
@@ -688,7 +697,8 @@ DirectX::SimpleMath::Vector3 ChartObject::LongPointAt(const ChartNote& n, float 
 		ln = tr.lane;
 	}
 	float hs = Game::GetInstance()->GetHighSpeed();
-	float z = (tau - m_MusicTime) / m_HighwayApproach * m_HighwayDepth * hs;   // 届くのが先ほど奥
+	//届くのが先ほど奥。速さの演出があれば「進んだ量」の差で（逆走だとマイナス＝判定円より手前）
+	float z = (Gimmick::Scroll(tau) - Gimmick::Scroll(m_MusicTime)) / m_HighwayApproach * m_HighwayDepth * hs;
 	return DirectX::SimpleMath::Vector3(p.x, p.y, p.z + z);
 }
 
@@ -702,7 +712,9 @@ void ChartObject::DrawHighwayLongNotes(Camera* cam)
 	{
 		if (!note.IsLong() || note.judged) continue;
 		float from = std::max(m_MusicTime, note.arrivalTime);			//もう受けた部分は描かない
-		float to = std::min(note.time, m_MusicTime + m_HighwayApproach);//出現位置より奥は見えない
+		//出現位置より奥は見えない。速さの演出がある時は、遅くなると遠くの時刻まで見えるので広めに（20秒先まで）
+		float to = Gimmick::HasSpeed() ? std::min(note.time, m_MusicTime + 20.0f)
+			: std::min(note.time, m_MusicTime + m_HighwayApproach);
 		if (from >= to) continue;
 
 		bool started = (m_MusicTime >= note.arrivalTime);
@@ -713,25 +725,41 @@ void ChartObject::DrawHighwayLongNotes(Camera* cam)
 		bool missedLook = started && !held;   // 受けられていない間は暗く
 
 		//手前から奥へ点を並べる
+		//見えるのは「距離 frac が -kBelowLimit〜1」の所だけ（速さの演出で途中が見えなくなることもあるので、切れたらそこで 1 本描く）
+		//見えるかどうかは Gimmick::PointVisible（タップと同じ決まり）
+		const float nowScroll = Gimmick::Scroll(m_MusicTime);
+		auto flush = [&]()
+			{
+				if (m_LongPoints.size() >= 2)
+					m_LongBeam.Draw(cam, m_LongPoints,
+						missedLook ? 60.0f : 90.0f,      // 帯の幅
+						missedLook ? 0.35f : 1.0f,       // 明るさ
+						m_MusicTime, kGlowColor);
+				m_LongPoints.clear();
+			};
 		m_LongPoints.clear();
-		bool continuesBeyond = (to < note.time);	//奥の出現位置の先にもまだ続いてるか
 		for (float t = from;; t += kStep)
 		{
 			float tt = std::min(t, to);
-			LongBeamRibbon::Point p;
-			p.pos = LongPointAt(note, tt) + Vector3(0.0f, 4.0f, 0.0f);	//床から少し浮かせる
-			Vector3 c = missedLook ? Vector3(0.4f, 0.4f, 0.4f) : GetLaneColor(note.LaneAt(tt));
-			float fade = 1.0f;
-			if (continuesBeyond)	//奥から現れるように奥の端を薄くする
-				fade = std::clamp((to - tt) / (m_HighwayApproach * 0.15f), 0.0f, 1.0f);
-			p.color = Color(c.x, c.y, c.z, fade);
-			m_LongPoints.push_back(p);
-			if (tt >= to)break;
+			float frac = (Gimmick::Scroll(tt) - nowScroll) / m_HighwayApproach;	//0=判定円 1=奥の端
+			if (!Gimmick::PointVisible(tt, m_MusicTime, m_HighwayApproach))
+			{
+				flush();	//見えない所：ここで帯を切る
+			}
+			else
+			{
+				LongBeamRibbon::Point p;
+				p.pos = LongPointAt(note, tt) + Vector3(0.0f, 4.0f, 0.0f);	//床から少し浮かせる
+				Vector3 c = missedLook ? Vector3(0.4f, 0.4f, 0.4f) : GetLaneColor(note.LaneAt(tt));
+				//奥の端と、判定円より手前の端は薄くする（ふわっと出てくるように）
+				float fade = std::clamp((1.0f - frac) / 0.15f, 0.0f, 1.0f);
+				if (frac < 0.0f) fade = std::min(fade, std::clamp((frac + Gimmick::kBelowLimit) / 0.15f, 0.0f, 1.0f));
+				p.color = Color(c.x, c.y, c.z, fade);
+				m_LongPoints.push_back(p);
+			}
+			if (tt >= to) break;
 		}
-		m_LongBeam.Draw(cam, m_LongPoints,
-			missedLook ? 60.0f : 90.0f,      // 帯の幅
-			missedLook ? 0.35f : 1.0f,       // 明るさ
-			m_MusicTime, kGlowColor);
+		flush();
 	}
 	Renderer::SetBlendState(BS_NONE);
 }
@@ -740,11 +768,9 @@ void ChartObject::DrawSpawnMagicCircle(Camera* cam, const ChartNote& note)
 {
 	float st = note.GetSpawnTime();
 	float et = note.IsLong() ? note.arrivalTime : note.time;	//判定・到達時刻で描画終了
-	if (m_MusicTime < st || m_MusicTime > et) return;
+	if (!Gimmick::InView(st, et, m_MusicTime)) return;	//速さの演出も考えて、見えている間だけ
 
-	float duration = et - st;
-	float progress = (duration > 0.0001f) ? (m_MusicTime - st) / duration : 1.0f;
-	progress = std::clamp(progress, 0.0f, 1.0f);
+	float progress = std::clamp(Gimmick::Progress(st, et, m_MusicTime), 0.0f, 1.0f);
 
 	Vector3 pos = note.spawnPos;	//出現地点に固定
 
@@ -1060,7 +1086,7 @@ void ChartObject::Update()
 	if (m_EnemyRef) m_EnemyHp.SetRatio(m_EnemyRef->GetHpRatio());
 	m_EnemyHp.Update(deltaTime);
 
-	if(!m_FullCombo && m_FinishChecked && IsFullCombo())
+	if (!m_FullCombo && m_FinishChecked && IsFullCombo())
 	{
 		m_ComboHud.TriggerFullCombo();
 		m_FullCombo = true;
@@ -1106,7 +1132,7 @@ void ChartObject::Update()
 		if (note.judged) continue;
 
 		float st = note.GetSpawnTime();
-		if (m_MusicTime < st || m_MusicTime > note.time) continue;
+		if (!Gimmick::InView(st, note.time, m_MusicTime)) continue;
 
 		m_TapAuraTimer[note.lane] += deltaTime;
 		if (m_TapAuraTimer[note.lane] >= kTapAuraInterval)
@@ -1144,18 +1170,21 @@ void ChartObject::Update()
 	}
 	else
 	{
+		//判定に使う時刻：エディターの「音ズレ測定」で決めたぶんだけずらす（audio_settings.json が無ければ 0）
+		const float judgeTime = AudioSettings::JudgeTime(m_MusicTime);
+
 		//TAPノーツの自動ミス判定
-		m_JudgeSystem.MarkTapAutoMiss(m_Notes, m_MusicTime);
-		m_JudgeSystem.MarkFlickAutoMiss(m_Notes, m_MusicTime);
+		m_JudgeSystem.MarkTapAutoMiss(m_Notes, judgeTime);
+		m_JudgeSystem.MarkFlickAutoMiss(m_Notes, judgeTime);
 
 		int playerSideForFlick = m_PlayerRef ? m_PlayerRef->GetSide() : 0;
 		for (int lane = 0; lane < 6; lane++)
 		{
-			m_JudgeSystem.JudgeLane(kLaneKeys[lane], lane, m_Notes, m_MusicTime, sound);
+			m_JudgeSystem.JudgeLane(kLaneKeys[lane], lane, m_Notes, judgeTime, sound);
 		}
 		{
 			NoteJudgeContext ctx;
-			ctx.musicTime = m_MusicTime;
+			ctx.musicTime = judgeTime;
 			ctx.autoMode = m_AutoMode;
 			ctx.judge = &m_JudgeSystem;
 			ctx.sound = &sound;
@@ -1168,8 +1197,8 @@ void ChartObject::Update()
 		}
 
 		// フリック・ロングノーツの判定
-		m_JudgeSystem.JudgeFlickNotes(m_Notes, m_MusicTime, playerSideForFlick, sound);
-		m_JudgeSystem.JudgeLongNoteHold(m_Notes, m_MusicTime);
+		m_JudgeSystem.JudgeFlickNotes(m_Notes, judgeTime, playerSideForFlick, sound);
+		m_JudgeSystem.JudgeLongNoteHold(m_Notes, judgeTime);
 	}
 
 	//ロングノーツの音を鳴らしたりするところ
@@ -1725,7 +1754,7 @@ void ChartObject::DrawLongNotes(Camera* cam)
 					float sampleTime = bodyStart + bodyDuration * p;
 					Vector3 pos = NotePath::EvaluateLongNotePosition(note, sampleTime);
 					douPositions.push_back(pos);
-					
+
 					Matrix world = Matrix::CreateScale(30.0f) * noteBasis * Matrix::CreateTranslation(pos);
 					ModelUtil::DrawModel(douRenderer, douShader, douSubsets, douMaterials, douTextures, world);
 				}
@@ -1843,7 +1872,7 @@ void ChartObject::Draw(Camera* cam)
 
 			float st = note.GetSpawnTime();
 			float et = note.IsLong() ? note.arrivalTime : note.time;
-			if (m_MusicTime < st || m_MusicTime > et) continue;
+			if (!Gimmick::InView(st, et, m_MusicTime)) continue;
 
 			ringNotes.push_back(&note);
 		}
@@ -1863,10 +1892,7 @@ void ChartObject::Draw(Camera* cam)
 			const ChartNote& note = *notePtr;
 			float st = note.GetSpawnTime();
 			float et = note.IsLong() ? note.arrivalTime : note.time;
-			float duration = et - st;
-			float t = (duration > 0.0001f) ? (m_MusicTime - st) / duration : 1.0f;
-			if (t < 0.0f) t = 0.0f;
-			if (t > 1.0f) t = 1.0f;
+			float t = std::clamp(Gimmick::Progress(st, et, m_MusicTime), 0.0f, 1.0f);	//速さの演出も考えた進み具合
 
 			Vector3 pos = note.judgePos;	// 終着点(判定位置)に固定
 
@@ -1907,7 +1933,7 @@ void ChartObject::Draw(Camera* cam)
 			if (note.judged) return false;
 			float st = note.GetSpawnTime();
 			float et = note.time;
-			if (m_MusicTime < st || m_MusicTime > et) return false;	// 表示範囲外
+			if (!Gimmick::InView(st, et, m_MusicTime)) return false;	// 表示範囲外（速さの演出も考える）
 
 			Vector3 c = note.chargeShot ? Vector3(1.0f, 0.8f, 0.25f) : GetLaneColor(note.lane);
 			out.pos = NotePath::EvaluateNotePosition(note, m_MusicTime);	// Long ではない方
@@ -2033,12 +2059,9 @@ void ChartObject::Draw(Camera* cam)
 		float st = note.GetSpawnTime();
 		// LONGは先端が到達するarrivalTimeを終点とする。TAPは通常のtime
 		float et = note.IsLong() ? note.arrivalTime : note.time;
-		if (m_MusicTime < st || m_MusicTime > et) continue;
+		if (!Gimmick::InView(st, et, m_MusicTime)) continue;
 
-		float duration = et - st;
-		float t = (duration > 0.0001f) ? (m_MusicTime - st) / duration : 1.0f;
-		if (t < 0.0f) t = 0.0f;
-		if (t > 1.0f) t = 1.0f;
+		float t = std::clamp(Gimmick::Progress(st, et, m_MusicTime), 0.0f, 1.0f);
 
 		Vector3 pos = note.IsLong()
 			? NotePath::EvaluateLongNotePosition(note, m_MusicTime)
@@ -2060,7 +2083,7 @@ void ChartObject::Draw(Camera* cam)
 		judgeCircleScreenPos[lane] = WorldToTexture2DPos(judgeCirclePos3D[lane], view);
 	}
 
-		Renderer::SetBlendState(BS_NONE);
+	Renderer::SetBlendState(BS_NONE);
 
 	// ── パーティクル（判定ヒット時の花びら演出）──
 	cam->SetCamera(0);
@@ -2134,6 +2157,7 @@ void ChartObject::Draw(Camera* cam)
 void ChartObject::Uninit()
 {
 	GameEvent::OnAttackHit().Unsubscribe(m_AttackHitSub);
+	Gimmick::Clear();	//次の曲に演出を持ち越さない
 	sound.StopDynamic();
 	StopLongSounds();
 	sound.Uninit();

@@ -14,6 +14,8 @@
 #include <algorithm>
 #include <cmath>
 #include "ScoreRule.h"
+#include "SettingsOverlay.h"
+#include "PlayerSettings.h"
 #undef min
 #undef max
 
@@ -141,6 +143,7 @@ void SelectScene::Init()
 {
 	Renderer::SetDepthEnable(true);
 	sound.Init();
+	Game::SetHightSpeed(PlayerSettings::Get().highSpeed);	//保存してあるハイスピードから始める
 	Texture2D* pt = Game::GetInstance()->AddObject<Texture2D>();
 	pt->SetTexture("assets/texture/haikei_1.png");
 	pt->SetPosition(0.0f, 0.0f, 485.0f);
@@ -198,17 +201,7 @@ void SelectScene::Init()
 	m_MySceneObjects.emplace_back(m_OptionArrow);
 	m_ArrowShownFor = -1;	//最初の UpdateOptionCursor で画像を読み込ませる
 
-	//ハイスピ表示（コンボと同じ数字画像を流用。小数点の絵は無いので2桁を隙間を空けて並べる）
-	for (int i = 0; i < 2; i++)
-	{
-		m_HighSpeedDigits[i] = Game::GetInstance()->AddObject<Texture2D>();
-		m_HighSpeedDigits[i]->SetTexture("assets/texture/allnumber_new.png");
-		m_HighSpeedDigits[i]->SetUV(1.0f, 1.0f, 10.0f, 1.0f); // 初期表示"0"
-		m_HighSpeedDigits[i]->SetScale(60.0f, 60.0f, 0.0f);
-		m_MySceneObjects.emplace_back(m_HighSpeedDigits[i]);
-	}
-	m_HighSpeedDigits[0]->SetPosition(360.0f, -180.0f, 0.0f);
-	m_HighSpeedDigits[1]->SetPosition(410.0f, -180.0f, 0.0f); // 少し離して小数点っぽく見せる
+	//ハイスピードの表示と変更は、設定の画面（Space）に移した
 
 	RefreshSongList();
 	SetupJacketSlots();
@@ -272,23 +265,7 @@ void SelectScene::Init()
 	UI_D->SetScale(100.0f, 100.0f, 0.0f);
 	m_MySceneObjects.emplace_back(UI_D);
 
-	Texture2D* UI_J = Game::GetInstance()->AddObject<Texture2D>();
-	UI_J->SetTexture("assets/UI/Down_J.png");
-	UI_J->SetPosition(230.0f, -180.0f, 0.0f);
-	UI_J->SetScale(150.0f, 150.0f, 0.0f);
-	m_MySceneObjects.emplace_back(UI_J);
-
-	Texture2D* UI_L = Game::GetInstance()->AddObject<Texture2D>();
-	UI_L->SetTexture("assets/UI/High_L.png");
-	UI_L->SetPosition(530.0f, -180.0f, 0.0f);
-	UI_L->SetScale(150.0f, 150.0f, 0.0f);
-	m_MySceneObjects.emplace_back(UI_L);
-
-	Texture2D* High = Game::GetInstance()->AddObject<Texture2D>();
-	High->SetTexture("assets/UI/highspeed.png");
-	High->SetPosition(390.0f, -130.0f, 0.0f);
-	High->SetScale(150.0f, 50.0f, 0.0f);
-	m_MySceneObjects.emplace_back(High);
+	//（J / L とハイスピードの絵は、設定の画面に移したので消した。Space で設定を開く案内の絵を置くならここ）
 
 	Texture2D* Enter = Game::GetInstance()->AddObject<Texture2D>();
 	Enter->SetTexture("assets/UI/enter.png");
@@ -298,6 +275,10 @@ void SelectScene::Init()
 
 	m_TransitionEffect = Game::GetInstance()->AddObject<MagicCircleTransitionEffect>();
 	m_MySceneObjects.emplace_back(m_TransitionEffect);
+
+	//設定の画面（一番最後に作る：ほかの物より後に描くため）
+	m_Settings = Game::GetInstance()->AddObject<SettingsOverlay>();
+	m_MySceneObjects.emplace_back(m_Settings);
 }
 
 
@@ -343,6 +324,24 @@ void SelectScene::Update()
 		return;
 	}
 
+	// ── 設定の画面：開いている間は、曲選びの操作を止めて設定の画面だけ動かす ──
+	if (m_Settings && m_Settings->IsOpen())
+	{
+		m_Settings->Tick(dt, sound);
+		if (!m_Settings->IsOpen()) RequestPreview();	//閉じたら曲のプレビューを鳴らし直す
+		UpdateJacketLayout();
+		return;
+	}
+	// Space で設定の画面を開く
+	if (m_Settings && Input::GetKeyTrigger(VK_SPACE))
+	{
+		sound.StopDynamic();		//プレビューを止める（タイミングを測る時にメトロノームを鳴らすので）
+		m_PreviewPlaying = false;
+		m_PreviewPending = false;
+		m_Settings->Open();
+		return;
+	}
+
 	// Sキーで前の曲へ
 	if (Input::GetKeyTrigger(VK_S) || Input::GetKeyTrigger(VK_LEFT))
 	{
@@ -354,27 +353,7 @@ void SelectScene::Update()
 		ShiftJackets(1);
 	}
 
-	//ハイスピの設定
-	if (Input::GetKeyTrigger(VK_L))
-	{
-		speed = std::clamp(Game::GetInstance()->GetHighSpeed() + 0.1f, 0.1f, 9.9f);
-		Game::SetHightSpeed(speed);
-	}
-	if (Input::GetKeyTrigger(VK_J))
-	{
-		speed = std::clamp(Game::GetInstance()->GetHighSpeed() - 0.1f, 0.1f, 9.9f);
-		Game::SetHightSpeed(speed);
-	}
-	//ハイスピ数字表示の更新
-	{
-		float hs = Game::GetInstance()->GetHighSpeed();
-		int hsInt10 = (int)std::round(hs * 10.0f); // 浮動小数の誤差対策でまとめて丸める
-		int intPart = (hsInt10 / 10) % 10;
-		int decPart = hsInt10 % 10;
-
-		m_HighSpeedDigits[0]->SetUV((float)(intPart + 1), 1.0f, 10.0f, 1.0f);
-		m_HighSpeedDigits[1]->SetUV((float)(decPart + 1), 1.0f, 10.0f, 1.0f);
-	}
+	//（ハイスピードの J / L は、設定の画面の「スピード」に移した）
 
 	//上下でオプションの行を選ぶ（2行なので、端まで行ったら反対側へ）
 	if (Input::GetKeyTrigger(VK_UP))   m_OptionCursor = (m_OptionCursor + kOptionCount - 1) % kOptionCount;
